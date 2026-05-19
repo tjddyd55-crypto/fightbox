@@ -65,7 +65,7 @@ export function WorkoutProgramBuilderPage() {
               : '선택된 블록이 없습니다.',
           )
         }
-        onSaveTemplate={() => state.showMessage('템플릿이 저장되었습니다.')}
+        onSaveTemplate={() => state.saveTemplate()}
         onCopySave={() => state.showMessage('복사본으로 저장되었습니다.')}
         onTestPlay={() => state.setIsTestPlaying(true)}
       />

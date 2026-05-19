@@ -14,6 +14,9 @@ import type {
   WorkoutVideo,
 } from '../types/workoutProgramBuilder.types';
 import {
+  saveProgramTemplate as persistProgramTemplate,
+} from '../storage/programTemplateStorage';
+import {
   calculateTotalDurationSec,
   computeVideoBlockDuration,
   createVideoBlockFromWorkout,
@@ -27,6 +30,9 @@ export function useProgramBuilderState() {
     ...mockProgramTemplate,
     blocks: [...mockProgramTemplate.blocks],
   }));
+  const [activeTemplateId, setActiveTemplateId] = useState<string | null>(
+    mockProgramTemplate.id,
+  );
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(
     mockProgramTemplate.blocks[0]?.id ?? null,
   );
@@ -48,6 +54,40 @@ export function useProgramBuilderState() {
     setStatusMessage(message);
     window.setTimeout(() => setStatusMessage(null), 3000);
   }, []);
+
+  const buildTemplateSnapshot = useCallback((): WorkoutProgramTemplate => {
+    const now = new Date().toISOString();
+    const reindexed = reindexBlocks(blocks);
+    return {
+      ...template,
+      blocks: reindexed,
+      totalDurationSec: calculateTotalDurationSec(reindexed),
+      updatedAt: now,
+    };
+  }, [blocks, template]);
+
+  const saveTemplate = useCallback(() => {
+    const now = new Date().toISOString();
+    const base = buildTemplateSnapshot();
+    const templateId = activeTemplateId ?? `template_${Date.now()}`;
+    const snapshot: WorkoutProgramTemplate = {
+      ...base,
+      id: templateId,
+      createdAt: base.createdAt || now,
+      updatedAt: now,
+    };
+
+    const ok = persistProgramTemplate(snapshot);
+    if (!ok) {
+      showMessage('템플릿 저장에 실패했습니다. 브라우저 저장 공간을 확인해 주세요.');
+      return false;
+    }
+
+    setTemplate(snapshot);
+    setActiveTemplateId(templateId);
+    showMessage(`「${snapshot.title}」 템플릿이 저장되었습니다.`);
+    return true;
+  }, [activeTemplateId, buildTemplateSnapshot, showMessage]);
 
   const updateBlocks = useCallback((nextBlocks: ProgramBlock[]) => {
     const reindexed = reindexBlocks(nextBlocks);
@@ -189,6 +229,7 @@ export function useProgramBuilderState() {
 
   return {
     template,
+    activeTemplateId,
     blocks,
     videos: mockWorkoutVideos,
     selectedBlockId,
@@ -205,6 +246,7 @@ export function useProgramBuilderState() {
     handleDragReorder,
     updateBlock,
     updateVideoBlockSettings,
+    saveTemplate,
     showMessage,
     setIsTestPlaying,
     setTemplateTitle: (title: string) =>
