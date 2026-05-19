@@ -17,6 +17,7 @@ interface TimelineBlockRowProps {
   onMoveUp: ProgramBuilderState['moveBlock'];
   onMoveDown: ProgramBuilderState['moveBlock'];
   onRemove: ProgramBuilderState['removeBlock'];
+  onDuplicate: ProgramBuilderState['duplicateBlock'];
 }
 
 export function TimelineBlockRow({
@@ -26,6 +27,7 @@ export function TimelineBlockRow({
   onMoveUp,
   onMoveDown,
   onRemove,
+  onDuplicate,
 }: TimelineBlockRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -58,6 +60,31 @@ export function TimelineBlockRow({
       >
         ⠿
       </button>
+
+      <div className="wpb-timeline-mobile-moves" aria-label={`${block.title} 순서 변경`}>
+        <button
+          type="button"
+          className="wpb-icon-btn wpb-timeline-move-btn"
+          aria-label={`${block.order}번 블록 위로 이동`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onMoveUp(block.id, 'up');
+          }}
+        >
+          ↑
+        </button>
+        <button
+          type="button"
+          className="wpb-icon-btn wpb-timeline-move-btn"
+          aria-label={`${block.order}번 블록 아래로 이동`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onMoveDown(block.id, 'down');
+          }}
+        >
+          ↓
+        </button>
+      </div>
 
       <button
         type="button"
@@ -104,6 +131,18 @@ export function TimelineBlockRow({
             <li role="none">
               <button type="button" role="menuitem" onClick={() => { onMoveDown(block.id, 'down'); setMenuOpen(false); }}>
                 아래로 이동
+              </button>
+            </li>
+            <li role="none">
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  onDuplicate(block.id);
+                  setMenuOpen(false);
+                }}
+              >
+                복제
               </button>
             </li>
             <li role="none">

@@ -1,8 +1,11 @@
 import { DEFAULT_VIDEO_VOICE_CUES } from '../constants/builderConstants';
 import type {
+  CountdownProgramBlock,
   ProgramBlock,
+  RestProgramBlock,
   VideoPlayMode,
   VideoProgramBlock,
+  VoiceProgramBlock,
   WorkoutVideo,
 } from '../types/workoutProgramBuilder.types';
 
@@ -45,6 +48,68 @@ export function cloneBlocksWithNewIds(blocks: ProgramBlock[]): ProgramBlock[] {
       id: `block_${stamp}_${index}`,
     })),
   );
+}
+
+function nextBlockId(prefix: string): string {
+  return `block_${prefix}_${Date.now()}`;
+}
+
+export function cloneProgramBlock(block: ProgramBlock, newId?: string): ProgramBlock {
+  const id = newId ?? nextBlockId('dup');
+  if (block.type === 'video') {
+    return {
+      ...block,
+      id,
+      voiceCues: { ...block.voiceCues },
+    };
+  }
+  return { ...block, id };
+}
+
+export function duplicateBlockInList(
+  blocks: ProgramBlock[],
+  blockId: string,
+): { blocks: ProgramBlock[]; newBlockId: string } | null {
+  const index = blocks.findIndex((b) => b.id === blockId);
+  if (index < 0) return null;
+
+  const clone = cloneProgramBlock(blocks[index]);
+  const next = [...blocks];
+  next.splice(index + 1, 0, clone);
+  return { blocks: reindexBlocks(next), newBlockId: clone.id };
+}
+
+export function createRestBlock(order: number, durationSec = 30): RestProgramBlock {
+  return {
+    id: nextBlockId('rest'),
+    type: 'rest',
+    title: `휴식 ${durationSec}초`,
+    order,
+    durationSec,
+    message: '휴식 중입니다',
+  };
+}
+
+export function createCountdownBlock(order: number, durationSec = 10): CountdownProgramBlock {
+  return {
+    id: nextBlockId('countdown'),
+    type: 'countdown',
+    title: `카운트다운 ${durationSec}초`,
+    order,
+    durationSec,
+    countFromSec: durationSec,
+  };
+}
+
+export function createVoiceBlock(order: number, message = '준비하세요'): VoiceProgramBlock {
+  return {
+    id: nextBlockId('voice'),
+    type: 'voice',
+    title: message,
+    order,
+    durationSec: 3,
+    cueText: message,
+  };
 }
 
 export function createVideoBlockFromWorkout(

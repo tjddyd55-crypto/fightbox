@@ -23,7 +23,11 @@ import {
   calculateTotalDurationSec,
   cloneBlocksWithNewIds,
   computeVideoBlockDuration,
+  createCountdownBlock,
+  createRestBlock,
   createVideoBlockFromWorkout,
+  createVoiceBlock,
+  duplicateBlockInList,
   getVideoById,
   reindexBlocks,
   reorderBlocks,
@@ -188,48 +192,64 @@ export function useProgramBuilderState() {
     }));
   }, []);
 
-  const addVideoToTimeline = useCallback(
-    (video: WorkoutVideo) => {
-      const newBlock = createVideoBlockFromWorkout(video, blocks.length + 1);
+  const appendBlock = useCallback(
+    (newBlock: ProgramBlock) => {
       const next = reindexBlocks([...blocks, newBlock]);
-      setTemplate((prev) => ({
-        ...prev,
-        blocks: next,
-        totalDurationSec: calculateTotalDurationSec(next),
-        updatedAt: new Date().toISOString(),
-      }));
+      updateBlocks(next);
       setSelectedBlockId(newBlock.id);
     },
-    [blocks],
+    [blocks, updateBlocks],
   );
 
-  const addRestBlock = useCallback(() => {
-    const newBlock: ProgramBlock = {
-      id: `block_rest_${Date.now()}`,
-      type: 'rest',
-      title: '휴식',
-      order: blocks.length + 1,
-      durationSec: 30,
-      message: '휴식 중입니다',
-    };
-    const next = reindexBlocks([...blocks, newBlock]);
-    updateBlocks(next);
-    setSelectedBlockId(newBlock.id);
-  }, [blocks, updateBlocks]);
+  const addVideoToTimeline = useCallback(
+    (video: WorkoutVideo) => {
+      appendBlock(createVideoBlockFromWorkout(video, blocks.length + 1));
+    },
+    [appendBlock, blocks.length],
+  );
 
-  const addCountdownBlock = useCallback(() => {
-    const newBlock: ProgramBlock = {
-      id: `block_countdown_${Date.now()}`,
-      type: 'countdown',
-      title: '카운트다운',
-      order: blocks.length + 1,
-      durationSec: 10,
-      countFromSec: 10,
-    };
-    const next = reindexBlocks([...blocks, newBlock]);
-    updateBlocks(next);
-    setSelectedBlockId(newBlock.id);
-  }, [blocks, updateBlocks]);
+  const addVideoBlock = useCallback(
+    (videoId: string) => {
+      const video = getVideoById(mockWorkoutVideos, videoId);
+      if (!video) {
+        showMessage('영상을 찾을 수 없습니다.');
+        return;
+      }
+      addVideoToTimeline(video);
+    },
+    [addVideoToTimeline, showMessage],
+  );
+
+  const addRestBlock = useCallback(
+    (durationSeconds = 30) => {
+      appendBlock(createRestBlock(blocks.length + 1, durationSeconds));
+    },
+    [appendBlock, blocks.length],
+  );
+
+  const addCountdownBlock = useCallback(
+    (durationSeconds = 10) => {
+      appendBlock(createCountdownBlock(blocks.length + 1, durationSeconds));
+    },
+    [appendBlock, blocks.length],
+  );
+
+  const addVoiceBlock = useCallback(
+    (message = '준비하세요') => {
+      appendBlock(createVoiceBlock(blocks.length + 1, message));
+    },
+    [appendBlock, blocks.length],
+  );
+
+  const duplicateBlock = useCallback(
+    (blockId: string) => {
+      const result = duplicateBlockInList(blocks, blockId);
+      if (!result) return;
+      updateBlocks(result.blocks);
+      setSelectedBlockId(result.newBlockId);
+    },
+    [blocks, updateBlocks],
+  );
 
   const removeBlock = useCallback(
     (blockId: string) => {
@@ -328,8 +348,11 @@ export function useProgramBuilderState() {
     isTestPlaying,
     setSelectedBlockId,
     addVideoToTimeline,
+    addVideoBlock,
     addRestBlock,
     addCountdownBlock,
+    addVoiceBlock,
+    duplicateBlock,
     removeBlock,
     moveBlock,
     handleDragReorder,

@@ -672,6 +672,23 @@
   outline-offset: -2px;
 }
 
+.wpb-timeline-mobile-moves {
+  display: none;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 2px;
+  padding: 4px 2px;
+  background: #15161a;
+  border-right: 1px solid #2c2d34;
+}
+
+.wpb-timeline-move-btn {
+  min-width: 40px;
+  min-height: 40px;
+  font-size: 16px;
+  line-height: 1;
+}
+
 .wpb-timeline-row-main {
   flex: 1;
   display: flex;
@@ -1696,6 +1713,14 @@
 
   .wpb-panel-controls {
     padding: 8px 16px 0;
+  }
+
+  .wpb-timeline-mobile-moves {
+    display: flex;
+  }
+
+  .wpb-drag-handle {
+    display: none;
   }
 
   .wpb-panel-scroll {

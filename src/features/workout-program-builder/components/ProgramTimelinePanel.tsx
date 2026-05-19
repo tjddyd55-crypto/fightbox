@@ -27,6 +27,8 @@ interface ProgramTimelinePanelProps {
   onDragReorder: ProgramBuilderState['handleDragReorder'];
   onAddRest: ProgramBuilderState['addRestBlock'];
   onAddCountdown: ProgramBuilderState['addCountdownBlock'];
+  onAddVoice: ProgramBuilderState['addVoiceBlock'];
+  onDuplicateBlock: ProgramBuilderState['duplicateBlock'];
 }
 
 export function ProgramTimelinePanel({
@@ -39,6 +41,8 @@ export function ProgramTimelinePanel({
   onDragReorder,
   onAddRest,
   onAddCountdown,
+  onAddVoice,
+  onDuplicateBlock,
 }: ProgramTimelinePanelProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -65,11 +69,18 @@ export function ProgramTimelinePanel({
       </header>
       <section className="wpb-panel-controls wpb-timeline-toolbar-wrap">
         <section className="wpb-timeline-toolbar" aria-label="블록 추가">
-          <button type="button" className="wpb-btn wpb-btn-ghost wpb-btn-sm" onClick={onAddRest}>
-            + 휴식
+          <button type="button" className="wpb-btn wpb-btn-ghost wpb-btn-sm" onClick={() => onAddRest()}>
+            휴식 추가
           </button>
-          <button type="button" className="wpb-btn wpb-btn-ghost wpb-btn-sm" onClick={onAddCountdown}>
-            + 카운트다운
+          <button
+            type="button"
+            className="wpb-btn wpb-btn-ghost wpb-btn-sm"
+            onClick={() => onAddCountdown()}
+          >
+            카운트다운 추가
+          </button>
+          <button type="button" className="wpb-btn wpb-btn-ghost wpb-btn-sm" onClick={() => onAddVoice()}>
+            음성 안내 추가
           </button>
         </section>
       </section>
@@ -77,7 +88,9 @@ export function ProgramTimelinePanel({
         {blocks.length === 0 ? (
           <div className="wpb-empty">
             <p className="wpb-empty-title">타임라인이 비어 있습니다</p>
-            <p className="wpb-empty-desc">좌측 라이브러리에서 영상을 추가하세요.</p>
+            <p className="wpb-empty-desc">
+              영상 라이브러리에서 영상을 추가하거나 휴식·카운트다운·음성 안내 블록을 추가하세요.
+            </p>
           </div>
         ) : (
           <DndContext
@@ -95,6 +108,7 @@ export function ProgramTimelinePanel({
                   onMoveUp={onMoveBlock}
                   onMoveDown={onMoveBlock}
                   onRemove={onRemoveBlock}
+                  onDuplicate={onDuplicateBlock}
                 />
               ))}
             </SortableContext>

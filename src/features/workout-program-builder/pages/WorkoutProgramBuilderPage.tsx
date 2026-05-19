@@ -49,6 +49,8 @@ export function WorkoutProgramBuilderPage() {
             onDragReorder={state.handleDragReorder}
             onAddRest={state.addRestBlock}
             onAddCountdown={state.addCountdownBlock}
+            onAddVoice={state.addVoiceBlock}
+            onDuplicateBlock={state.duplicateBlock}
           />
           <SelectedBlockPanel
             selectedBlock={state.selectedBlock}
