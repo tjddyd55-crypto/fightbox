@@ -31,7 +31,11 @@ export function BottomActionBar({
         <button type="button" className="wpb-btn wpb-btn-ghost" onClick={onCopySave}>
           복사 저장
         </button>
-        <button type="button" className="wpb-btn wpb-btn-primary" onClick={onTestPlay}>
+        <button
+          type="button"
+          className="wpb-btn wpb-btn-primary wpb-btn-test-play"
+          onClick={onTestPlay}
+        >
           테스트 재생
         </button>
       </section>

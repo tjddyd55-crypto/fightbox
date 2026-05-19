@@ -1,28 +1,47 @@
+import { useCallback, useState } from 'react';
 import { BuilderHeader } from '../components/BuilderHeader';
 import { BuilderSidebar } from '../components/BuilderSidebar';
 import { BottomActionBar } from '../components/BottomActionBar';
+import { MobileBuilderTabs, type MobileBuilderTab } from '../components/MobileBuilderTabs';
 import { ProgramTimelinePanel } from '../components/ProgramTimelinePanel';
 import { SelectedBlockPanel } from '../components/SelectedBlockPanel';
 import { TestPlaybackModal } from '../components/TestPlaybackModal';
 import { VideoLibraryPanel } from '../components/VideoLibraryPanel';
 import { useProgramBuilderState } from '../hooks/useProgramBuilderState';
+import { isCompactLayout } from '../utils/viewportUtils';
 import '../workoutProgramBuilder.css';
 
 export function WorkoutProgramBuilderPage() {
   const state = useProgramBuilderState();
+  const [mobileTab, setMobileTab] = useState<MobileBuilderTab>('timeline');
+  const { setSelectedBlockId } = state;
+
+  const handleSelectBlock = useCallback(
+    (id: string) => {
+      setSelectedBlockId(id);
+      if (isCompactLayout()) {
+        setMobileTab('settings');
+      }
+    },
+    [setSelectedBlockId],
+  );
 
   return (
     <main className="wpb-root">
       <BuilderHeader template={state.template} totalDurationSec={state.totalDurationSec} />
+      <MobileBuilderTabs activeTab={mobileTab} onTabChange={setMobileTab} />
       <section className="wpb-body">
         <BuilderSidebar />
-        <section className="wpb-main">
+        <section
+          className={`wpb-main wpb-main--mobile-tab-${mobileTab}`}
+          aria-label="프로그램 빌더 작업 영역"
+        >
           <VideoLibraryPanel videos={state.videos} onAddVideo={state.addVideoToTimeline} />
           <ProgramTimelinePanel
             blocks={state.blocks}
             selectedBlockId={state.selectedBlockId}
             totalDurationSec={state.totalDurationSec}
-            onSelectBlock={state.setSelectedBlockId}
+            onSelectBlock={handleSelectBlock}
             onMoveBlock={state.moveBlock}
             onRemoveBlock={state.removeBlock}
             onDragReorder={state.handleDragReorder}

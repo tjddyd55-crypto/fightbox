@@ -52,7 +52,13 @@ export function ProgramTimelinePanel({
   };
 
   return (
-    <section className="wpb-panel wpb-panel-timeline" aria-label="프로그램 타임라인">
+    <section
+      id="wpb-mobile-panel-timeline"
+      className="wpb-panel wpb-panel-timeline"
+      role="tabpanel"
+      aria-labelledby="wpb-mobile-tab-timeline"
+      aria-label="프로그램 타임라인"
+    >
       <header className="wpb-panel-header">
         <h2>프로그램 타임라인</h2>
         <p>⠿ 핸들을 드래그하거나 항목을 클릭해 선택</p>
