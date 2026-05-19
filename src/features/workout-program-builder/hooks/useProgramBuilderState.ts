@@ -20,7 +20,7 @@ import {
   saveProgramTemplate as persistProgramTemplate,
 } from '../storage/programTemplateStorage';
 import {
-  calculateTotalDurationSec,
+  buildWorkoutVideoMap,
   cloneBlocksWithNewIds,
   computeVideoBlockDuration,
   createCountdownBlock,
@@ -28,10 +28,15 @@ import {
   createVideoBlockFromWorkout,
   createVoiceBlock,
   duplicateBlockInList,
+  getTimelineTotalDurationSeconds,
   getVideoById,
   reindexBlocks,
   reorderBlocks,
 } from '../utils/programTimelineUtils';
+import {
+  validateProgramBlocks,
+  type ProgramValidationResult,
+} from '../utils/programValidationUtils';
 
 export function useProgramBuilderState() {
   const [template, setTemplate] = useState<WorkoutProgramTemplate>(() => ({
@@ -48,9 +53,12 @@ export function useProgramBuilderState() {
   const [isTestPlaying, setIsTestPlaying] = useState(false);
 
   const blocks = template.blocks;
+  const videos = mockWorkoutVideos;
+  const videoMap = useMemo(() => buildWorkoutVideoMap(videos), [videos]);
+
   const totalDurationSec = useMemo(
-    () => calculateTotalDurationSec(blocks),
-    [blocks],
+    () => getTimelineTotalDurationSeconds(blocks, videoMap),
+    [blocks, videoMap],
   );
 
   const selectedBlock = useMemo(
@@ -69,10 +77,10 @@ export function useProgramBuilderState() {
     return {
       ...template,
       blocks: reindexed,
-      totalDurationSec: calculateTotalDurationSec(reindexed),
+      totalDurationSec: getTimelineTotalDurationSeconds(reindexed, videoMap),
       updatedAt: now,
     };
-  }, [blocks, template]);
+  }, [blocks, template, videoMap]);
 
   const applyTemplateToEditor = useCallback((loaded: WorkoutProgramTemplate) => {
     setTemplate(loaded);
@@ -91,13 +99,13 @@ export function useProgramBuilderState() {
       const loaded: WorkoutProgramTemplate = {
         ...saved,
         blocks,
-        totalDurationSec: calculateTotalDurationSec(blocks),
+        totalDurationSec: getTimelineTotalDurationSeconds(blocks, videoMap),
       };
       applyTemplateToEditor(loaded);
       showMessage(`「${loaded.title}」을(를) 불러왔습니다.`);
       return true;
     },
-    [applyTemplateToEditor, showMessage],
+    [applyTemplateToEditor, showMessage, videoMap],
   );
 
   const copyTemplateById = useCallback(
@@ -125,7 +133,7 @@ export function useProgramBuilderState() {
       createdAt: now,
       updatedAt: now,
     };
-    copy.totalDurationSec = calculateTotalDurationSec(copy.blocks);
+    copy.totalDurationSec = getTimelineTotalDurationSeconds(copy.blocks, videoMap);
 
     if (!persistProgramTemplate(copy)) {
       showMessage('복사본 저장에 실패했습니다.');
@@ -134,7 +142,7 @@ export function useProgramBuilderState() {
     applyTemplateToEditor(copy);
     showMessage(`「${copy.title}」으로 복사 저장되었습니다.`);
     return true;
-  }, [applyTemplateToEditor, buildTemplateSnapshot, showMessage]);
+  }, [applyTemplateToEditor, buildTemplateSnapshot, showMessage, videoMap]);
 
   const deleteTemplate = useCallback(
     (templateId: string) => {
@@ -159,7 +167,29 @@ export function useProgramBuilderState() {
     [activeTemplateId, showMessage],
   );
 
+  const validateProgram = useCallback((): ProgramValidationResult => {
+    return validateProgramBlocks(blocks, videos);
+  }, [blocks, videos]);
+
   const saveTemplate = useCallback(() => {
+    const validation = validateProgramBlocks(blocks, videos);
+    if (!validation.isValid) {
+      const issue = validation.errors[0];
+      showMessage(issue?.message ?? '저장할 수 없습니다.');
+      if (issue?.blockId) {
+        setSelectedBlockId(issue.blockId);
+      }
+      return false;
+    }
+    if (validation.warnings.length > 0) {
+      const proceed = window.confirm(
+        `${validation.warnings.map((w) => w.message).join('\n')}\n\n그래도 저장할까요?`,
+      );
+      if (!proceed) {
+        return false;
+      }
+    }
+
     const now = new Date().toISOString();
     const base = buildTemplateSnapshot();
     const templateId = activeTemplateId ?? `template_${Date.now()}`;
@@ -180,17 +210,20 @@ export function useProgramBuilderState() {
     setActiveTemplateId(templateId);
     showMessage(`「${snapshot.title}」 템플릿이 저장되었습니다.`);
     return true;
-  }, [activeTemplateId, buildTemplateSnapshot, showMessage]);
+  }, [activeTemplateId, blocks, buildTemplateSnapshot, showMessage, videos]);
 
-  const updateBlocks = useCallback((nextBlocks: ProgramBlock[]) => {
-    const reindexed = reindexBlocks(nextBlocks);
-    setTemplate((prev) => ({
-      ...prev,
-      blocks: reindexed,
-      totalDurationSec: calculateTotalDurationSec(reindexed),
-      updatedAt: new Date().toISOString(),
-    }));
-  }, []);
+  const updateBlocks = useCallback(
+    (nextBlocks: ProgramBlock[]) => {
+      const reindexed = reindexBlocks(nextBlocks);
+      setTemplate((prev) => ({
+        ...prev,
+        blocks: reindexed,
+        totalDurationSec: getTimelineTotalDurationSeconds(reindexed, videoMap),
+        updatedAt: new Date().toISOString(),
+      }));
+    },
+    [videoMap],
+  );
 
   const appendBlock = useCallback(
     (newBlock: ProgramBlock) => {
@@ -210,14 +243,14 @@ export function useProgramBuilderState() {
 
   const addVideoBlock = useCallback(
     (videoId: string) => {
-      const video = getVideoById(mockWorkoutVideos, videoId);
+      const video = getVideoById(videos, videoId);
       if (!video) {
         showMessage('영상을 찾을 수 없습니다.');
         return;
       }
       addVideoToTimeline(video);
     },
-    [addVideoToTimeline, showMessage],
+    [addVideoToTimeline, showMessage, videos],
   );
 
   const addRestBlock = useCallback(
@@ -308,7 +341,7 @@ export function useProgramBuilderState() {
     ) => {
       updateBlock(blockId, (block) => {
         if (block.type !== 'video') return block;
-        const video = getVideoById(mockWorkoutVideos, block.videoId);
+        const video = getVideoById(videos, block.videoId);
         if (!video) return { ...block, ...patch };
 
         const playMode = patch.playMode ?? block.playMode;
@@ -333,14 +366,15 @@ export function useProgramBuilderState() {
         };
       });
     },
-    [updateBlock],
+    [updateBlock, videos],
   );
 
   return {
     template,
     activeTemplateId,
     blocks,
-    videos: mockWorkoutVideos,
+    videos,
+    videoMap,
     selectedBlockId,
     selectedBlock,
     totalDurationSec,
@@ -358,6 +392,7 @@ export function useProgramBuilderState() {
     handleDragReorder,
     updateBlock,
     updateVideoBlockSettings,
+    validateProgram,
     saveTemplate,
     loadTemplate,
     copyTemplateById,

@@ -11,6 +11,11 @@ export {
 } from './utils/videoFilterUtils';
 export {
   calculateTotalDurationSec,
+  buildWorkoutVideoMap,
+  getBlockDurationSeconds,
+  getBlockTimelineContributionSeconds,
+  getTimelineTotalDurationSeconds,
+  getBlockPlaybackLabel,
   reorderBlocks,
   reindexBlocks,
   cloneProgramBlock,
@@ -23,6 +28,7 @@ export {
   getVideoById,
   getAllTags,
 } from './utils/programTimelineUtils';
+export { validateProgramBlocks } from './utils/programValidationUtils';
 export {
   isVideoBlock,
   isRestBlock,

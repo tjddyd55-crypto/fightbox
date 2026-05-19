@@ -11,6 +11,7 @@ import { VideoLibraryPanel } from '../components/VideoLibraryPanel';
 import { useProgramBuilderState } from '../hooks/useProgramBuilderState';
 import { useVideoLibraryFilters } from '../hooks/useVideoLibraryFilters';
 import { isCompactLayout } from '../utils/viewportUtils';
+import { validateProgramBlocks } from '../utils/programValidationUtils';
 import '../workoutProgramBuilder.css';
 
 export function WorkoutProgramBuilderPage() {
@@ -58,6 +59,7 @@ export function WorkoutProgramBuilderPage() {
           />
           <ProgramTimelinePanel
             blocks={state.blocks}
+            videos={state.videos}
             selectedBlockId={state.selectedBlockId}
             totalDurationSec={state.totalDurationSec}
             onSelectBlock={handleSelectBlock}
@@ -89,7 +91,21 @@ export function WorkoutProgramBuilderPage() {
         onOpenTemplateLibrary={() => setIsTemplateLibraryOpen(true)}
         onSaveTemplate={() => state.saveTemplate()}
         onCopySave={() => state.copyCurrentTemplate()}
-        onTestPlay={() => state.setIsTestPlaying(true)}
+        onTestPlay={() => {
+          const validation = validateProgramBlocks(state.blocks, state.videos);
+          if (!validation.isValid) {
+            const issue = validation.errors[0];
+            state.showMessage(issue?.message ?? '테스트 재생할 수 없습니다.');
+            if (issue?.blockId) {
+              state.setSelectedBlockId(issue.blockId);
+              if (isCompactLayout()) {
+                setMobileTab('timeline');
+              }
+            }
+            return;
+          }
+          state.setIsTestPlaying(true);
+        }}
       />
       {state.statusMessage && (
         <p className="wpb-status-toast" role="status">

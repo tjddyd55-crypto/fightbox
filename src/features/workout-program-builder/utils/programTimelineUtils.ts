@@ -1,4 +1,5 @@
 import { DEFAULT_VIDEO_VOICE_CUES } from '../constants/builderConstants';
+import { getBlockSubtitle } from './blockDisplayUtils';
 import type {
   CountdownProgramBlock,
   ProgramBlock,
@@ -9,8 +10,93 @@ import type {
   WorkoutVideo,
 } from '../types/workoutProgramBuilder.types';
 
-export function calculateTotalDurationSec(blocks: ProgramBlock[]): number {
-  return blocks.reduce((sum, block) => sum + block.durationSec, 0);
+export type WorkoutVideoMap = ReadonlyMap<string, WorkoutVideo>;
+
+/**
+ * Duration policy:
+ * - Timeline row / block card: play time only (`getBlockDurationSeconds`).
+ * - Program total, test playback, saved template total: play + video `restAfterSec`
+ *   (`getBlockTimelineContributionSeconds` / `getTimelineTotalDurationSeconds`).
+ * - Voice blocks: `durationSec` (default 3s when created).
+ */
+export function buildWorkoutVideoMap(videos: WorkoutVideo[]): WorkoutVideoMap {
+  return new Map(videos.map((video) => [video.id, video]));
+}
+
+export function getBlockDurationSeconds(
+  block: ProgramBlock,
+  videoMap: WorkoutVideoMap,
+): number {
+  switch (block.type) {
+    case 'video': {
+      const video = videoMap.get(block.videoId);
+      if (!video) {
+        return Math.max(0, block.durationSec);
+      }
+      return computeVideoBlockDuration(
+        video,
+        block.playMode,
+        block.repeatCount,
+        block.targetDurationSec,
+      );
+    }
+    case 'rest':
+    case 'countdown':
+    case 'voice':
+      return Math.max(0, block.durationSec);
+  }
+}
+
+export function getBlockRestAfterSeconds(block: ProgramBlock): number {
+  if (block.type !== 'video') {
+    return 0;
+  }
+  return Math.max(0, block.restAfterSec ?? 0);
+}
+
+export function getBlockTimelineContributionSeconds(
+  block: ProgramBlock,
+  videoMap: WorkoutVideoMap,
+): number {
+  return getBlockDurationSeconds(block, videoMap) + getBlockRestAfterSeconds(block);
+}
+
+export function getTimelineTotalDurationSeconds(
+  blocks: ProgramBlock[],
+  videoMap: WorkoutVideoMap,
+): number {
+  return blocks.reduce(
+    (sum, block) => sum + getBlockTimelineContributionSeconds(block, videoMap),
+    0,
+  );
+}
+
+export function getElapsedTimelineSecondsBeforeIndex(
+  blocks: ProgramBlock[],
+  videoMap: WorkoutVideoMap,
+  index: number,
+): number {
+  return blocks
+    .slice(0, index)
+    .reduce((sum, block) => sum + getBlockTimelineContributionSeconds(block, videoMap), 0);
+}
+
+export function getBlockPlaybackLabel(block: ProgramBlock): string {
+  return getBlockSubtitle(block);
+}
+
+/** @deprecated Prefer `getTimelineTotalDurationSeconds` with a video map. */
+export function calculateTotalDurationSec(
+  blocks: ProgramBlock[],
+  videos?: WorkoutVideo[],
+): number {
+  if (videos?.length) {
+    return getTimelineTotalDurationSeconds(blocks, buildWorkoutVideoMap(videos));
+  }
+  return blocks.reduce(
+    (sum, block) => sum + block.durationSec + getBlockRestAfterSeconds(block),
+    0,
+  );
 }
 
 export function reorderBlocks(

@@ -12,13 +12,14 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import type { ProgramBlock } from '../types/workoutProgramBuilder.types';
+import type { ProgramBlock, WorkoutVideo } from '../types/workoutProgramBuilder.types';
 import { formatDuration } from '../utils/durationUtils';
 import type { ProgramBuilderState } from '../hooks/useProgramBuilderState';
 import { TimelineBlockRow } from './TimelineBlockRow';
 
 interface ProgramTimelinePanelProps {
   blocks: ProgramBlock[];
+  videos: WorkoutVideo[];
   selectedBlockId: string | null;
   totalDurationSec: number;
   onSelectBlock: (id: string) => void;
@@ -33,6 +34,7 @@ interface ProgramTimelinePanelProps {
 
 export function ProgramTimelinePanel({
   blocks,
+  videos,
   selectedBlockId,
   totalDurationSec,
   onSelectBlock,
@@ -99,10 +101,13 @@ export function ProgramTimelinePanel({
             onDragEnd={handleDragEnd}
           >
             <SortableContext items={blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
-              {blocks.map((block) => (
+              {blocks.map((block, index) => (
                 <TimelineBlockRow
                   key={block.id}
                   block={block}
+                  videos={videos}
+                  blockIndex={index}
+                  blockCount={blocks.length}
                   isSelected={block.id === selectedBlockId}
                   onSelect={onSelectBlock}
                   onMoveUp={onMoveBlock}

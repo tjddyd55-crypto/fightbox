@@ -1,5 +1,9 @@
 import type { WorkoutProgramTemplate } from '../types/workoutProgramBuilder.types';
-import { calculateTotalDurationSec } from '../utils/programTimelineUtils';
+import { mockWorkoutVideos } from './mockWorkoutVideos';
+import {
+  buildWorkoutVideoMap,
+  getTimelineTotalDurationSeconds,
+} from '../utils/programTimelineUtils';
 
 const blocks: WorkoutProgramTemplate['blocks'] = [
   {
@@ -86,7 +90,10 @@ export const mockProgramTemplate: WorkoutProgramTemplate = {
   title: '전신 인터벌 프로그램',
   description: '워밍업 → 스쿼트 → 휴식 → 버피 반복 → 카운트다운 → 복근 → 스트레칭',
   tags: ['전신', '인터벌', '초급-중급'],
-  totalDurationSec: calculateTotalDurationSec(blocks),
+  totalDurationSec: getTimelineTotalDurationSeconds(
+    blocks,
+    buildWorkoutVideoMap(mockWorkoutVideos),
+  ),
   blocks,
   visibility: 'gym',
   createdAt: now,

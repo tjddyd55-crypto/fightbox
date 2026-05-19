@@ -1,6 +1,10 @@
 import { PROGRAM_TEMPLATES_STORAGE_KEY } from '../constants/builderConstants';
 import type { WorkoutProgramTemplate } from '../types/workoutProgramBuilder.types';
-import { calculateTotalDurationSec } from '../utils/programTimelineUtils';
+import { mockWorkoutVideos } from '../data/mockWorkoutVideos';
+import {
+  buildWorkoutVideoMap,
+  getTimelineTotalDurationSeconds,
+} from '../utils/programTimelineUtils';
 
 function readRaw(): WorkoutProgramTemplate[] {
   if (typeof window === 'undefined') return [];
@@ -77,7 +81,10 @@ export function duplicateProgramTemplate(
     id: `template_${Date.now()}`,
     title: `${source.title} (복사본)`,
     blocks: cloneBlocks(source.blocks),
-    totalDurationSec: calculateTotalDurationSec(cloneBlocks(source.blocks)),
+    totalDurationSec: getTimelineTotalDurationSeconds(
+      cloneBlocks(source.blocks),
+      buildWorkoutVideoMap(mockWorkoutVideos),
+    ),
     createdAt: now,
     updatedAt: now,
   };

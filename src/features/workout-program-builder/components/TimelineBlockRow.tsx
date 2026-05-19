@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { ProgramBlock } from '../types/workoutProgramBuilder.types';
+import type { ProgramBlock, WorkoutVideo } from '../types/workoutProgramBuilder.types';
 import { formatDuration } from '../utils/durationUtils';
+import { buildWorkoutVideoMap, getBlockDurationSeconds } from '../utils/programTimelineUtils';
 import {
   BLOCK_TYPE_LABEL,
   getBlockSubtitle,
@@ -12,6 +13,9 @@ import type { ProgramBuilderState } from '../hooks/useProgramBuilderState';
 
 interface TimelineBlockRowProps {
   block: ProgramBlock;
+  videos: WorkoutVideo[];
+  blockIndex: number;
+  blockCount: number;
   isSelected: boolean;
   onSelect: (id: string) => void;
   onMoveUp: ProgramBuilderState['moveBlock'];
@@ -22,6 +26,9 @@ interface TimelineBlockRowProps {
 
 export function TimelineBlockRow({
   block,
+  videos,
+  blockIndex,
+  blockCount,
   isSelected,
   onSelect,
   onMoveUp,
@@ -40,9 +47,20 @@ export function TimelineBlockRow({
     zIndex: isDragging ? 2 : undefined,
   };
 
+  const videoMap = buildWorkoutVideoMap(videos);
+  const displayDurationSec = getBlockDurationSeconds(block, videoMap);
+  const canMoveUp = blockIndex > 0;
+  const canMoveDown = blockIndex < blockCount - 1;
+
   const loopVideo =
     block.type === 'video' &&
     (block.playMode === 'loop_until_duration' || block.playMode === 'repeat_count');
+
+  const handleRemove = () => {
+    const confirmed = window.confirm(`「${block.title}」 블록을 삭제할까요?`);
+    if (!confirmed) return;
+    onRemove(block.id);
+  };
 
   return (
     <article
@@ -66,6 +84,7 @@ export function TimelineBlockRow({
           type="button"
           className="wpb-icon-btn wpb-timeline-move-btn"
           aria-label={`${block.order}번 블록 위로 이동`}
+          disabled={!canMoveUp}
           onClick={(e) => {
             e.stopPropagation();
             onMoveUp(block.id, 'up');
@@ -77,12 +96,35 @@ export function TimelineBlockRow({
           type="button"
           className="wpb-icon-btn wpb-timeline-move-btn"
           aria-label={`${block.order}번 블록 아래로 이동`}
+          disabled={!canMoveDown}
           onClick={(e) => {
             e.stopPropagation();
             onMoveDown(block.id, 'down');
           }}
         >
           ↓
+        </button>
+        <button
+          type="button"
+          className="wpb-icon-btn wpb-timeline-move-btn"
+          aria-label={`${block.title} 복제`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDuplicate(block.id);
+          }}
+        >
+          ⧉
+        </button>
+        <button
+          type="button"
+          className="wpb-icon-btn wpb-timeline-move-btn wpb-timeline-move-btn--danger"
+          aria-label={`${block.title} 삭제`}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleRemove();
+          }}
+        >
+          ✕
         </button>
       </div>
 
@@ -104,7 +146,7 @@ export function TimelineBlockRow({
           </span>
           <p>{getBlockSubtitle(block)}</p>
         </span>
-        <span className="wpb-timeline-duration">{formatDuration(block.durationSec)}</span>
+        <span className="wpb-timeline-duration">{formatDuration(displayDurationSec)}</span>
       </button>
 
       <div className="wpb-timeline-menu-wrap">
@@ -124,12 +166,28 @@ export function TimelineBlockRow({
         {menuOpen && (
           <ul className="wpb-timeline-menu" role="menu" onClick={(e) => e.stopPropagation()}>
             <li role="none">
-              <button type="button" role="menuitem" onClick={() => { onMoveUp(block.id, 'up'); setMenuOpen(false); }}>
+              <button
+                type="button"
+                role="menuitem"
+                disabled={!canMoveUp}
+                onClick={() => {
+                  onMoveUp(block.id, 'up');
+                  setMenuOpen(false);
+                }}
+              >
                 위로 이동
               </button>
             </li>
             <li role="none">
-              <button type="button" role="menuitem" onClick={() => { onMoveDown(block.id, 'down'); setMenuOpen(false); }}>
+              <button
+                type="button"
+                role="menuitem"
+                disabled={!canMoveDown}
+                onClick={() => {
+                  onMoveDown(block.id, 'down');
+                  setMenuOpen(false);
+                }}
+              >
                 아래로 이동
               </button>
             </li>
@@ -150,7 +208,10 @@ export function TimelineBlockRow({
                 type="button"
                 role="menuitem"
                 className="danger"
-                onClick={() => { onRemove(block.id); setMenuOpen(false); }}
+                onClick={() => {
+                  handleRemove();
+                  setMenuOpen(false);
+                }}
               >
                 삭제
               </button>
