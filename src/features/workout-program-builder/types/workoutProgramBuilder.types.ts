@@ -66,6 +66,12 @@ export type ProgramBlock =
   | CountdownProgramBlock
   | VoiceProgramBlock;
 
+export type TemplateVisibility =
+  | 'private'
+  | 'gym'
+  | 'public_pending'
+  | 'public_approved';
+
 export interface WorkoutProgramTemplate {
   id: string;
   title: string;
@@ -73,8 +79,11 @@ export interface WorkoutProgramTemplate {
   tags: string[];
   totalDurationSec: number;
   blocks: ProgramBlock[];
-  visibility: 'private' | 'gym' | 'public_pending' | 'public_approved';
+  visibility: TemplateVisibility;
+  createdAt: string;
   updatedAt: string;
+  /** Gym scope for multi-tenant API (optional until backend). */
+  ownerGymId?: string;
 }
 
 export const BUILDER_COLORS = {

@@ -79,6 +79,8 @@ const blocks: WorkoutProgramTemplate['blocks'] = [
   },
 ];
 
+const now = new Date().toISOString();
+
 export const mockProgramTemplate: WorkoutProgramTemplate = {
   id: 'template_demo_001',
   title: '전신 인터벌 프로그램',
@@ -87,5 +89,7 @@ export const mockProgramTemplate: WorkoutProgramTemplate = {
   totalDurationSec: calculateTotalDurationSec(blocks),
   blocks,
   visibility: 'gym',
-  updatedAt: new Date().toISOString(),
+  createdAt: now,
+  updatedAt: now,
+  ownerGymId: 'gym_demo_001',
 };

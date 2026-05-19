@@ -11,3 +11,10 @@ export {
   getVideoById,
   getAllTags,
 } from './utils/programTimelineUtils';
+export {
+  isVideoBlock,
+  isRestBlock,
+  isCountdownBlock,
+  isVoiceBlock,
+} from './utils/programBlockGuards';
+export { PROGRAM_TEMPLATES_STORAGE_KEY } from './constants/builderConstants';

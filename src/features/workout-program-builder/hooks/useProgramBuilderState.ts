@@ -1,3 +1,9 @@
+/**
+ * Program builder editing state.
+ *
+ * Owns: active template (blocks + metadata), selectedBlockId, toasts, test-play modal flag.
+ * Does not own: layout/viewport, filter UI state (VideoLibraryPanel local), persistence (STEP 2+ storage).
+ */
 import { useCallback, useMemo, useState } from 'react';
 import { mockProgramTemplate } from '../data/mockProgramTemplate';
 import { mockWorkoutVideos } from '../data/mockWorkoutVideos';
@@ -98,10 +104,12 @@ export function useProgramBuilderState() {
 
   const removeBlock = useCallback(
     (blockId: string) => {
+      const removedIndex = blocks.findIndex((b) => b.id === blockId);
       const next = blocks.filter((b) => b.id !== blockId);
       updateBlocks(next);
       if (selectedBlockId === blockId) {
-        setSelectedBlockId(next[0]?.id ?? null);
+        const fallback = next[removedIndex] ?? next[removedIndex - 1] ?? null;
+        setSelectedBlockId(fallback?.id ?? null);
       }
     },
     [blocks, selectedBlockId, updateBlocks],

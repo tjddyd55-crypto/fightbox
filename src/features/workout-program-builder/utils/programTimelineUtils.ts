@@ -1,3 +1,4 @@
+import { DEFAULT_VIDEO_VOICE_CUES } from '../constants/builderConstants';
 import type {
   ProgramBlock,
   VideoPlayMode,
@@ -48,12 +49,7 @@ export function createVideoBlockFromWorkout(
     videoId: video.id,
     playMode: 'original_duration',
     restAfterSec: 0,
-    voiceCues: {
-      ready: true,
-      go: true,
-      stop: false,
-      lastTenCount: false,
-    },
+    voiceCues: { ...DEFAULT_VIDEO_VOICE_CUES },
   };
 }
 
