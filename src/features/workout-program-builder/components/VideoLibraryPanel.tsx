@@ -31,9 +31,9 @@ export function VideoLibraryPanel({ videos, onAddVideo }: VideoLibraryPanelProps
     <section className="wpb-panel wpb-panel-library" aria-label="영상 라이브러리">
       <header className="wpb-panel-header">
         <h2>영상 라이브러리</h2>
-        <p>검색 후 타임라인에 추가하세요</p>
+        <p>검색 · 필터 후 타임라인에 추가</p>
       </header>
-      <div className="wpb-panel-scroll">
+      <section className="wpb-panel-controls">
         <input
           type="search"
           className="wpb-search"
@@ -43,14 +43,19 @@ export function VideoLibraryPanel({ videos, onAddVideo }: VideoLibraryPanelProps
           aria-label="영상 검색"
         />
         <FilterChips tags={tags} selectedTag={selectedTag} onSelectTag={setSelectedTag} />
+      </section>
+      <section className="wpb-panel-scroll" aria-label="영상 목록">
         {filteredVideos.length === 0 ? (
-          <p className="wpb-empty">검색 결과가 없습니다.</p>
+          <div className="wpb-empty">
+            <p className="wpb-empty-title">조건에 맞는 영상이 없습니다</p>
+            <p className="wpb-empty-desc">검색어나 태그 필터를 변경해 보세요.</p>
+          </div>
         ) : (
           filteredVideos.map((video) => (
             <VideoCard key={video.id} video={video} onAdd={onAddVideo} />
           ))
         )}
-      </div>
+      </section>
     </section>
   );
 }

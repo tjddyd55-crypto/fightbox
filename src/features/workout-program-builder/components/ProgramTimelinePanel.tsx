@@ -13,12 +13,14 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import type { ProgramBlock } from '../types/workoutProgramBuilder.types';
+import { formatDuration } from '../utils/durationUtils';
 import type { ProgramBuilderState } from '../hooks/useProgramBuilderState';
 import { TimelineBlockRow } from './TimelineBlockRow';
 
 interface ProgramTimelinePanelProps {
   blocks: ProgramBlock[];
   selectedBlockId: string | null;
+  totalDurationSec: number;
   onSelectBlock: (id: string) => void;
   onMoveBlock: ProgramBuilderState['moveBlock'];
   onRemoveBlock: ProgramBuilderState['removeBlock'];
@@ -30,6 +32,7 @@ interface ProgramTimelinePanelProps {
 export function ProgramTimelinePanel({
   blocks,
   selectedBlockId,
+  totalDurationSec,
   onSelectBlock,
   onMoveBlock,
   onRemoveBlock,
@@ -52,19 +55,24 @@ export function ProgramTimelinePanel({
     <section className="wpb-panel wpb-panel-timeline" aria-label="프로그램 타임라인">
       <header className="wpb-panel-header">
         <h2>프로그램 타임라인</h2>
-        <p>순서를 드래그하거나 클릭해 선택하세요</p>
+        <p>⠿ 핸들을 드래그하거나 항목을 클릭해 선택</p>
       </header>
-      <section className="wpb-panel-scroll">
-        <section className="wpb-timeline-toolbar">
-          <button type="button" className="wpb-btn wpb-btn-ghost" onClick={onAddRest}>
+      <section className="wpb-panel-controls wpb-timeline-toolbar-wrap">
+        <section className="wpb-timeline-toolbar" aria-label="블록 추가">
+          <button type="button" className="wpb-btn wpb-btn-ghost wpb-btn-sm" onClick={onAddRest}>
             + 휴식
           </button>
-          <button type="button" className="wpb-btn wpb-btn-ghost" onClick={onAddCountdown}>
+          <button type="button" className="wpb-btn wpb-btn-ghost wpb-btn-sm" onClick={onAddCountdown}>
             + 카운트다운
           </button>
         </section>
+      </section>
+      <section className="wpb-panel-scroll" aria-label="타임라인 블록 목록">
         {blocks.length === 0 ? (
-          <p className="wpb-empty">좌측 라이브러리에서 영상을 추가하세요.</p>
+          <div className="wpb-empty">
+            <p className="wpb-empty-title">타임라인이 비어 있습니다</p>
+            <p className="wpb-empty-desc">좌측 라이브러리에서 영상을 추가하세요.</p>
+          </div>
         ) : (
           <DndContext
             sensors={sensors}
@@ -87,6 +95,10 @@ export function ProgramTimelinePanel({
           </DndContext>
         )}
       </section>
+      <footer className="wpb-timeline-footer">
+        <span>{blocks.length}개 블록</span>
+        <strong>총 {formatDuration(totalDurationSec)}</strong>
+      </footer>
     </section>
   );
 }

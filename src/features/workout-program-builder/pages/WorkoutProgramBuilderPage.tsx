@@ -3,6 +3,7 @@ import { BuilderSidebar } from '../components/BuilderSidebar';
 import { BottomActionBar } from '../components/BottomActionBar';
 import { ProgramTimelinePanel } from '../components/ProgramTimelinePanel';
 import { SelectedBlockPanel } from '../components/SelectedBlockPanel';
+import { TestPlaybackModal } from '../components/TestPlaybackModal';
 import { VideoLibraryPanel } from '../components/VideoLibraryPanel';
 import { useProgramBuilderState } from '../hooks/useProgramBuilderState';
 import '../workoutProgramBuilder.css';
@@ -20,6 +21,7 @@ export function WorkoutProgramBuilderPage() {
           <ProgramTimelinePanel
             blocks={state.blocks}
             selectedBlockId={state.selectedBlockId}
+            totalDurationSec={state.totalDurationSec}
             onSelectBlock={state.setSelectedBlockId}
             onMoveBlock={state.moveBlock}
             onRemoveBlock={state.removeBlock}
@@ -54,22 +56,13 @@ export function WorkoutProgramBuilderPage() {
         </p>
       )}
       {state.isTestPlaying && (
-        <section className="wpb-test-modal" role="dialog" aria-modal="true" aria-label="테스트 재생">
-          <article className="wpb-test-modal-content">
-            <h3>테스트 재생</h3>
-            <p>
-              전체 {state.blocks.length}개 블록 · 총 {state.totalDurationSec}초 시뮬레이션 (MVP)
-            </p>
-            {state.selectedBlock && <p>현재 선택: {state.selectedBlock.title}</p>}
-            <button
-              type="button"
-              className="wpb-btn wpb-btn-primary"
-              onClick={() => state.setIsTestPlaying(false)}
-            >
-              닫기
-            </button>
-          </article>
-        </section>
+        <TestPlaybackModal
+          blocks={state.blocks}
+          totalDurationSec={state.totalDurationSec}
+          initialBlockId={state.selectedBlockId}
+          videos={state.videos}
+          onClose={() => state.setIsTestPlaying(false)}
+        />
       )}
     </main>
   );
