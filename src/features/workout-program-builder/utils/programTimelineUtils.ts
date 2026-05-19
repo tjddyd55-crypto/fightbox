@@ -36,6 +36,17 @@ export function reindexBlocks(blocks: ProgramBlock[]): ProgramBlock[] {
   }));
 }
 
+/** Deep-enough copy with fresh block ids (for template duplicate / load isolation). */
+export function cloneBlocksWithNewIds(blocks: ProgramBlock[]): ProgramBlock[] {
+  const stamp = Date.now();
+  return reindexBlocks(
+    blocks.map((block, index) => ({
+      ...block,
+      id: `block_${stamp}_${index}`,
+    })),
+  );
+}
+
 export function createVideoBlockFromWorkout(
   video: WorkoutVideo,
   order: number,

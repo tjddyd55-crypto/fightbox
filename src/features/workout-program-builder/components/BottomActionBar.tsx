@@ -3,6 +3,7 @@ import { formatDuration } from '../utils/durationUtils';
 interface BottomActionBarProps {
   totalDurationSec: number;
   onPreview: () => void;
+  onOpenTemplateLibrary: () => void;
   onSaveTemplate: () => void;
   onCopySave: () => void;
   onTestPlay: () => void;
@@ -11,6 +12,7 @@ interface BottomActionBarProps {
 export function BottomActionBar({
   totalDurationSec,
   onPreview,
+  onOpenTemplateLibrary,
   onSaveTemplate,
   onCopySave,
   onTestPlay,
@@ -24,6 +26,9 @@ export function BottomActionBar({
       <section className="wpb-bottom-actions" aria-label="프로그램 액션">
         <button type="button" className="wpb-btn wpb-btn-ghost" onClick={onPreview}>
           구간 미리보기
+        </button>
+        <button type="button" className="wpb-btn wpb-btn-ghost" onClick={onOpenTemplateLibrary}>
+          템플릿 목록
         </button>
         <button type="button" className="wpb-btn wpb-btn-ghost" onClick={onSaveTemplate}>
           템플릿 저장

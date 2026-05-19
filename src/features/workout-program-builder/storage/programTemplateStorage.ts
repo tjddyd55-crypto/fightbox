@@ -1,5 +1,6 @@
 import { PROGRAM_TEMPLATES_STORAGE_KEY } from '../constants/builderConstants';
 import type { WorkoutProgramTemplate } from '../types/workoutProgramBuilder.types';
+import { calculateTotalDurationSec } from '../utils/programTimelineUtils';
 
 function readRaw(): WorkoutProgramTemplate[] {
   if (typeof window === 'undefined') return [];
@@ -61,4 +62,26 @@ export function updateProgramTemplate(template: WorkoutProgramTemplate): boolean
 export function deleteProgramTemplate(templateId: string): boolean {
   const next = readRaw().filter((t) => t.id !== templateId);
   return writeAll(next);
+}
+
+export function duplicateProgramTemplate(
+  templateId: string,
+  cloneBlocks: (blocks: WorkoutProgramTemplate['blocks']) => WorkoutProgramTemplate['blocks'],
+): WorkoutProgramTemplate | null {
+  const source = getProgramTemplateById(templateId);
+  if (!source) return null;
+
+  const now = new Date().toISOString();
+  const copy: WorkoutProgramTemplate = {
+    ...source,
+    id: `template_${Date.now()}`,
+    title: `${source.title} (복사본)`,
+    blocks: cloneBlocks(source.blocks),
+    totalDurationSec: calculateTotalDurationSec(cloneBlocks(source.blocks)),
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  if (!saveProgramTemplate(copy)) return null;
+  return copy;
 }

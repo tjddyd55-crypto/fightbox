@@ -5,6 +5,7 @@ import { BottomActionBar } from '../components/BottomActionBar';
 import { MobileBuilderTabs, type MobileBuilderTab } from '../components/MobileBuilderTabs';
 import { ProgramTimelinePanel } from '../components/ProgramTimelinePanel';
 import { SelectedBlockPanel } from '../components/SelectedBlockPanel';
+import { TemplateLibraryModal } from '../components/TemplateLibraryModal';
 import { TestPlaybackModal } from '../components/TestPlaybackModal';
 import { VideoLibraryPanel } from '../components/VideoLibraryPanel';
 import { useProgramBuilderState } from '../hooks/useProgramBuilderState';
@@ -14,6 +15,7 @@ import '../workoutProgramBuilder.css';
 export function WorkoutProgramBuilderPage() {
   const state = useProgramBuilderState();
   const [mobileTab, setMobileTab] = useState<MobileBuilderTab>('timeline');
+  const [isTemplateLibraryOpen, setIsTemplateLibraryOpen] = useState(false);
   const { setSelectedBlockId } = state;
 
   const handleSelectBlock = useCallback(
@@ -65,8 +67,9 @@ export function WorkoutProgramBuilderPage() {
               : '선택된 블록이 없습니다.',
           )
         }
+        onOpenTemplateLibrary={() => setIsTemplateLibraryOpen(true)}
         onSaveTemplate={() => state.saveTemplate()}
-        onCopySave={() => state.showMessage('복사본으로 저장되었습니다.')}
+        onCopySave={() => state.copyCurrentTemplate()}
         onTestPlay={() => state.setIsTestPlaying(true)}
       />
       {state.statusMessage && (
@@ -74,6 +77,22 @@ export function WorkoutProgramBuilderPage() {
           {state.statusMessage}
         </p>
       )}
+      <TemplateLibraryModal
+        isOpen={isTemplateLibraryOpen}
+        activeTemplateId={state.activeTemplateId}
+        onClose={() => setIsTemplateLibraryOpen(false)}
+        onLoad={(id) => {
+          state.loadTemplate(id);
+          setIsTemplateLibraryOpen(false);
+        }}
+        onCopy={(id) => {
+          state.copyTemplateById(id);
+          setIsTemplateLibraryOpen(false);
+        }}
+        onDelete={(id) => {
+          state.deleteTemplate(id);
+        }}
+      />
       {state.isTestPlaying && (
         <TestPlaybackModal
           blocks={state.blocks}

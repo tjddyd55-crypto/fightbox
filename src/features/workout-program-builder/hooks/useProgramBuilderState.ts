@@ -14,10 +14,14 @@ import type {
   WorkoutVideo,
 } from '../types/workoutProgramBuilder.types';
 import {
+  deleteProgramTemplate as removeProgramTemplate,
+  duplicateProgramTemplate,
+  getProgramTemplateById,
   saveProgramTemplate as persistProgramTemplate,
 } from '../storage/programTemplateStorage';
 import {
   calculateTotalDurationSec,
+  cloneBlocksWithNewIds,
   computeVideoBlockDuration,
   createVideoBlockFromWorkout,
   getVideoById,
@@ -65,6 +69,91 @@ export function useProgramBuilderState() {
       updatedAt: now,
     };
   }, [blocks, template]);
+
+  const applyTemplateToEditor = useCallback((loaded: WorkoutProgramTemplate) => {
+    setTemplate(loaded);
+    setActiveTemplateId(loaded.id);
+    setSelectedBlockId(loaded.blocks[0]?.id ?? null);
+  }, []);
+
+  const loadTemplate = useCallback(
+    (templateId: string) => {
+      const saved = getProgramTemplateById(templateId);
+      if (!saved) {
+        showMessage('템플릿을 찾을 수 없습니다.');
+        return false;
+      }
+      const blocks = cloneBlocksWithNewIds(saved.blocks);
+      const loaded: WorkoutProgramTemplate = {
+        ...saved,
+        blocks,
+        totalDurationSec: calculateTotalDurationSec(blocks),
+      };
+      applyTemplateToEditor(loaded);
+      showMessage(`「${loaded.title}」을(를) 불러왔습니다.`);
+      return true;
+    },
+    [applyTemplateToEditor, showMessage],
+  );
+
+  const copyTemplateById = useCallback(
+    (templateId: string) => {
+      const copy = duplicateProgramTemplate(templateId, cloneBlocksWithNewIds);
+      if (!copy) {
+        showMessage('템플릿 복사에 실패했습니다.');
+        return false;
+      }
+      applyTemplateToEditor(copy);
+      showMessage(`「${copy.title}」으로 복사해 편집 중입니다.`);
+      return true;
+    },
+    [applyTemplateToEditor, showMessage],
+  );
+
+  const copyCurrentTemplate = useCallback(() => {
+    const snapshot = buildTemplateSnapshot();
+    const now = new Date().toISOString();
+    const copy: WorkoutProgramTemplate = {
+      ...snapshot,
+      id: `template_${Date.now()}`,
+      title: `${snapshot.title} (복사본)`,
+      blocks: cloneBlocksWithNewIds(snapshot.blocks),
+      createdAt: now,
+      updatedAt: now,
+    };
+    copy.totalDurationSec = calculateTotalDurationSec(copy.blocks);
+
+    if (!persistProgramTemplate(copy)) {
+      showMessage('복사본 저장에 실패했습니다.');
+      return false;
+    }
+    applyTemplateToEditor(copy);
+    showMessage(`「${copy.title}」으로 복사 저장되었습니다.`);
+    return true;
+  }, [applyTemplateToEditor, buildTemplateSnapshot, showMessage]);
+
+  const deleteTemplate = useCallback(
+    (templateId: string) => {
+      const target = getProgramTemplateById(templateId);
+      if (!target) {
+        showMessage('템플릿을 찾을 수 없습니다.');
+        return false;
+      }
+      const confirmed = window.confirm(`「${target.title}」 템플릿을 삭제할까요?`);
+      if (!confirmed) return false;
+
+      if (!removeProgramTemplate(templateId)) {
+        showMessage('템플릿 삭제에 실패했습니다.');
+        return false;
+      }
+      if (activeTemplateId === templateId) {
+        setActiveTemplateId(null);
+      }
+      showMessage('템플릿이 삭제되었습니다.');
+      return true;
+    },
+    [activeTemplateId, showMessage],
+  );
 
   const saveTemplate = useCallback(() => {
     const now = new Date().toISOString();
@@ -247,6 +336,10 @@ export function useProgramBuilderState() {
     updateBlock,
     updateVideoBlockSettings,
     saveTemplate,
+    loadTemplate,
+    copyTemplateById,
+    copyCurrentTemplate,
+    deleteTemplate,
     showMessage,
     setIsTestPlaying,
     setTemplateTitle: (title: string) =>
