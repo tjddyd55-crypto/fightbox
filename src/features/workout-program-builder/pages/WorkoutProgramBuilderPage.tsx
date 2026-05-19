@@ -99,7 +99,11 @@ export function WorkoutProgramBuilderPage() {
         onOpenTemplateLibrary={() => setIsTemplateLibraryOpen(true)}
         onSaveTemplate={() => state.saveTemplate()}
         onCopySave={() => state.copyCurrentTemplate()}
-        onPublicShare={() => setIsShareModalOpen(true)}
+        onPublicShare={
+          state.template.visibility === 'public_pending'
+            ? undefined
+            : () => setIsShareModalOpen(true)
+        }
         onTestPlay={() => {
           const validation = validateProgramBlocks(state.blocks, state.videos);
           if (!validation.isValid) {

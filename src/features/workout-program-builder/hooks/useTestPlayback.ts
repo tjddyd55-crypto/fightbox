@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ProgramBlock, WorkoutVideo } from '../types/workoutProgramBuilder.types';
 import {
   buildWorkoutVideoMap,
@@ -32,6 +32,7 @@ export function useTestPlayback({ blocks, videos, initialBlockId }: UseTestPlayb
   const [fastMode, setFastMode] = useState(true);
   const [elapsedInBlock, setElapsedInBlock] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
+  const isAdvancingRef = useRef(false);
 
   const totalDuration = useMemo(
     () => getTimelineTotalDurationSeconds(blocks, videoMap),
@@ -98,6 +99,7 @@ export function useTestPlayback({ blocks, videos, initialBlockId }: UseTestPlayb
 
   useEffect(() => {
     setElapsedInBlock(0);
+    isAdvancingRef.current = false;
   }, [currentIndex]);
 
   useEffect(() => {
@@ -118,7 +120,8 @@ export function useTestPlayback({ blocks, videos, initialBlockId }: UseTestPlayb
     if (!isPlaying || isComplete || currentBlockDuration <= 0) {
       return;
     }
-    if (elapsedInBlock >= currentBlockDuration) {
+    if (elapsedInBlock >= currentBlockDuration && !isAdvancingRef.current) {
+      isAdvancingRef.current = true;
       goNext();
     }
   }, [elapsedInBlock, currentBlockDuration, isPlaying, isComplete, goNext]);

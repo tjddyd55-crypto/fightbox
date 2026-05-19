@@ -31,6 +31,13 @@ export function VideoLibraryPanel({ videos, filterState, onAddVideo }: VideoLibr
 
   const tags = useMemo(() => getAllTags(videos), [videos]);
 
+  const previewVideo = useMemo(() => {
+    if (!selectedVideo) return null;
+    return filteredVideos.some((video) => video.id === selectedVideo.id)
+      ? selectedVideo
+      : null;
+  }, [filteredVideos, selectedVideo]);
+
   return (
     <section
       id="wpb-mobile-panel-videos"
@@ -66,8 +73,8 @@ export function VideoLibraryPanel({ videos, filterState, onAddVideo }: VideoLibr
         />
       </section>
       <section className="wpb-panel-scroll" aria-label="영상 목록">
-        {selectedVideo && (
-          <VideoLibraryPreview video={selectedVideo} onAdd={() => onAddVideo(selectedVideo)} />
+        {previewVideo && (
+          <VideoLibraryPreview video={previewVideo} onAdd={() => onAddVideo(previewVideo)} />
         )}
         {filteredVideos.length === 0 ? (
           <div className="wpb-empty">

@@ -175,17 +175,30 @@ export function useProgramBuilderState() {
 
   const submitPublicShare = useCallback(
     (payload: PublicShareSubmissionPayload) => {
-      const templateId = activeTemplateId ?? template.id;
-      const updated = submitTemplateForPublicReview(templateId, payload);
+      if (template.visibility === 'public_pending') {
+        showMessage('이미 공용 라이브러리 승인 대기 중입니다.');
+        return false;
+      }
+
+      const snapshot = buildTemplateSnapshot();
+      if (!persistTemplate(snapshot)) {
+        showMessage('공용 신청 전 템플릿 저장에 실패했습니다.');
+        return false;
+      }
+
+      setTemplate(snapshot);
+      setActiveTemplateId(snapshot.id);
+
+      const updated = submitTemplateForPublicReview(snapshot.id, payload);
       if (!updated) {
-        showMessage('공용 신청에 실패했습니다. 먼저 템플릿을 저장해 주세요.');
+        showMessage('공용 신청에 실패했습니다.');
         return false;
       }
       setTemplate(updated);
       showMessage(`「${updated.title}」이(가) 공용 라이브러리 승인 대기 상태입니다.`);
       return true;
     },
-    [activeTemplateId, showMessage, template.id],
+    [buildTemplateSnapshot, showMessage, template.visibility],
   );
 
   const saveTemplate = useCallback(() => {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { ProgramBlock, WorkoutVideo } from '../types/workoutProgramBuilder.types';
@@ -37,8 +37,19 @@ export function TimelineBlockRow({
   onDuplicate,
 }: TimelineBlockRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuWrapRef = useRef<HTMLDivElement>(null);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: block.id });
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      if (menuWrapRef.current?.contains(event.target as Node)) return;
+      setMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, [menuOpen]);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -149,7 +160,7 @@ export function TimelineBlockRow({
         <span className="wpb-timeline-duration">{formatDuration(displayDurationSec)}</span>
       </button>
 
-      <div className="wpb-timeline-menu-wrap">
+      <div ref={menuWrapRef} className="wpb-timeline-menu-wrap">
         <button
           type="button"
           className="wpb-icon-btn wpb-menu-trigger"
