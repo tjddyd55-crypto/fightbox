@@ -15,12 +15,27 @@ const DIFFICULTY_CLASS: Record<WorkoutVideo['difficulty'], string> = {
 
 interface VideoCardProps {
   video: WorkoutVideo;
+  isSelected: boolean;
+  onSelect: (videoId: string) => void;
   onAdd: (video: WorkoutVideo) => void;
 }
 
-export function VideoCard({ video, onAdd }: VideoCardProps) {
+export function VideoCard({ video, isSelected, onSelect, onAdd }: VideoCardProps) {
   return (
-    <article className="wpb-video-card">
+    <article
+      className={`wpb-video-card${isSelected ? ' selected' : ''}`}
+      onClick={() => onSelect(video.id)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect(video.id);
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      aria-pressed={isSelected}
+      aria-label={`${video.title} 미리보기 선택`}
+    >
       <div className="wpb-thumb" aria-hidden>
         <span className="wpb-thumb-placeholder" />
         <span className="wpb-thumb-icon" aria-hidden>
@@ -48,7 +63,10 @@ export function VideoCard({ video, onAdd }: VideoCardProps) {
           <button
             type="button"
             className="wpb-btn wpb-btn-add"
-            onClick={() => onAdd(video)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onAdd(video);
+            }}
             aria-label={`${video.title} 타임라인에 추가`}
           >
             추가

@@ -3,6 +3,7 @@ import type { WorkoutVideo } from '../types/workoutProgramBuilder.types';
 import { getAllTags } from '../utils/programTimelineUtils';
 import type { VideoLibraryFilterState } from '../hooks/useVideoLibraryFilters';
 import { VideoLibraryFiltersBar } from './VideoLibraryFilters';
+import { VideoLibraryPreview } from './VideoLibraryPreview';
 import { VideoCard } from './VideoCard';
 
 interface VideoLibraryPanelProps {
@@ -16,6 +17,9 @@ export function VideoLibraryPanel({ videos, filterState, onAddVideo }: VideoLibr
     filters,
     filteredVideos,
     isFiltered,
+    selectedVideoId,
+    selectedVideo,
+    setSelectedVideoId,
     setSearchQuery,
     toggleTag,
     clearTags,
@@ -62,6 +66,9 @@ export function VideoLibraryPanel({ videos, filterState, onAddVideo }: VideoLibr
         />
       </section>
       <section className="wpb-panel-scroll" aria-label="영상 목록">
+        {selectedVideo && (
+          <VideoLibraryPreview video={selectedVideo} onAdd={() => onAddVideo(selectedVideo)} />
+        )}
         {filteredVideos.length === 0 ? (
           <div className="wpb-empty">
             <p className="wpb-empty-title">조건에 맞는 영상이 없습니다</p>
@@ -75,7 +82,13 @@ export function VideoLibraryPanel({ videos, filterState, onAddVideo }: VideoLibr
         ) : (
           <div className="wpb-video-list">
             {filteredVideos.map((video) => (
-              <VideoCard key={video.id} video={video} onAdd={onAddVideo} />
+              <VideoCard
+                key={video.id}
+                video={video}
+                isSelected={video.id === selectedVideoId}
+                onSelect={setSelectedVideoId}
+                onAdd={onAddVideo}
+              />
             ))}
           </div>
         )}

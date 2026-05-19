@@ -30,6 +30,17 @@ export function WorkoutProgramBuilderPage() {
     [setSelectedBlockId],
   );
 
+  const handleAddVideo = useCallback(
+    (video: (typeof state.videos)[number]) => {
+      state.addVideoToTimeline(video);
+      state.showMessage(`「${video.title}」이(가) 타임라인에 추가되었습니다.`);
+      if (isCompactLayout()) {
+        setMobileTab('timeline');
+      }
+    },
+    [state],
+  );
+
   return (
     <main className="wpb-root">
       <BuilderHeader template={state.template} totalDurationSec={state.totalDurationSec} />
@@ -43,7 +54,7 @@ export function WorkoutProgramBuilderPage() {
           <VideoLibraryPanel
             videos={state.videos}
             filterState={videoFilterState}
-            onAddVideo={state.addVideoToTimeline}
+            onAddVideo={handleAddVideo}
           />
           <ProgramTimelinePanel
             blocks={state.blocks}

@@ -10,10 +10,16 @@ import {
 
 export function useVideoLibraryFilters(videos: WorkoutVideo[]) {
   const [filters, setFilters] = useState<VideoLibraryFilters>(createDefaultVideoFilters);
+  const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
 
   const filteredVideos = useMemo(
     () => filterWorkoutVideos(videos, filters),
     [videos, filters],
+  );
+
+  const selectedVideo = useMemo(
+    () => videos.find((v) => v.id === selectedVideoId) ?? null,
+    [videos, selectedVideoId],
   );
 
   const isFiltered = useMemo(() => hasActiveVideoFilters(filters), [filters]);
@@ -55,6 +61,9 @@ export function useVideoLibraryFilters(videos: WorkoutVideo[]) {
     filters,
     filteredVideos,
     isFiltered,
+    selectedVideoId,
+    selectedVideo,
+    setSelectedVideoId,
     setSearchQuery,
     toggleTag,
     clearTags,
