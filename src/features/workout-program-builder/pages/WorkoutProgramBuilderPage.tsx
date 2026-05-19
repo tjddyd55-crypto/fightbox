@@ -5,6 +5,7 @@ import { BottomActionBar } from '../components/BottomActionBar';
 import { MobileBuilderTabs, type MobileBuilderTab } from '../components/MobileBuilderTabs';
 import { ProgramTimelinePanel } from '../components/ProgramTimelinePanel';
 import { SelectedBlockPanel } from '../components/SelectedBlockPanel';
+import { ShareSubmissionModal } from '../components/ShareSubmissionModal';
 import { TemplateLibraryModal } from '../components/TemplateLibraryModal';
 import { TestPlaybackModal } from '../components/TestPlaybackModal';
 import { VideoLibraryPanel } from '../components/VideoLibraryPanel';
@@ -19,6 +20,7 @@ export function WorkoutProgramBuilderPage() {
   const videoFilterState = useVideoLibraryFilters(state.videos);
   const [mobileTab, setMobileTab] = useState<MobileBuilderTab>('timeline');
   const [isTemplateLibraryOpen, setIsTemplateLibraryOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const { setSelectedBlockId } = state;
 
   const handleSelectBlock = useCallback(
@@ -34,7 +36,13 @@ export function WorkoutProgramBuilderPage() {
   const handleAddVideo = useCallback(
     (video: (typeof state.videos)[number]) => {
       state.addVideoToTimeline(video);
-      state.showMessage(`「${video.title}」이(가) 타임라인에 추가되었습니다.`);
+      if (video.isPremium || (video.creditCost ?? 0) > 0) {
+        state.showMessage(
+          `「${video.title}」 추가됨 · 추후 ${video.creditCost ?? 0} 크레딧 차감 예정`,
+        );
+      } else {
+        state.showMessage(`「${video.title}」이(가) 타임라인에 추가되었습니다.`);
+      }
       if (isCompactLayout()) {
         setMobileTab('timeline');
       }
@@ -91,6 +99,7 @@ export function WorkoutProgramBuilderPage() {
         onOpenTemplateLibrary={() => setIsTemplateLibraryOpen(true)}
         onSaveTemplate={() => state.saveTemplate()}
         onCopySave={() => state.copyCurrentTemplate()}
+        onPublicShare={() => setIsShareModalOpen(true)}
         onTestPlay={() => {
           const validation = validateProgramBlocks(state.blocks, state.videos);
           if (!validation.isValid) {
@@ -112,6 +121,15 @@ export function WorkoutProgramBuilderPage() {
           {state.statusMessage}
         </p>
       )}
+      <ShareSubmissionModal
+        isOpen={isShareModalOpen}
+        template={state.template}
+        onClose={() => setIsShareModalOpen(false)}
+        onSubmit={(payload) => {
+          state.submitPublicShare(payload);
+          setIsShareModalOpen(false);
+        }}
+      />
       <TemplateLibraryModal
         isOpen={isTemplateLibraryOpen}
         activeTemplateId={state.activeTemplateId}

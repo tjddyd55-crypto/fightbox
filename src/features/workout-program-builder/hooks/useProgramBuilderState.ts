@@ -6,19 +6,21 @@
  */
 import { useCallback, useMemo, useState } from 'react';
 import { mockProgramTemplate } from '../data/mockProgramTemplate';
-import { mockWorkoutVideos } from '../data/mockWorkoutVideos';
 import type {
   ProgramBlock,
+  PublicShareSubmissionPayload,
   VideoProgramBlock,
   WorkoutProgramTemplate,
   WorkoutVideo,
 } from '../types/workoutProgramBuilder.types';
 import {
-  deleteProgramTemplate as removeProgramTemplate,
-  duplicateProgramTemplate,
-  getProgramTemplateById,
-  saveProgramTemplate as persistProgramTemplate,
-} from '../storage/programTemplateStorage';
+  duplicateTemplate,
+  getTemplate,
+  removeTemplate,
+  saveTemplate as persistTemplate,
+  submitTemplateForPublicReview,
+} from '../repositories/programTemplateRepository';
+import { listVideos } from '../repositories/videoRepository';
 import {
   buildWorkoutVideoMap,
   cloneBlocksWithNewIds,
@@ -53,7 +55,7 @@ export function useProgramBuilderState() {
   const [isTestPlaying, setIsTestPlaying] = useState(false);
 
   const blocks = template.blocks;
-  const videos = mockWorkoutVideos;
+  const videos = listVideos();
   const videoMap = useMemo(() => buildWorkoutVideoMap(videos), [videos]);
 
   const totalDurationSec = useMemo(
@@ -90,7 +92,7 @@ export function useProgramBuilderState() {
 
   const loadTemplate = useCallback(
     (templateId: string) => {
-      const saved = getProgramTemplateById(templateId);
+      const saved = getTemplate(templateId);
       if (!saved) {
         showMessage('템플릿을 찾을 수 없습니다.');
         return false;
@@ -110,7 +112,7 @@ export function useProgramBuilderState() {
 
   const copyTemplateById = useCallback(
     (templateId: string) => {
-      const copy = duplicateProgramTemplate(templateId, cloneBlocksWithNewIds);
+      const copy = duplicateTemplate(templateId);
       if (!copy) {
         showMessage('템플릿 복사에 실패했습니다.');
         return false;
@@ -135,7 +137,7 @@ export function useProgramBuilderState() {
     };
     copy.totalDurationSec = getTimelineTotalDurationSeconds(copy.blocks, videoMap);
 
-    if (!persistProgramTemplate(copy)) {
+    if (!persistTemplate(copy)) {
       showMessage('복사본 저장에 실패했습니다.');
       return false;
     }
@@ -146,7 +148,7 @@ export function useProgramBuilderState() {
 
   const deleteTemplate = useCallback(
     (templateId: string) => {
-      const target = getProgramTemplateById(templateId);
+      const target = getTemplate(templateId);
       if (!target) {
         showMessage('템플릿을 찾을 수 없습니다.');
         return false;
@@ -154,7 +156,7 @@ export function useProgramBuilderState() {
       const confirmed = window.confirm(`「${target.title}」 템플릿을 삭제할까요?`);
       if (!confirmed) return false;
 
-      if (!removeProgramTemplate(templateId)) {
+      if (!removeTemplate(templateId)) {
         showMessage('템플릿 삭제에 실패했습니다.');
         return false;
       }
@@ -170,6 +172,21 @@ export function useProgramBuilderState() {
   const validateProgram = useCallback((): ProgramValidationResult => {
     return validateProgramBlocks(blocks, videos);
   }, [blocks, videos]);
+
+  const submitPublicShare = useCallback(
+    (payload: PublicShareSubmissionPayload) => {
+      const templateId = activeTemplateId ?? template.id;
+      const updated = submitTemplateForPublicReview(templateId, payload);
+      if (!updated) {
+        showMessage('공용 신청에 실패했습니다. 먼저 템플릿을 저장해 주세요.');
+        return false;
+      }
+      setTemplate(updated);
+      showMessage(`「${updated.title}」이(가) 공용 라이브러리 승인 대기 상태입니다.`);
+      return true;
+    },
+    [activeTemplateId, showMessage, template.id],
+  );
 
   const saveTemplate = useCallback(() => {
     const validation = validateProgramBlocks(blocks, videos);
@@ -200,7 +217,7 @@ export function useProgramBuilderState() {
       updatedAt: now,
     };
 
-    const ok = persistProgramTemplate(snapshot);
+    const ok = persistTemplate(snapshot);
     if (!ok) {
       showMessage('템플릿 저장에 실패했습니다. 브라우저 저장 공간을 확인해 주세요.');
       return false;
@@ -393,6 +410,7 @@ export function useProgramBuilderState() {
     updateBlock,
     updateVideoBlockSettings,
     validateProgram,
+    submitPublicShare,
     saveTemplate,
     loadTemplate,
     copyTemplateById,

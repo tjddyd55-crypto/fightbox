@@ -1,5 +1,14 @@
 export type WorkoutDifficulty = 'beginner' | 'intermediate' | 'advanced';
 
+export type TemplateVisibility =
+  | 'private'
+  | 'gym'
+  | 'public_pending'
+  | 'public_approved'
+  | 'public_rejected';
+
+export type ContentSourceKind = 'own' | 'shared' | 'public';
+
 export interface WorkoutVideo {
   id: string;
   title: string;
@@ -12,6 +21,12 @@ export interface WorkoutVideo {
   bodyParts: string[];
   isLoopable: boolean;
   sourceType: 'private' | 'gym' | 'public';
+  /** Review state when submitted to the public library (API-ready). */
+  reviewStatus?: TemplateVisibility;
+  contentSource?: ContentSourceKind;
+  creditCost?: number;
+  rewardCredit?: number;
+  isPremium?: boolean;
 }
 
 export type ProgramBlockType = 'video' | 'rest' | 'countdown' | 'voice';
@@ -66,11 +81,11 @@ export type ProgramBlock =
   | CountdownProgramBlock
   | VoiceProgramBlock;
 
-export type TemplateVisibility =
-  | 'private'
-  | 'gym'
-  | 'public_pending'
-  | 'public_approved';
+export interface PublicShareSubmissionPayload {
+  title: string;
+  description?: string;
+  tags: string[];
+}
 
 export interface WorkoutProgramTemplate {
   id: string;

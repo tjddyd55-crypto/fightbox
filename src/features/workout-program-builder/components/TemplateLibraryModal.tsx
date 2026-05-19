@@ -1,14 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { WorkoutProgramTemplate } from '../types/workoutProgramBuilder.types';
 import { formatDuration } from '../utils/durationUtils';
-import { getSavedProgramTemplates } from '../storage/programTemplateStorage';
-
-const VISIBILITY_LABEL: Record<WorkoutProgramTemplate['visibility'], string> = {
-  private: '비공개',
-  gym: '체육관',
-  public_pending: '승인 대기',
-  public_approved: '공개',
-};
+import { listTemplates } from '../repositories/programTemplateRepository';
+import { isPublicReviewPending, VISIBILITY_LABEL } from '../utils/visibilityUtils';
 
 function formatUpdatedAt(iso: string): string {
   try {
@@ -44,7 +38,7 @@ export function TemplateLibraryModal({
 
   useEffect(() => {
     if (isOpen) {
-      setTemplates(getSavedProgramTemplates());
+      setTemplates(listTemplates());
     }
   }, [isOpen]);
 
@@ -90,7 +84,14 @@ export function TemplateLibraryModal({
                 className={`wpb-template-card${template.id === activeTemplateId ? ' is-active' : ''}`}
               >
                 <div className="wpb-template-card-main">
-                  <h3>{template.title}</h3>
+                  <h3>
+                    {template.title}
+                    {isPublicReviewPending(template.visibility) && (
+                      <span className="wpb-visibility-badge wpb-visibility-badge--pending">
+                        승인 대기
+                      </span>
+                    )}
+                  </h3>
                   <p className="wpb-template-card-meta">
                     {formatDuration(template.totalDurationSec)} · 블록 {template.blocks.length}개
                   </p>

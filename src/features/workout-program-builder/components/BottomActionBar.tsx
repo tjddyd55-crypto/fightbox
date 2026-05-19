@@ -7,6 +7,7 @@ interface BottomActionBarProps {
   onSaveTemplate: () => void;
   onCopySave: () => void;
   onTestPlay: () => void;
+  onPublicShare?: () => void;
 }
 
 export function BottomActionBar({
@@ -16,6 +17,7 @@ export function BottomActionBar({
   onSaveTemplate,
   onCopySave,
   onTestPlay,
+  onPublicShare,
 }: BottomActionBarProps) {
   return (
     <footer className="wpb-bottom-bar">
@@ -36,6 +38,11 @@ export function BottomActionBar({
         <button type="button" className="wpb-btn wpb-btn-ghost" onClick={onCopySave}>
           복사 저장
         </button>
+        {onPublicShare && (
+          <button type="button" className="wpb-btn wpb-btn-ghost" onClick={onPublicShare}>
+            공용 신청
+          </button>
+        )}
         <button
           type="button"
           className="wpb-btn wpb-btn-primary wpb-btn-test-play"
