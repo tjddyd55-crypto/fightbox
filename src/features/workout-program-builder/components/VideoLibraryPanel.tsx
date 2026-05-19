@@ -1,31 +1,31 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import type { WorkoutVideo } from '../types/workoutProgramBuilder.types';
 import { getAllTags } from '../utils/programTimelineUtils';
-import { FilterChips } from './FilterChips';
+import type { VideoLibraryFilterState } from '../hooks/useVideoLibraryFilters';
+import { VideoLibraryFiltersBar } from './VideoLibraryFilters';
 import { VideoCard } from './VideoCard';
 
 interface VideoLibraryPanelProps {
   videos: WorkoutVideo[];
+  filterState: VideoLibraryFilterState;
   onAddVideo: (video: WorkoutVideo) => void;
 }
 
-export function VideoLibraryPanel({ videos, onAddVideo }: VideoLibraryPanelProps) {
-  const [search, setSearch] = useState('');
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+export function VideoLibraryPanel({ videos, filterState, onAddVideo }: VideoLibraryPanelProps) {
+  const {
+    filters,
+    filteredVideos,
+    isFiltered,
+    setSearchQuery,
+    toggleTag,
+    clearTags,
+    setDifficulty,
+    setDurationRange,
+    setRepeatableOnly,
+    resetFilters,
+  } = filterState;
 
   const tags = useMemo(() => getAllTags(videos), [videos]);
-
-  const filteredVideos = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    return videos.filter((video) => {
-      const matchesTag = !selectedTag || video.tags.includes(selectedTag);
-      if (!matchesTag) return false;
-      if (!query) return true;
-      const inTitle = video.title.toLowerCase().includes(query);
-      const inTags = video.tags.some((t) => t.toLowerCase().includes(query));
-      return inTitle || inTags;
-    });
-  }, [videos, search, selectedTag]);
 
   return (
     <section
@@ -43,18 +43,34 @@ export function VideoLibraryPanel({ videos, onAddVideo }: VideoLibraryPanelProps
         <input
           type="search"
           className="wpb-search"
-          placeholder="제목 또는 태그 검색..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          placeholder="제목, 태그, 부위, 난이도 검색..."
+          value={filters.searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
           aria-label="영상 검색"
         />
-        <FilterChips tags={tags} selectedTag={selectedTag} onSelectTag={setSelectedTag} />
+        <VideoLibraryFiltersBar
+          tags={tags}
+          selectedTags={filters.selectedTags}
+          selectedDifficulty={filters.selectedDifficulty}
+          selectedDurationRange={filters.selectedDurationRange}
+          repeatableOnly={filters.repeatableOnly}
+          onToggleTag={toggleTag}
+          onClearTags={clearTags}
+          onSelectDifficulty={setDifficulty}
+          onSelectDurationRange={setDurationRange}
+          onRepeatableOnlyChange={setRepeatableOnly}
+        />
       </section>
       <section className="wpb-panel-scroll" aria-label="영상 목록">
         {filteredVideos.length === 0 ? (
           <div className="wpb-empty">
             <p className="wpb-empty-title">조건에 맞는 영상이 없습니다</p>
-            <p className="wpb-empty-desc">검색어나 태그 필터를 변경해 보세요.</p>
+            <p className="wpb-empty-desc">검색어나 필터를 변경하거나 초기화해 보세요.</p>
+            {isFiltered && (
+              <button type="button" className="wpb-btn wpb-btn-ghost wpb-btn-sm" onClick={resetFilters}>
+                필터 초기화
+              </button>
+            )}
           </div>
         ) : (
           <div className="wpb-video-list">

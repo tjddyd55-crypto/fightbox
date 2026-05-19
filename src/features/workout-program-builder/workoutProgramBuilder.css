@@ -335,6 +335,40 @@
   box-shadow: 0 0 0 2px rgba(255, 214, 10, 0.2);
 }
 
+.wpb-library-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.wpb-filter-repeatable {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #a7aab3;
+  cursor: pointer;
+  min-height: 40px;
+  user-select: none;
+}
+
+.wpb-filter-repeatable input {
+  width: 16px;
+  height: 16px;
+  accent-color: #ffd60a;
+}
+
+.wpb-filter-repeatable:has(input:focus-visible) {
+  outline: 2px solid #ffd60a;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.wpb-empty .wpb-btn {
+  margin-top: 12px;
+}
+
 .wpb-chips {
   display: flex;
   flex-wrap: wrap;

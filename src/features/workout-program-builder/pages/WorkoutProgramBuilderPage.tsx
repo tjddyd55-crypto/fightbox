@@ -9,11 +9,13 @@ import { TemplateLibraryModal } from '../components/TemplateLibraryModal';
 import { TestPlaybackModal } from '../components/TestPlaybackModal';
 import { VideoLibraryPanel } from '../components/VideoLibraryPanel';
 import { useProgramBuilderState } from '../hooks/useProgramBuilderState';
+import { useVideoLibraryFilters } from '../hooks/useVideoLibraryFilters';
 import { isCompactLayout } from '../utils/viewportUtils';
 import '../workoutProgramBuilder.css';
 
 export function WorkoutProgramBuilderPage() {
   const state = useProgramBuilderState();
+  const videoFilterState = useVideoLibraryFilters(state.videos);
   const [mobileTab, setMobileTab] = useState<MobileBuilderTab>('timeline');
   const [isTemplateLibraryOpen, setIsTemplateLibraryOpen] = useState(false);
   const { setSelectedBlockId } = state;
@@ -38,7 +40,11 @@ export function WorkoutProgramBuilderPage() {
           className={`wpb-main wpb-main--mobile-tab-${mobileTab}`}
           aria-label="프로그램 빌더 작업 영역"
         >
-          <VideoLibraryPanel videos={state.videos} onAddVideo={state.addVideoToTimeline} />
+          <VideoLibraryPanel
+            videos={state.videos}
+            filterState={videoFilterState}
+            onAddVideo={state.addVideoToTimeline}
+          />
           <ProgramTimelinePanel
             blocks={state.blocks}
             selectedBlockId={state.selectedBlockId}

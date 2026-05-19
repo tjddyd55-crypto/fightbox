@@ -3,6 +3,13 @@ export { mockWorkoutVideos } from './data/mockWorkoutVideos';
 export { mockProgramTemplate } from './data/mockProgramTemplate';
 export { formatDuration } from './utils/durationUtils';
 export {
+  filterWorkoutVideos,
+  createDefaultVideoFilters,
+  hasActiveVideoFilters,
+  type VideoLibraryFilters,
+  type VideoDurationRange,
+} from './utils/videoFilterUtils';
+export {
   calculateTotalDurationSec,
   reorderBlocks,
   reindexBlocks,
