@@ -1,3 +1,4 @@
+import { mockCreditWallet } from '../data/mockCreditWallet';
 import type { WorkoutProgramTemplate } from '../types/workoutProgramBuilder.types';
 import { formatDuration } from '../utils/durationUtils';
 
@@ -17,6 +18,9 @@ export function BuilderHeader({ template, totalDurationSec }: BuilderHeaderProps
         <span className="wpb-save-badge">● 자동 저장됨</span>
         <span className="wpb-header-meta-template">{template.title}</span>
         <span className="wpb-header-meta-duration">총 {formatDuration(totalDurationSec)}</span>
+        <span className="wpb-header-meta-credits" title="보유 크레딧 (더미)">
+          {mockCreditWallet.balance} {mockCreditWallet.currencyLabel}
+        </span>
         <span className="wpb-header-meta-admin">관리자 · 코치</span>
       </div>
     </header>

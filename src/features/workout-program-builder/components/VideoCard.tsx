@@ -50,6 +50,9 @@ export function VideoCard({ video, isSelected, onSelect, onAdd }: VideoCardProps
           <span className={`wpb-difficulty wpb-difficulty--${DIFFICULTY_CLASS[video.difficulty]}`}>
             {DIFFICULTY_LABEL[video.difficulty]}
           </span>
+          {(video.isPremium || (video.creditCost ?? 0) > 0) && (
+            <span className="wpb-credit-badge">{video.creditCost ?? 0} 크레딧</span>
+          )}
         </div>
         <div className="wpb-tags">
           {video.tags.slice(0, 4).map((tag) => (

@@ -39,6 +39,9 @@ export const mockWorkoutVideos: WorkoutVideo[] = [
     bodyParts: ['전신'],
     isLoopable: true,
     sourceType: 'public',
+    isPremium: true,
+    creditCost: 5,
+    contentSource: 'public',
   },
   {
     id: 'video_abs_001',
