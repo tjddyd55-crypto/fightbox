@@ -23,6 +23,9 @@ export function VideoCard({ video, onAdd }: VideoCardProps) {
     <article className="wpb-video-card">
       <div className="wpb-thumb" aria-hidden>
         <span className="wpb-thumb-placeholder" />
+        <span className="wpb-thumb-icon" aria-hidden>
+          ▶
+        </span>
         {video.isLoopable && <span className="wpb-loop-badge">Loop</span>}
         <span className="wpb-thumb-badge">{formatDuration(video.durationSec)}</span>
       </div>
