@@ -19,16 +19,22 @@ export function getBlockTypeIcon(block: ProgramBlock): string {
   return '♪';
 }
 
+function restAfterSuffix(restAfterSec?: number): string {
+  if (!restAfterSec || restAfterSec <= 0) return '';
+  return ` · 휴식 ${restAfterSec}초`;
+}
+
 export function getBlockSubtitle(block: ProgramBlock): string {
   switch (block.type) {
     case 'video':
       if (block.playMode === 'repeat_count') {
-        return `${block.repeatCount ?? 1}회 반복`;
+        return `${block.repeatCount ?? 1}회 반복${restAfterSuffix(block.restAfterSec)}`;
       }
       if (block.playMode === 'loop_until_duration') {
-        return '지정 시간 반복';
+        const target = block.targetDurationSec ?? block.durationSec;
+        return `지정 ${target}초 반복${restAfterSuffix(block.restAfterSec)}`;
       }
-      return '원본 길이';
+      return `원본 길이 재생${restAfterSuffix(block.restAfterSec)}`;
     case 'rest':
       return block.nextBlockTitle
         ? `다음 · ${block.nextBlockTitle}`

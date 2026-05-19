@@ -1,5 +1,13 @@
 import type { ReactNode } from 'react';
 import type { ProgramBlock, WorkoutVideo, VideoPlayMode } from '../types/workoutProgramBuilder.types';
+import {
+  MAX_DURATION_SEC,
+  MAX_REPEAT_COUNT,
+  MIN_DURATION_SEC,
+  MIN_REPEAT_COUNT,
+  clampInt,
+  parsePositiveInt,
+} from '../utils/blockSettingsUtils';
 import { getVideoById } from '../utils/programTimelineUtils';
 import type { ProgramBuilderState } from '../hooks/useProgramBuilderState';
 
@@ -93,7 +101,12 @@ export function BlockSettingsForm({
                     disabled={playMode !== 'repeat_count'}
                     onChange={(e) =>
                       onUpdateVideoSettings(block.id, {
-                        repeatCount: Number(e.target.value),
+                        repeatCount: parsePositiveInt(
+                          e.target.value,
+                          block.repeatCount ?? 1,
+                          MIN_REPEAT_COUNT,
+                          MAX_REPEAT_COUNT,
+                        ),
                         playMode: 'repeat_count',
                       })
                     }
@@ -127,7 +140,12 @@ export function BlockSettingsForm({
                     disabled={playMode !== 'loop_until_duration'}
                     onChange={(e) =>
                       onUpdateVideoSettings(block.id, {
-                        targetDurationSec: Number(e.target.value),
+                        targetDurationSec: parsePositiveInt(
+                          e.target.value,
+                          block.targetDurationSec ?? video?.durationSec ?? 60,
+                          video?.durationSec ?? MIN_DURATION_SEC,
+                          MAX_DURATION_SEC,
+                        ),
                         playMode: 'loop_until_duration',
                       })
                     }
@@ -154,7 +172,11 @@ export function BlockSettingsForm({
                 value={block.restAfterSec ?? 0}
                 onChange={(e) =>
                   onUpdateVideoSettings(block.id, {
-                    restAfterSec: Number(e.target.value),
+                    restAfterSec: clampInt(
+                      Number(e.target.value),
+                      0,
+                      MAX_DURATION_SEC,
+                    ),
                   })
                 }
               />
@@ -215,17 +237,23 @@ export function BlockSettingsForm({
                 min={1}
                 className="wpb-inline-input wpb-inline-input--rest"
                 value={block.durationSec}
-                onChange={(e) =>
+                onChange={(e) => {
+                  const sec = parsePositiveInt(
+                    e.target.value,
+                    block.durationSec,
+                    MIN_DURATION_SEC,
+                    MAX_DURATION_SEC,
+                  );
                   onUpdateBlock(block.id, (b) =>
                     b.type === 'rest'
                       ? {
                           ...b,
-                          durationSec: Number(e.target.value),
-                          title: `휴식 ${e.target.value}초`,
+                          durationSec: sec,
+                          title: `휴식 ${sec}초`,
                         }
                       : b,
-                  )
-                }
+                  );
+                }}
               />
               <span className="wpb-unit-suffix">초</span>
             </span>
@@ -262,7 +290,12 @@ export function BlockSettingsForm({
                 className="wpb-inline-input wpb-inline-input--rest"
                 value={block.countFromSec}
                 onChange={(e) => {
-                  const sec = Number(e.target.value);
+                  const sec = parsePositiveInt(
+                    e.target.value,
+                    block.countFromSec,
+                    MIN_DURATION_SEC,
+                    MAX_DURATION_SEC,
+                  );
                   onUpdateBlock(block.id, (b) =>
                     b.type === 'countdown'
                       ? {
@@ -295,11 +328,36 @@ export function BlockSettingsForm({
             onChange={(e) =>
               onUpdateBlock(block.id, (b) =>
                 b.type === 'voice'
-                  ? { ...b, cueText: e.target.value, title: e.target.value }
+                  ? { ...b, cueText: e.target.value, title: e.target.value || '음성 안내' }
                   : b,
               )
             }
           />
+        </label>
+        <label className="wpb-field wpb-field--compact" htmlFor={`voice-duration-${block.id}`}>
+          <span className="wpb-field-label">재생 길이</span>
+          <span className="wpb-input-unit-group">
+            <input
+              id={`voice-duration-${block.id}`}
+              type="number"
+              min={MIN_DURATION_SEC}
+              max={MAX_DURATION_SEC}
+              className="wpb-inline-input wpb-inline-input--rest"
+              value={block.durationSec}
+              onChange={(e) => {
+                const sec = parsePositiveInt(
+                  e.target.value,
+                  block.durationSec,
+                  MIN_DURATION_SEC,
+                  MAX_DURATION_SEC,
+                );
+                onUpdateBlock(block.id, (b) =>
+                  b.type === 'voice' ? { ...b, durationSec: sec } : b,
+                );
+              }}
+            />
+            <span className="wpb-unit-suffix">초</span>
+          </span>
         </label>
       </SettingsSection>
     </form>
