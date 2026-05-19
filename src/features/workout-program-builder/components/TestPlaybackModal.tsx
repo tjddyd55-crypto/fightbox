@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect } from 'react';
 import type { ProgramBlock, WorkoutVideo } from '../types/workoutProgramBuilder.types';
 import { formatDuration } from '../utils/durationUtils';
 import { getVideoById } from '../utils/programTimelineUtils';
 import { BLOCK_TYPE_LABEL, getBlockTypeIcon } from '../utils/blockDisplayUtils';
+import { useTestPlayback } from '../hooks/useTestPlayback';
 
 interface TestPlaybackModalProps {
   blocks: ProgramBlock[];
@@ -12,6 +13,52 @@ interface TestPlaybackModalProps {
   onClose: () => void;
 }
 
+function BlockStage({
+  block,
+  video,
+  countdownDisplay,
+}: {
+  block: ProgramBlock;
+  video?: WorkoutVideo;
+  countdownDisplay: number | null;
+}) {
+  if (block.type === 'video') {
+    return (
+      <div className="wpb-test-stage wpb-test-stage--video" aria-label="영상 블록">
+        <div className="wpb-test-stage-thumb">
+          <span className="wpb-thumb-placeholder" />
+          <span className="wpb-thumb-icon">▶</span>
+        </div>
+        <p>{video?.title ?? block.title}</p>
+      </div>
+    );
+  }
+
+  if (block.type === 'rest') {
+    return (
+      <div className="wpb-test-stage wpb-test-stage--rest" aria-label="휴식 블록">
+        <span className="wpb-test-stage-icon">◌</span>
+        <p>{block.message ?? '휴식 중'}</p>
+      </div>
+    );
+  }
+
+  if (block.type === 'countdown') {
+    return (
+      <div className="wpb-test-stage wpb-test-stage--countdown" aria-label="카운트다운 블록">
+        <span className="wpb-test-countdown">{countdownDisplay ?? block.countFromSec}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="wpb-test-stage wpb-test-stage--voice" aria-label="음성 안내 블록">
+      <span className="wpb-test-stage-icon">♪</span>
+      <p>{block.cueText}</p>
+    </div>
+  );
+}
+
 export function TestPlaybackModal({
   blocks,
   totalDurationSec,
@@ -19,49 +66,27 @@ export function TestPlaybackModal({
   videos,
   onClose,
 }: TestPlaybackModalProps) {
-  const initialIndex = useMemo(() => {
-    if (!initialBlockId) return 0;
-    const idx = blocks.findIndex((b) => b.id === initialBlockId);
-    return idx >= 0 ? idx : 0;
-  }, [blocks, initialBlockId]);
+  const playback = useTestPlayback({ blocks, videos, initialBlockId });
 
-  const [currentIndex, setCurrentIndex] = useState(initialIndex);
-  const [isPlaying, setIsPlaying] = useState(true);
+  const {
+    currentBlock,
+    nextBlock,
+    currentIndex,
+    isPlaying,
+    isComplete,
+    fastMode,
+    remainingInBlock,
+    totalElapsed,
+    progressPercent,
+    countdownDisplay,
+    setIsPlaying,
+    setFastMode,
+    goNext,
+    goPrev,
+    resetToStart,
+  } = playback;
 
-  const currentBlock = blocks[currentIndex] ?? null;
-  const nextBlock = blocks[currentIndex + 1] ?? null;
-
-  const elapsedBeforeSec = useMemo(
-    () => blocks.slice(0, currentIndex).reduce((sum, b) => sum + b.durationSec, 0),
-    [blocks, currentIndex],
-  );
-
-  const progressPercent =
-    totalDurationSec > 0
-      ? Math.min(100, Math.round((elapsedBeforeSec / totalDurationSec) * 100))
-      : 0;
-
-  const goNext = useCallback(() => {
-    setCurrentIndex((i) => Math.min(i + 1, blocks.length - 1));
-  }, [blocks.length]);
-
-  const goPrev = useCallback(() => {
-    setCurrentIndex((i) => Math.max(i - 1, 0));
-  }, []);
-
-  useEffect(() => {
-    if (!isPlaying || !currentBlock || blocks.length === 0) return;
-
-    const timer = window.setTimeout(() => {
-      if (currentIndex < blocks.length - 1) {
-        setCurrentIndex((i) => i + 1);
-      } else {
-        setIsPlaying(false);
-      }
-    }, Math.min(currentBlock.durationSec * 1000, 8000));
-
-    return () => window.clearTimeout(timer);
-  }, [isPlaying, currentBlock, currentIndex, blocks.length]);
+  const displayTotal = totalDurationSec > 0 ? totalDurationSec : playback.totalDuration;
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -97,9 +122,7 @@ export function TestPlaybackModal({
   }
 
   const currentVideo =
-    currentBlock?.type === 'video'
-      ? getVideoById(videos, currentBlock.videoId)
-      : undefined;
+    currentBlock?.type === 'video' ? getVideoById(videos, currentBlock.videoId) : undefined;
 
   return (
     <div className="wpb-test-modal-backdrop" role="presentation" onClick={onClose}>
@@ -114,12 +137,24 @@ export function TestPlaybackModal({
           <span className="wpb-test-badge">관리자 테스트 미리보기</span>
           <h2 id="wpb-test-title">프로그램 테스트 재생</h2>
           <p>실제 회원 화면이 아닌 코치용 시뮬레이션입니다.</p>
+          <label className="wpb-test-fast-toggle">
+            <input
+              type="checkbox"
+              checked={fastMode}
+              onChange={(e) => setFastMode(e.target.checked)}
+            />
+            <span>빠른 테스트 모드</span>
+          </label>
         </header>
 
         <section className="wpb-test-progress" aria-label="전체 진행률">
           <div className="wpb-test-progress-labels">
             <span>진행률 {progressPercent}%</span>
-            <span>남은 {formatDuration(Math.max(0, totalDurationSec - elapsedBeforeSec))}</span>
+            <span>
+              {isComplete
+                ? '완료'
+                : `남은 ${formatDuration(Math.max(0, displayTotal - totalElapsed))}`}
+            </span>
           </div>
           <div
             className="wpb-test-progress-track"
@@ -139,26 +174,28 @@ export function TestPlaybackModal({
           </span>
           <h3>{currentBlock?.title ?? '—'}</h3>
           <p className="wpb-test-current-meta">
-            블록 {currentIndex + 1} / {blocks.length} ·{' '}
-            {currentBlock ? formatDuration(currentBlock.durationSec) : '—'}
+            블록 {currentIndex + 1} / {blocks.length} · 남은{' '}
+            {formatDuration(remainingInBlock)}
             {currentVideo && ` · ${currentVideo.difficulty}`}
           </p>
-          {currentBlock?.type === 'rest' && (
-            <p className="wpb-test-hint">{currentBlock.message ?? '휴식 구간'}</p>
+          {currentBlock && (
+            <BlockStage
+              block={currentBlock}
+              video={currentVideo}
+              countdownDisplay={countdownDisplay}
+            />
           )}
-          {currentBlock?.type === 'countdown' && (
-            <p className="wpb-test-countdown">{currentBlock.countFromSec}</p>
-          )}
+          {isComplete && <p className="wpb-test-hint">프로그램 재생이 완료되었습니다.</p>}
         </section>
 
-        {nextBlock && (
+        {nextBlock && !isComplete && (
           <section className="wpb-test-next">
             <span className="wpb-test-next-label">다음 블록</span>
             <p>
               <span className={`wpb-type-pill ${nextBlock.type}`}>
                 {BLOCK_TYPE_LABEL[nextBlock.type]}
               </span>{' '}
-              {nextBlock.title} · {formatDuration(nextBlock.durationSec)}
+              {nextBlock.title}
             </p>
           </section>
         )}
@@ -185,10 +222,13 @@ export function TestPlaybackModal({
             type="button"
             className="wpb-btn wpb-btn-ghost"
             onClick={goNext}
-            disabled={currentIndex >= blocks.length - 1}
+            disabled={currentIndex >= blocks.length - 1 && !isComplete}
             aria-label="다음 블록"
           >
-            다음 블록
+            다음
+          </button>
+          <button type="button" className="wpb-btn wpb-btn-ghost" onClick={resetToStart}>
+            처음부터
           </button>
           <button type="button" className="wpb-btn wpb-btn-primary" onClick={onClose}>
             닫기

@@ -801,6 +801,66 @@
   line-height: 1;
 }
 
+.wpb-timeline-move-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.wpb-timeline-move-btn--danger {
+  color: #f87171;
+}
+
+.wpb-timeline-menu button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.wpb-test-fast-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 13px;
+  color: #a7aab3;
+  cursor: pointer;
+}
+
+.wpb-test-fast-toggle input {
+  accent-color: #ffd60a;
+}
+
+.wpb-test-stage {
+  margin-top: 12px;
+  padding: 16px;
+  border-radius: 12px;
+  background: #1f2026;
+  border: 1px solid #2c2d34;
+  text-align: center;
+}
+
+.wpb-test-stage-thumb {
+  width: 100%;
+  max-width: 280px;
+  height: 120px;
+  margin: 0 auto 10px;
+  border-radius: 8px;
+  background: #15161a;
+  position: relative;
+  overflow: hidden;
+}
+
+.wpb-test-stage-icon {
+  font-size: 32px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.wpb-test-stage--countdown .wpb-test-countdown {
+  font-size: 48px;
+  font-weight: 700;
+  color: #ffd60a;
+}
+
 .wpb-timeline-row-main {
   flex: 1;
   display: flex;
