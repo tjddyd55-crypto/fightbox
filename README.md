@@ -1,29 +1,69 @@
 # FightBox
 
-체육관용 운동 프로그램 빌더를 포함한 Vite + React + TypeScript 프로젝트입니다.
+체육관용 운동 프로그램 빌더를 포함한 npm workspaces 모노레포입니다.
+
+```
+fightbox/
+  apps/
+    web/          # Vite + React 프론트엔드
+    api/          # Express API (health 서버, 추후 presign 등)
+  packages/
+    shared/       # 공통 타입·상수 (추후 확장)
+```
 
 ## 실행 방법
 
 ```bash
 npm install
-npm run dev
+npm run dev:web
 ```
 
-브라우저에서 개발 서버 주소(기본 `http://localhost:5173`)로 접속합니다.
+브라우저에서 `http://localhost:5173/workout-program-builder` 로 접속합니다.
+
+API health 확인:
+
+```bash
+npm run dev:api
+# http://localhost:3000/health
+```
 
 ## 개발 명령어
 
 | 명령 | 설명 |
 |------|------|
-| `npm run dev` | 개발 서버 |
-| `npm run typecheck` | TypeScript 검사 |
+| `npm run dev` / `npm run dev:web` | 프론트 개발 서버 |
+| `npm run dev:api` | API 개발 서버 |
+| `npm run typecheck` | 전체 TypeScript 검사 |
 | `npm run lint` | ESLint |
-| `npm run build` | 프로덕션 빌드 |
-| `npm run preview` | 빌드 결과 미리보기 |
+| `npm run build` | shared → web → api 빌드 |
+| `npm run build:web` | 프론트만 빌드 |
+| `npm run build:api` | API만 빌드 |
+| `npm run start:web` | 프론트 preview (Railway 배포용) |
+| `npm run start:api` | API 프로덕션 실행 |
+
+## Railway 배포
+
+### 프론트 (web) — 현재 app 서비스
+
+| 항목 | 값 |
+|------|-----|
+| Build Command | `npm run build:web` |
+| Start Command | `npm run start:web` |
+
+루트 `npm run build` / `npm run start` 도 web 기준으로 동작합니다.
+
+### API — 추후 별도 서비스
+
+| 항목 | 값 |
+|------|-----|
+| Build Command | `npm run build:api` |
+| Start Command | `npm run start:api` |
+
+R2 presign 등 업로드 API는 다음 단계에서 `apps/api`에 구현합니다.
 
 ## 주요 라우트
 
-앱 라우트는 `src` 라우터 설정을 참고하세요. 운동 프로그램 빌더 화면은 `workout-program-builder` 기능 모듈로 구성되어 있습니다.
+프론트 라우트는 `apps/web/src/main.tsx`를 참고하세요. 운동 프로그램 빌더는 `/workout-program-builder` 경로입니다.
 
 ## Workout Program Builder
 
@@ -60,7 +100,7 @@ npm run dev
 | `VITE_VIDEO_UPLOAD_PROVIDER` | `mock` (기본) 또는 `api` |
 | `VITE_API_BASE_URL` | `api`일 때 백엔드 origin (예: `http://localhost:3000`) |
 
-`.env.example`을 복사해 `.env.local`에 설정하세요.
+`.env.example`을 복사해 `apps/web/.env.local` 또는 루트 `.env.local`에 설정하세요.
 
 #### Presign API 계약
 
@@ -98,11 +138,11 @@ Content-Type: {contentType}
 Body: raw file bytes
 ```
 
-타입 정의: `src/features/workout-program-builder/types/videoUpload.types.ts`  
+타입 정의: `apps/web/src/features/workout-program-builder/types/videoUpload.types.ts`  
 Adapter: `mockVideoUploadAdapter.ts`, `apiVideoUploadAdapter.ts`
 
 ## 문서
 
 - `dev/fightbox_workout_program_builder_feature_steps.md` — 단계별 개발 지시서
 - `dev/workout_program_builder_feature_status.md` — 구현 현황·QA 체크리스트
-- `src/features/workout-program-builder/ARCHITECTURE.md` — 모듈 구조
+- `apps/web/src/features/workout-program-builder/ARCHITECTURE.md` — 모듈 구조
