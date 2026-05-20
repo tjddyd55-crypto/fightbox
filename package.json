@@ -19,7 +19,7 @@
     "lint": "eslint .",
     "start": "npm run start:web",
     "start:web": "npm run preview -w @fightbox/web",
-    "start:api": "npm run start -w @fightbox/api"
+    "start:api": "node apps/api/dist/index.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
