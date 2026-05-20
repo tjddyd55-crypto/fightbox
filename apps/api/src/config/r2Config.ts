@@ -17,6 +17,25 @@ function stripTrailingSlashes(value: string): string {
   return value.replace(/\/+$/, '');
 }
 
+function normalizeEndpoint(rawEndpoint: string): string {
+  let endpointUrl: URL;
+  try {
+    endpointUrl = new URL(rawEndpoint);
+  } catch {
+    throw new ApiError(503, 'R2_NOT_CONFIGURED', 'R2_ENDPOINT is not a valid URL');
+  }
+
+  if (endpointUrl.pathname !== '/' && endpointUrl.pathname !== '') {
+    throw new ApiError(
+      503,
+      'R2_NOT_CONFIGURED',
+      'R2_ENDPOINT must not include a bucket path. Use the account endpoint only.',
+    );
+  }
+
+  return stripTrailingSlashes(endpointUrl.origin);
+}
+
 export function getR2Config(): R2Config {
   const accessKeyId = trimEnv(process.env.R2_ACCESS_KEY_ID);
   const secretAccessKey = trimEnv(process.env.R2_SECRET_ACCESS_KEY);
@@ -24,7 +43,7 @@ export function getR2Config(): R2Config {
   const accountId = trimEnv(process.env.R2_ACCOUNT_ID);
   const endpointFromEnv = trimEnv(process.env.R2_ENDPOINT);
 
-  let endpoint = endpointFromEnv ? stripTrailingSlashes(endpointFromEnv) : undefined;
+  let endpoint = endpointFromEnv ? normalizeEndpoint(endpointFromEnv) : undefined;
   if (!endpoint && accountId) {
     endpoint = `https://${accountId}.r2.cloudflarestorage.com`;
   }

@@ -81,6 +81,27 @@ function validateInput(input: CreatePresignedVideoUploadInput): void {
   }
 }
 
+function assertPathStyleUploadUrl(uploadUrl: string, bucketName: string): void {
+  const url = new URL(uploadUrl);
+  const virtualHostedPrefix = `${bucketName.toLowerCase()}.`;
+
+  if (url.hostname.toLowerCase().startsWith(virtualHostedPrefix)) {
+    throw new ApiError(
+      500,
+      'PRESIGN_FAILED',
+      'Presigned URL must use path-style addressing',
+    );
+  }
+
+  if (!url.pathname.startsWith(`/${bucketName}/`)) {
+    throw new ApiError(
+      500,
+      'PRESIGN_FAILED',
+      'Presigned URL must include bucket name in the path',
+    );
+  }
+}
+
 export async function createPresignedVideoUpload(
   input: CreatePresignedVideoUploadInput,
 ): Promise<CreatePresignedVideoUploadResult> {
@@ -127,6 +148,8 @@ export async function createPresignedVideoUpload(
   } catch {
     throw new ApiError(500, 'PRESIGN_FAILED', 'Failed to create presigned upload URL');
   }
+
+  assertPathStyleUploadUrl(uploadUrl, config.bucketName);
 
   const expiresAt = new Date(Date.now() + PRESIGN_EXPIRES_IN_SECONDS * 1000).toISOString();
   const playbackUrl = config.publicBaseUrl ? `${config.publicBaseUrl}/${storageKey}` : '';
