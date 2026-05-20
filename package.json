@@ -5,17 +5,21 @@
   "type": "module",
   "workspaces": [
     "apps/web",
+    "apps/api",
     "packages/shared"
   ],
   "scripts": {
     "dev": "npm run dev -w @fightbox/web",
     "dev:web": "npm run dev -w @fightbox/web",
-    "build": "npm run build -w @fightbox/shared && npm run build -w @fightbox/web",
+    "dev:api": "npm run dev -w @fightbox/api",
+    "build": "npm run build -w @fightbox/shared && npm run build -w @fightbox/web && npm run build -w @fightbox/api",
     "build:web": "npm run build -w @fightbox/web",
-    "typecheck": "npm run typecheck -w @fightbox/shared && npm run typecheck -w @fightbox/web",
+    "build:api": "npm run build -w @fightbox/api",
+    "typecheck": "npm run typecheck -w @fightbox/shared && npm run typecheck -w @fightbox/web && npm run typecheck -w @fightbox/api",
     "lint": "eslint .",
     "start": "npm run start:web",
-    "start:web": "npm run preview -w @fightbox/web"
+    "start:web": "npm run preview -w @fightbox/web",
+    "start:api": "npm run start -w @fightbox/api"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
