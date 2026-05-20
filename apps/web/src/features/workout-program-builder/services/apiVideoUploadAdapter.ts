@@ -20,6 +20,32 @@ export class VideoUploadApiError extends Error {
   }
 }
 
+function buildPresignUrl(): string {
+  return `${getApiBaseUrl()}${WORKOUT_VIDEO_PRESIGN_PATH}`;
+}
+
+interface ApiErrorResponseBody {
+  error?: {
+    code?: string;
+    message?: string;
+  };
+}
+
+async function readPresignErrorMessage(response: Response): Promise<string> {
+  try {
+    const data = (await response.json()) as ApiErrorResponseBody;
+    if (data.error?.message) {
+      return data.error.message;
+    }
+    if (data.error?.code) {
+      return data.error.code;
+    }
+  } catch {
+    // ignore JSON parse errors
+  }
+  return `Presign request failed with status ${response.status}`;
+}
+
 function inferStorageProvider(uploadUrl: string): VideoStorageProvider {
   if (uploadUrl.includes('amazonaws.com')) {
     return 's3';
@@ -78,17 +104,15 @@ async function requestPresignedUpload(
     ...(input.uploaderId !== undefined ? { uploaderId: input.uploaderId } : {}),
   };
 
-  const response = await fetch(`${getApiBaseUrl()}${WORKOUT_VIDEO_PRESIGN_PATH}`, {
+  const response = await fetch(buildPresignUrl(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
 
   if (!response.ok) {
-    throw new VideoUploadApiError(
-      `Presign request failed with status ${response.status}`,
-      response.status,
-    );
+    const message = await readPresignErrorMessage(response);
+    throw new VideoUploadApiError(message, response.status);
   }
 
   return (await response.json()) as PresignUploadApiResponse;

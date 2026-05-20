@@ -13,9 +13,7 @@ export function resolveUploadProviderKind(): UploadProviderKind {
 export function getApiBaseUrl(): string {
   const base = import.meta.env.VITE_API_BASE_URL?.trim();
   if (!base) {
-    throw new Error(
-      'VITE_API_BASE_URL is required when VITE_VIDEO_UPLOAD_PROVIDER=api',
-    );
+    return '';
   }
   return base.replace(/\/$/, '');
 }

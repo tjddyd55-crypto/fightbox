@@ -43,23 +43,48 @@ npm run dev:api
 
 ## Railway 배포
 
-### 프론트 (web) — 현재 app 서비스
+### 프론트 (web) — app 서비스
 
 | 항목 | 값 |
 |------|-----|
 | Build Command | `npm run build:web` |
 | Start Command | `npm run start:web` |
 
-루트 `npm run build` / `npm run start` 도 web 기준으로 동작합니다.
+**환경변수 (VITE_ 만 설정 — R2 시크릿 금지)**
 
-### API — 추후 별도 서비스
+| 변수 | 설명 |
+|------|------|
+| `VITE_VIDEO_UPLOAD_PROVIDER` | `mock` (기본) 또는 `api` |
+| `VITE_API_BASE_URL` | API 서비스 public URL (예: `https://<api-domain>`) |
+
+API presign이 정상 확인된 후 `VITE_VIDEO_UPLOAD_PROVIDER=api`와 `VITE_API_BASE_URL`을 설정하세요.
+
+### API — api 서비스
 
 | 항목 | 값 |
 |------|-----|
 | Build Command | `npm run build:api` |
 | Start Command | `npm run start:api` |
 
-R2 presign 등 업로드 API는 다음 단계에서 `apps/api`에 구현합니다.
+**환경변수**
+
+| 변수 | 설명 |
+|------|------|
+| `PORT` | Railway가 주입 (예: `3000`) |
+| `FRONTEND_ORIGIN` | web app origin (CORS, 예: `https://app-production-6692.up.railway.app`) |
+| `R2_ACCOUNT_ID` | Cloudflare account ID |
+| `R2_ACCESS_KEY_ID` | R2 access key |
+| `R2_SECRET_ACCESS_KEY` | R2 secret (API 서비스에만) |
+| `R2_BUCKET_NAME` / `R2_BUCKET` | 버킷명 (`fightbox`) |
+| `R2_ENDPOINT` | S3 API endpoint (버킷명 미포함) |
+| `R2_PUBLIC_URL` / `R2_PUBLIC_CDN_BASE` | 선택 — Public/Custom URL (없으면 `playbackUrl`은 `""`) |
+
+**엔드포인트**
+
+- `GET /health` — 서비스 상태
+- `POST /api/workout-videos/uploads/presign` — R2 presigned PUT URL 발급
+
+루트 `npm run build` / `npm run start` 도 web 기준으로 동작합니다.
 
 ## 주요 라우트
 
@@ -98,13 +123,17 @@ R2 presign 등 업로드 API는 다음 단계에서 `apps/api`에 구현합니�
 | 환경변수 | 설명 |
 |----------|------|
 | `VITE_VIDEO_UPLOAD_PROVIDER` | `mock` (기본) 또는 `api` |
-| `VITE_API_BASE_URL` | `api`일 때 백엔드 origin (예: `http://localhost:3000`) |
+| `VITE_API_BASE_URL` | `api`일 때 API origin. 없으면 상대 경로 `/api/...` 사용 |
 
-`.env.example`을 복사해 `apps/web/.env.local` 또는 루트 `.env.local`에 설정하세요.
+`.env.example`을 참고해 Railway app/api 서비스 또는 로컬 `.env.local`에 설정하세요.
+
+CDN/Public URL이 없으면 presign 응답의 `playbackUrl`은 빈 문자열(`""`)입니다. 실제 재생 URL은 추후 R2 Public Development URL 또는 Custom Domain 연결 후 `R2_PUBLIC_URL` / `R2_PUBLIC_CDN_BASE`를 설정하세요.
 
 #### Presign API 계약
 
-`POST {VITE_API_BASE_URL}/api/workout-videos/uploads/presign`
+`POST {API_BASE_URL}/api/workout-videos/uploads/presign`
+
+공통 타입: `packages/shared/src/videoUploadContract.ts`
 
 **Request**
 
@@ -122,11 +151,22 @@ R2 presign 등 업로드 API는 다음 단계에서 `apps/api`에 구현합니�
 
 ```json
 {
-  "uploadUrl": "https://...",
-  "storageKey": "videos/...",
-  "playbackUrl": "https://...",
-  "thumbnailUrl": "https://...",
+  "uploadUrl": "https://...r2.cloudflarestorage.com/...",
+  "storageKey": "workout-videos/demo-gym/2026/05/...",
+  "playbackUrl": "",
+  "thumbnailUrl": null,
   "expiresAt": "2026-05-19T12:00:00.000Z"
+}
+```
+
+에러 응답:
+
+```json
+{
+  "error": {
+    "code": "UNSUPPORTED_CONTENT_TYPE",
+    "message": "Only video uploads are supported."
+  }
 }
 ```
 
