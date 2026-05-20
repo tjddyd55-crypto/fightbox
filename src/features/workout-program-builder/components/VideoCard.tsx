@@ -35,6 +35,9 @@ export function VideoCard({
   const [menuOpen, setMenuOpen] = useState(false);
   const menuWrapRef = useRef<HTMLDivElement>(null);
   const canManage = isUploadedVideo(video);
+  const remoteThumbUrl =
+    video.uploadMeta?.remoteThumbnailUrl ??
+    (video.thumbnailUrl.startsWith('http') ? video.thumbnailUrl : null);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -62,7 +65,11 @@ export function VideoCard({
       aria-label={`${video.title} 미리보기 선택`}
     >
       <div className="wpb-thumb" aria-hidden>
-        <span className="wpb-thumb-placeholder" />
+        {remoteThumbUrl ? (
+          <img src={remoteThumbUrl} alt="" className="wpb-thumb-image" />
+        ) : (
+          <span className="wpb-thumb-placeholder" />
+        )}
         <span className="wpb-thumb-icon" aria-hidden>
           ▶
         </span>

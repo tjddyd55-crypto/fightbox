@@ -1,10 +1,16 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { VIDEO_BODY_PART_OPTIONS } from '../constants/builderConstants';
+import {
+  getUploadStatusLabel,
+  requestPresignedUpload,
+  uploadVideoFile,
+} from '../services/videoUploadService';
 import type {
   CreateWorkoutVideoInput,
   UploadedVideoVisibility,
   WorkoutDifficulty,
 } from '../types/workoutProgramBuilder.types';
+import type { VideoUploadStatus } from '../types/videoUpload.types';
 import {
   buildCreateVideoInput,
   formatFileSizeMb,
@@ -60,6 +66,14 @@ export function VideoUploadModal({ isOpen, onClose, onSubmit }: VideoUploadModal
   >({});
   const [isReadingDuration, setIsReadingDuration] = useState(false);
   const [durationHint, setDurationHint] = useState<string | null>(null);
+  const [uploadStatus, setUploadStatus] = useState<VideoUploadStatus>('idle');
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const isUploadBusy =
+    uploadStatus === 'preparing' ||
+    uploadStatus === 'uploading' ||
+    uploadStatus === 'processing';
 
   const revokePreviewUrl = useCallback(() => {
     if (previewUrlRef.current) {
@@ -84,6 +98,9 @@ export function VideoUploadModal({ isOpen, onClose, onSubmit }: VideoUploadModal
     setFieldErrors({});
     setIsReadingDuration(false);
     setDurationHint(null);
+    setUploadStatus('idle');
+    setUploadProgress(0);
+    setUploadError(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -152,7 +169,7 @@ export function VideoUploadModal({ isOpen, onClose, onSubmit }: VideoUploadModal
     setFieldErrors((current) => ({ ...current, bodyParts: undefined }));
   };
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
     const values: VideoUploadFormValues = {
@@ -177,15 +194,50 @@ export function VideoUploadModal({ isOpen, onClose, onSubmit }: VideoUploadModal
       isPremium,
     });
 
-    if (!input) {
+    if (!input || !selectedFile) {
       setFieldErrors({ form: '등록 정보를 확인할 수 없습니다.' });
       return;
     }
 
-    const ok = onSubmit(input);
-    if (!ok) {
-      setFieldErrors({ form: '영상 등록에 실패했습니다. 다시 시도해 주세요.' });
+    setUploadError(null);
+    setFieldErrors({});
+    setUploadStatus('preparing');
+    setUploadProgress(0);
+
+    try {
+      const presigned = await requestPresignedUpload({
+        fileName: selectedFile.name,
+        fileSize: selectedFile.size,
+        contentType: selectedFile.type || 'video/*',
+      });
+
+      setUploadStatus('uploading');
+      const uploadResult = await uploadVideoFile({
+        file: selectedFile,
+        presigned,
+        onProgress: (percent) => setUploadProgress(percent),
+      });
+
+      setUploadStatus('processing');
+      await new Promise<void>((resolve) => {
+        window.setTimeout(resolve, 400);
+      });
+
+      setUploadStatus('completed');
+      const ok = onSubmit({ ...input, uploadResult });
+      if (!ok) {
+        setUploadStatus('failed');
+        setUploadError('영상 등록에 실패했습니다. 다시 시도해 주세요.');
+      }
+    } catch {
+      setUploadStatus('failed');
+      setUploadError('업로드 중 오류가 발생했습니다. 다시 시도해 주세요.');
     }
+  };
+
+  const handleClose = () => {
+    if (isUploadBusy) return;
+    onClose();
   };
 
   if (!isOpen) return null;
@@ -195,9 +247,11 @@ export function VideoUploadModal({ isOpen, onClose, onSubmit }: VideoUploadModal
   const descriptionFieldId = `${formId}-description`;
   const tagsFieldId = `${formId}-tags`;
   const durationFieldId = `${formId}-duration`;
+  const statusLabel =
+    uploadStatus !== 'idle' ? getUploadStatusLabel(uploadStatus, uploadProgress) : '';
 
   return (
-    <div className="wpb-modal-backdrop" role="presentation" onClick={onClose}>
+    <div className="wpb-modal-backdrop" role="presentation" onClick={handleClose}>
       <section
         className="wpb-video-upload-modal"
         role="dialog"
@@ -207,7 +261,13 @@ export function VideoUploadModal({ isOpen, onClose, onSubmit }: VideoUploadModal
       >
         <header className="wpb-template-library-header">
           <h2 id="wpb-video-upload-modal-title">영상 등록</h2>
-          <button type="button" className="wpb-icon-btn" onClick={onClose} aria-label="닫기">
+          <button
+            type="button"
+            className="wpb-icon-btn"
+            onClick={handleClose}
+            disabled={isUploadBusy}
+            aria-label="닫기"
+          >
             ✕
           </button>
         </header>
@@ -266,7 +326,8 @@ export function VideoUploadModal({ isOpen, onClose, onSubmit }: VideoUploadModal
               )}
 
               <p className="wpb-video-upload-notice">
-                실제 파일은 저장되지 않으며, 메타데이터만 로컬에 등록됩니다.
+                미리보기는 로컬에서만 사용됩니다. 등록 시 mock 업로드 후 원격 메타데이터만
+                저장됩니다.
               </p>
             </div>
 
@@ -426,12 +487,47 @@ export function VideoUploadModal({ isOpen, onClose, onSubmit }: VideoUploadModal
             </div>
           </div>
 
+          {uploadStatus !== 'idle' && (
+            <div className="wpb-video-upload-progress" aria-live="polite">
+              <p className="wpb-video-upload-progress-label" role="status">
+                {statusLabel}
+              </p>
+              <div
+                className="wpb-video-upload-progress-track"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={uploadProgress}
+                aria-label="업로드 진행률"
+              >
+                <span
+                  className="wpb-video-upload-progress-bar"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+              {uploadError && (
+                <p className="wpb-field-error" role="alert">
+                  {uploadError}
+                </p>
+              )}
+            </div>
+          )}
+
           <footer className="wpb-video-upload-form-footer">
-            <button type="button" className="wpb-btn wpb-btn-ghost" onClick={onClose}>
+            <button
+              type="button"
+              className="wpb-btn wpb-btn-ghost"
+              onClick={handleClose}
+              disabled={isUploadBusy}
+            >
               취소
             </button>
-            <button type="submit" className="wpb-btn wpb-btn-primary" disabled={isReadingDuration}>
-              영상 등록
+            <button
+              type="submit"
+              className="wpb-btn wpb-btn-primary"
+              disabled={isReadingDuration || isUploadBusy}
+            >
+              {isUploadBusy ? '업로드 중…' : '영상 등록'}
             </button>
           </footer>
         </form>

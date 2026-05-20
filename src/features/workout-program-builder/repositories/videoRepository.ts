@@ -16,6 +16,7 @@ import type {
   CreateWorkoutVideoInput,
   UpdateWorkoutVideoInput,
   WorkoutVideo,
+  WorkoutVideoUploadMeta,
 } from '../types/workoutProgramBuilder.types';
 import { isUploadedVideo } from '../utils/videoManageUtils';
 import {
@@ -51,14 +52,55 @@ export function filterVideos(
   return filterWorkoutVideos(videos, filters);
 }
 
+function isPersistableRemoteUrl(url: string | undefined): url is string {
+  if (!url) return false;
+  return !url.startsWith('blob:');
+}
+
+function buildUploadMeta(
+  input: CreateWorkoutVideoInput,
+  uploadResult: CreateWorkoutVideoInput['uploadResult'],
+): WorkoutVideoUploadMeta {
+  const uploadedAt = uploadResult?.uploadedAt ?? new Date().toISOString();
+  const meta: WorkoutVideoUploadMeta = {
+    originalFileName: uploadResult?.fileName ?? input.originalFileName,
+    fileSizeBytes: uploadResult?.fileSize ?? input.fileSizeBytes,
+    mimeType: uploadResult?.contentType ?? input.mimeType,
+    uploadedAt,
+  };
+
+  if (uploadResult) {
+    meta.storageKey = uploadResult.storageKey;
+    meta.provider = uploadResult.provider;
+    if (isPersistableRemoteUrl(uploadResult.playbackUrl)) {
+      meta.playbackUrl = uploadResult.playbackUrl;
+    }
+    if (isPersistableRemoteUrl(uploadResult.thumbnailUrl)) {
+      meta.remoteThumbnailUrl = uploadResult.thumbnailUrl;
+    }
+  }
+
+  return meta;
+}
+
 export function createVideo(input: CreateWorkoutVideoInput): WorkoutVideo | null {
-  const now = new Date().toISOString();
+  const uploadResult = input.uploadResult;
+  const thumbnailUrl =
+    uploadResult && isPersistableRemoteUrl(uploadResult.thumbnailUrl)
+      ? uploadResult.thumbnailUrl
+      : UPLOADED_VIDEO_PLACEHOLDER_THUMBNAIL;
+  const previewUrl =
+    uploadResult && isPersistableRemoteUrl(uploadResult.playbackUrl)
+      ? uploadResult.playbackUrl
+      : undefined;
+
   const video: WorkoutVideo = {
     id: createVideoId(),
     title: input.title,
     description: input.description,
     durationSec: input.durationSec,
-    thumbnailUrl: UPLOADED_VIDEO_PLACEHOLDER_THUMBNAIL,
+    thumbnailUrl,
+    previewUrl,
     tags: input.tags,
     difficulty: input.difficulty,
     bodyParts: input.bodyParts,
@@ -66,12 +108,7 @@ export function createVideo(input: CreateWorkoutVideoInput): WorkoutVideo | null
     sourceType: mapVisibilityToSourceType(input.visibility),
     contentSource: 'own',
     isPremium: input.isPremium,
-    uploadMeta: {
-      originalFileName: input.originalFileName,
-      fileSizeBytes: input.fileSizeBytes,
-      mimeType: input.mimeType,
-      uploadedAt: now,
-    },
+    uploadMeta: buildUploadMeta(input, uploadResult),
   };
 
   if (!saveUploadedVideo(video)) return null;

@@ -1,3 +1,5 @@
+import type { VideoStorageProvider, VideoUploadResult } from './videoUpload.types';
+
 export type WorkoutDifficulty = 'beginner' | 'intermediate' | 'advanced';
 
 export type TemplateVisibility =
@@ -17,6 +19,13 @@ export interface WorkoutVideoUploadMeta {
   fileSizeBytes: number;
   mimeType: string;
   uploadedAt: string;
+  /** Remote object key after presigned upload (API-ready). */
+  storageKey?: string;
+  /** Remote playback URL — never a blob: URL. */
+  playbackUrl?: string;
+  /** Remote thumbnail URL when different from WorkoutVideo.thumbnailUrl. */
+  remoteThumbnailUrl?: string;
+  provider?: VideoStorageProvider;
 }
 
 export interface CreateWorkoutVideoInput {
@@ -32,6 +41,8 @@ export interface CreateWorkoutVideoInput {
   originalFileName: string;
   fileSizeBytes: number;
   mimeType: string;
+  /** Set after mock/real upload pipeline completes. */
+  uploadResult?: VideoUploadResult;
 }
 
 export interface UpdateWorkoutVideoInput {
