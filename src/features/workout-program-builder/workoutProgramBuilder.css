@@ -2075,6 +2075,16 @@
   .wpb-root {
     --wpb-mobile-tabs-height: 48px;
     --wpb-bottom-bar-height: 88px;
+    height: auto;
+    min-height: 100dvh;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .wpb-body {
+    flex: none;
+    overflow: visible;
+    min-height: auto;
   }
 
   .wpb-mobile-tabs {
@@ -2092,38 +2102,59 @@
   .wpb-main {
     display: flex;
     flex-direction: column;
-    min-height: 0;
+    flex: none;
+    min-height: auto;
     min-width: 0;
-    overflow: hidden;
+    overflow: visible;
+  }
+
+  .wpb-panel {
+    overflow: visible;
+    min-height: auto;
   }
 
   .wpb-main > .wpb-panel {
     display: none;
-    flex: 1;
-    min-height: 0;
+    flex: none;
+    min-height: auto;
     min-width: 0;
+    overflow: visible;
     border-right: none;
   }
 
   .wpb-main--mobile-tab-videos .wpb-panel-library {
     display: flex;
     flex-direction: column;
-    flex: 1 1 auto;
-    min-height: 0;
+    flex: none;
+    height: auto;
+    min-height: auto;
+    overflow: visible;
   }
 
   .wpb-main--mobile-tab-timeline .wpb-panel-timeline {
     display: flex;
     flex-direction: column;
-    flex: 1 1 auto;
-    min-height: 0;
+    flex: none;
+    height: auto;
+    min-height: auto;
+    overflow: visible;
   }
 
   .wpb-main--mobile-tab-settings .wpb-panel-right {
     display: flex;
     flex-direction: column;
-    flex: 1 1 auto;
-    min-height: 0;
+    flex: none;
+    height: auto;
+    min-height: auto;
+    overflow: visible;
+  }
+
+  .wpb-main > .wpb-panel .wpb-panel-scroll,
+  .wpb-main > .wpb-panel .wpb-panel-scroll--right {
+    flex: none;
+    overflow: visible;
+    min-height: auto;
+    overscroll-behavior: auto;
   }
 
   .wpb-panel-header-row {
@@ -2213,33 +2244,28 @@
     min-height: 40px;
   }
 
-  .wpb-panel-scroll:not(.wpb-library-scroll-area) {
-    padding: 8px 16px calc(var(--wpb-bottom-bar-height) + 12px);
+  .wpb-panel-scroll:not(.wpb-library-scroll-area),
+  .wpb-panel-scroll--right {
+    padding: 8px 16px 16px;
   }
 
-  /* Video tab: filters fixed height, list area fills remaining space (active tab only) */
+  /* Video tab: document flow — no nested list scroll */
   .wpb-main--mobile-tab-videos .wpb-panel-library .wpb-library-scroll-area {
-    flex: 1 1 auto;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    overflow-y: hidden;
-    padding: 6px 12px 12px;
+    display: block;
+    flex: none;
+    min-height: auto;
+    overflow: visible;
+    padding: 8px 12px 16px;
   }
 
   .wpb-main--mobile-tab-videos .wpb-panel-library .wpb-library-preview {
-    flex: 0 0 auto;
-    margin-bottom: 10px;
+    display: none;
   }
 
   .wpb-main--mobile-tab-videos .wpb-panel-library .wpb-video-list-area {
-    flex: 1 1 auto;
-    min-height: 200px;
-    overflow-y: auto;
-    overflow-x: hidden;
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
+    flex: none;
+    min-height: auto;
+    overflow: visible;
   }
 
   .wpb-main--mobile-tab-videos .wpb-panel-library .wpb-video-list-area .wpb-empty {
@@ -2247,10 +2273,6 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-  }
-
-  .wpb-panel-scroll--right {
-    padding: 8px 16px calc(var(--wpb-bottom-bar-height) + 12px);
   }
 
   .wpb-right-preview {
@@ -2369,7 +2391,7 @@
   }
 
   .wpb-status-toast {
-    bottom: calc(var(--wpb-bottom-bar-height) + 8px);
+    bottom: 16px;
     right: 16px;
     left: 16px;
   }
@@ -2416,15 +2438,6 @@
   .wpb-root {
     --wpb-header-height: 48px;
     --wpb-bottom-bar-height: 140px;
-    --wpb-mobile-video-list-min-h: min(
-      360px,
-      calc(
-        100dvh - var(--wpb-header-height) - var(--wpb-mobile-tabs-height) -
-          var(--wpb-bottom-bar-height) - 230px
-      )
-    );
-    height: 100dvh;
-    min-height: 100dvh;
   }
 
   .wpb-header {
@@ -2474,17 +2487,13 @@
   .wpb-panel-scroll--right {
     padding-left: 12px;
     padding-right: 12px;
-    padding-bottom: calc(var(--wpb-bottom-bar-height) + 10px);
+    padding-bottom: 16px;
   }
 
   .wpb-main--mobile-tab-videos .wpb-panel-library .wpb-library-scroll-area {
     padding-left: 12px;
     padding-right: 12px;
-    padding-bottom: 12px;
-  }
-
-  .wpb-main--mobile-tab-videos .wpb-panel-library .wpb-video-list-area {
-    min-height: var(--wpb-mobile-video-list-min-h);
+    padding-bottom: 16px;
   }
 
   .wpb-panel-right .wpb-panel-header {
