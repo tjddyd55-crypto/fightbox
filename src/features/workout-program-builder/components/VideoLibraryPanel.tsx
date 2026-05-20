@@ -47,7 +47,7 @@ export function VideoLibraryPanel({
   return (
     <section
       id="wpb-mobile-panel-videos"
-      className="wpb-panel wpb-panel-library"
+      className="wpb-panel wpb-panel-library wpb-video-tab-panel"
       role="tabpanel"
       aria-labelledby="wpb-mobile-tab-videos"
       aria-label="영상 라이브러리"
@@ -91,11 +91,15 @@ export function VideoLibraryPanel({
           onRepeatableOnlyChange={setRepeatableOnly}
         />
       </section>
-      <section className="wpb-panel-scroll" aria-label="영상 목록">
+      <section
+        className="wpb-panel-scroll wpb-library-scroll-area"
+        aria-label="영상 목록"
+      >
         {previewVideo && (
           <VideoLibraryPreview video={previewVideo} onAdd={() => onAddVideo(previewVideo)} />
         )}
-        {filteredVideos.length === 0 ? (
+        <div className="wpb-video-list-area">
+          {filteredVideos.length === 0 ? (
           <div className="wpb-empty">
             <p className="wpb-empty-title">조건에 맞는 영상이 없습니다</p>
             <p className="wpb-empty-desc">검색어나 필터를 변경하거나 초기화해 보세요.</p>
@@ -117,7 +121,8 @@ export function VideoLibraryPanel({
               />
             ))}
           </div>
-        )}
+          )}
+        </div>
       </section>
     </section>
   );
