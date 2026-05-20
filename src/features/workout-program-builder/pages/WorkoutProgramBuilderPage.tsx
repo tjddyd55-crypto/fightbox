@@ -9,6 +9,7 @@ import { ShareSubmissionModal } from '../components/ShareSubmissionModal';
 import { TemplateLibraryModal } from '../components/TemplateLibraryModal';
 import { TestPlaybackModal } from '../components/TestPlaybackModal';
 import { VideoLibraryPanel } from '../components/VideoLibraryPanel';
+import { VideoUploadModal } from '../components/VideoUploadModal';
 import { useProgramBuilderState } from '../hooks/useProgramBuilderState';
 import { useVideoLibraryFilters } from '../hooks/useVideoLibraryFilters';
 import { isCompactLayout } from '../utils/viewportUtils';
@@ -21,6 +22,7 @@ export function WorkoutProgramBuilderPage() {
   const [mobileTab, setMobileTab] = useState<MobileBuilderTab>('timeline');
   const [isTemplateLibraryOpen, setIsTemplateLibraryOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isVideoUploadOpen, setIsVideoUploadOpen] = useState(false);
   const { setSelectedBlockId } = state;
 
   const handleSelectBlock = useCallback(
@@ -64,6 +66,7 @@ export function WorkoutProgramBuilderPage() {
             videos={state.videos}
             filterState={videoFilterState}
             onAddVideo={handleAddVideo}
+            onOpenUpload={() => setIsVideoUploadOpen(true)}
           />
           <ProgramTimelinePanel
             blocks={state.blocks}
@@ -132,6 +135,20 @@ export function WorkoutProgramBuilderPage() {
         onSubmit={(payload) => {
           state.submitPublicShare(payload);
           setIsShareModalOpen(false);
+        }}
+      />
+      <VideoUploadModal
+        isOpen={isVideoUploadOpen}
+        onClose={() => setIsVideoUploadOpen(false)}
+        onSubmit={(input) => {
+          const created = state.registerVideo(input);
+          if (!created) return false;
+          videoFilterState.setSelectedVideoId(created.id);
+          if (isCompactLayout()) {
+            setMobileTab('videos');
+          }
+          setIsVideoUploadOpen(false);
+          return true;
         }}
       />
       <TemplateLibraryModal

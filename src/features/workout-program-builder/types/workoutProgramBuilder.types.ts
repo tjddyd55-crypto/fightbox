@@ -9,6 +9,31 @@ export type TemplateVisibility =
 
 export type ContentSourceKind = 'own' | 'shared' | 'public';
 
+/** Visibility when registering a video locally (public_pending excluded). */
+export type UploadedVideoVisibility = 'private' | 'gym_only';
+
+export interface WorkoutVideoUploadMeta {
+  originalFileName: string;
+  fileSizeBytes: number;
+  mimeType: string;
+  uploadedAt: string;
+}
+
+export interface CreateWorkoutVideoInput {
+  title: string;
+  description?: string;
+  durationSec: number;
+  tags: string[];
+  bodyParts: string[];
+  difficulty: WorkoutDifficulty;
+  isLoopable: boolean;
+  visibility: UploadedVideoVisibility;
+  isPremium?: boolean;
+  originalFileName: string;
+  fileSizeBytes: number;
+  mimeType: string;
+}
+
 export interface WorkoutVideo {
   id: string;
   title: string;
@@ -27,6 +52,8 @@ export interface WorkoutVideo {
   creditCost?: number;
   rewardCredit?: number;
   isPremium?: boolean;
+  /** Metadata for locally registered uploads (no file/blob stored). */
+  uploadMeta?: WorkoutVideoUploadMeta;
 }
 
 export type ProgramBlockType = 'video' | 'rest' | 'countdown' | 'voice';

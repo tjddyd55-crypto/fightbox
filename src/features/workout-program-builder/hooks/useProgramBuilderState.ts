@@ -7,6 +7,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { mockProgramTemplate } from '../data/mockProgramTemplate';
 import type {
+  CreateWorkoutVideoInput,
   ProgramBlock,
   PublicShareSubmissionPayload,
   VideoProgramBlock,
@@ -20,7 +21,7 @@ import {
   saveTemplate as persistTemplate,
   submitTemplateForPublicReview,
 } from '../repositories/programTemplateRepository';
-import { listVideos } from '../repositories/videoRepository';
+import { createVideo, listVideos } from '../repositories/videoRepository';
 import {
   buildWorkoutVideoMap,
   cloneBlocksWithNewIds,
@@ -53,9 +54,9 @@ export function useProgramBuilderState() {
   );
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isTestPlaying, setIsTestPlaying] = useState(false);
+  const [videos, setVideos] = useState<WorkoutVideo[]>(() => listVideos());
 
   const blocks = template.blocks;
-  const videos = listVideos();
   const videoMap = useMemo(() => buildWorkoutVideoMap(videos), [videos]);
 
   const totalDurationSec = useMemo(
@@ -271,6 +272,20 @@ export function useProgramBuilderState() {
     [appendBlock, blocks.length],
   );
 
+  const registerVideo = useCallback(
+    (input: CreateWorkoutVideoInput): WorkoutVideo | null => {
+      const created = createVideo(input);
+      if (!created) {
+        showMessage('영상 등록에 실패했습니다. 브라우저 저장 공간을 확인해 주세요.');
+        return null;
+      }
+      setVideos(listVideos());
+      showMessage(`「${created.title}」 영상이 등록되었습니다.`);
+      return created;
+    },
+    [showMessage],
+  );
+
   const addVideoBlock = useCallback(
     (videoId: string) => {
       const video = getVideoById(videos, videoId);
@@ -413,6 +428,7 @@ export function useProgramBuilderState() {
     setSelectedBlockId,
     addVideoToTimeline,
     addVideoBlock,
+    registerVideo,
     addRestBlock,
     addCountdownBlock,
     addVoiceBlock,

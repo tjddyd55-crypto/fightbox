@@ -690,6 +690,41 @@
   background: #1f2026;
 }
 
+.wpb-btn-outline {
+  background: transparent;
+  color: #ffd60a;
+  border: 1px solid #ffd60a;
+}
+
+.wpb-btn-outline:hover:not(:disabled) {
+  background: rgba(255, 214, 10, 0.12);
+}
+
+.wpb-panel-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.wpb-panel-header-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.wpb-video-upload-btn {
+  flex-shrink: 0;
+  min-height: 40px;
+  align-self: center;
+}
+
+.wpb-library-controls-top {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .wpb-btn-add {
   background: #2c2d34;
   color: #ffffff;
@@ -889,6 +924,189 @@
   justify-content: flex-end;
   gap: 8px;
   margin-top: 4px;
+}
+
+.wpb-video-upload-modal {
+  width: min(720px, 100%);
+  max-height: min(92vh, calc(100dvh - 48px));
+  background: #15161a;
+  border: 1px solid #2c2d34;
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.wpb-video-upload-form {
+  padding: 16px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.wpb-video-upload-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+}
+
+.wpb-video-upload-col {
+  min-width: 0;
+}
+
+.wpb-video-upload-file-meta {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #2c2d34;
+  background: #1f2026;
+  font-size: 13px;
+  color: #a7aab3;
+}
+
+.wpb-video-upload-file-meta p {
+  margin: 0 0 6px;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.wpb-video-upload-file-meta p:last-child {
+  margin-bottom: 0;
+}
+
+.wpb-meta-label {
+  flex-shrink: 0;
+  min-width: 44px;
+  color: #6f737c;
+  font-size: 12px;
+}
+
+.wpb-video-upload-preview {
+  margin-bottom: 12px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #2c2d34;
+  background: #0b0b0e;
+}
+
+.wpb-video-upload-player {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  background: #0b0b0e;
+}
+
+.wpb-video-upload-notice {
+  margin: 0;
+  font-size: 12px;
+  color: #6f737c;
+  line-height: 1.5;
+}
+
+.wpb-video-upload-form-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid #2c2d34;
+}
+
+.wpb-form-error-banner {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+  font-size: 13px;
+}
+
+.wpb-field-error {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #ef4444;
+}
+
+.wpb-field-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #a7aab3;
+}
+
+.wpb-file-input {
+  width: 100%;
+  font-size: 13px;
+  color: #a7aab3;
+}
+
+.wpb-file-input::file-selector-button {
+  margin-right: 10px;
+  padding: 8px 12px;
+  border: 1px solid #2c2d34;
+  border-radius: 8px;
+  background: #1f2026;
+  color: #ffffff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.wpb-file-input::file-selector-button:hover {
+  border-color: #ffd60a;
+}
+
+.wpb-body-part-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.wpb-body-part-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid #2c2d34;
+  background: #1f2026;
+  color: #a7aab3;
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.wpb-body-part-option:has(input:checked) {
+  border-color: #ffd60a;
+  background: rgba(255, 214, 10, 0.12);
+  color: #ffd60a;
+}
+
+.wpb-body-part-option input {
+  accent-color: #ffd60a;
+}
+
+.wpb-field textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #2c2d34;
+  background: #15161a;
+  color: #ffffff;
+  font-size: 14px;
+  resize: vertical;
+  min-height: 72px;
+  font-family: inherit;
+}
+
+.wpb-field textarea:focus,
+.wpb-field textarea:focus-visible {
+  outline: none;
+  border-color: #ffd60a;
+  box-shadow: 0 0 0 2px rgba(255, 214, 10, 0.2);
 }
 
 .wpb-visibility-badge {
@@ -1925,6 +2143,22 @@
     display: flex;
   }
 
+  .wpb-panel-header-row {
+    align-items: center;
+  }
+
+  .wpb-video-upload-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .wpb-video-upload-form-footer .wpb-btn {
+    min-height: 44px;
+  }
+
+  .wpb-video-upload-modal {
+    max-width: calc(100vw - 24px);
+  }
+
   .wpb-panel-library .wpb-panel-header p,
   .wpb-panel-timeline .wpb-panel-header p {
     display: none;
@@ -2280,6 +2514,48 @@
   .wpb-status-toast {
     right: 12px;
     left: 12px;
+  }
+
+  /* Video tab: reclaim scroll height (bottom bar is outside wpb-body, not overlaying) */
+  .wpb-panel-library {
+    min-height: 0;
+  }
+
+  .wpb-panel-library .wpb-panel-controls .wpb-library-filters {
+    margin-top: 8px;
+    gap: 8px;
+  }
+
+  .wpb-panel-library .wpb-panel-scroll {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding-top: 6px;
+    padding-bottom: 12px;
+  }
+
+  .wpb-panel-library .wpb-library-preview {
+    flex-shrink: 0;
+    margin-bottom: 10px;
+  }
+
+  .wpb-panel-library .wpb-video-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .wpb-panel-library .wpb-empty {
+    flex: 1;
+    min-height: 160px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
 }
 

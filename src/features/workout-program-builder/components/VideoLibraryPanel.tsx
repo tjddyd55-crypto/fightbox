@@ -10,9 +10,15 @@ interface VideoLibraryPanelProps {
   videos: WorkoutVideo[];
   filterState: VideoLibraryFilterState;
   onAddVideo: (video: WorkoutVideo) => void;
+  onOpenUpload: () => void;
 }
 
-export function VideoLibraryPanel({ videos, filterState, onAddVideo }: VideoLibraryPanelProps) {
+export function VideoLibraryPanel({
+  videos,
+  filterState,
+  onAddVideo,
+  onOpenUpload,
+}: VideoLibraryPanelProps) {
   const {
     filters,
     filteredVideos,
@@ -46,12 +52,24 @@ export function VideoLibraryPanel({ videos, filterState, onAddVideo }: VideoLibr
       aria-labelledby="wpb-mobile-tab-videos"
       aria-label="영상 라이브러리"
     >
-      <header className="wpb-panel-header">
-        <h2>영상 라이브러리</h2>
-        <p>검색 · 필터 후 타임라인에 추가</p>
+      <header className="wpb-panel-header wpb-panel-header--library">
+        <div className="wpb-panel-header-row">
+          <div className="wpb-panel-header-text">
+            <h2>영상 라이브러리</h2>
+            <p>검색 · 필터 후 타임라인에 추가</p>
+          </div>
+          <button
+            type="button"
+            className="wpb-btn wpb-btn-outline wpb-video-upload-btn"
+            onClick={onOpenUpload}
+          >
+            영상 등록
+          </button>
+        </div>
       </header>
       <section className="wpb-panel-controls">
-        <input
+        <div className="wpb-library-controls-top">
+          <input
           type="search"
           className="wpb-search"
           placeholder="제목, 태그, 부위, 난이도 검색..."
@@ -59,6 +77,7 @@ export function VideoLibraryPanel({ videos, filterState, onAddVideo }: VideoLibr
           onChange={(e) => setSearchQuery(e.target.value)}
           aria-label="영상 검색"
         />
+        </div>
         <VideoLibraryFiltersBar
           tags={tags}
           selectedTags={filters.selectedTags}
