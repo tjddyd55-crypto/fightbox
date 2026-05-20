@@ -1240,6 +1240,15 @@
   color: #f472b6;
 }
 
+.wpb-mobile-order-inline {
+  display: none;
+}
+
+.wpb-mobile-order-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
 .wpb-timeline-menu-wrap {
   position: relative;
   flex-shrink: 0;
@@ -2236,6 +2245,25 @@
 
   .wpb-drag-handle {
     display: none;
+  }
+
+  .wpb-mobile-order-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+    padding: 0 2px;
+  }
+
+  .wpb-mobile-order-btn {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    min-height: 28px;
+    padding: 0;
+    border-radius: 6px;
+    font-size: 14px;
+    line-height: 1;
   }
 
   .wpb-timeline-row {

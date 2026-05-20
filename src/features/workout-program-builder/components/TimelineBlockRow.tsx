@@ -111,6 +111,27 @@ export function TimelineBlockRow({
         <span className="wpb-timeline-duration">{formatDuration(displayDurationSec)}</span>
       </button>
 
+      <div className="wpb-mobile-order-inline" onClick={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          className="wpb-icon-btn wpb-mobile-order-btn"
+          disabled={!canMoveUp}
+          aria-label={`${block.title} 위로 이동`}
+          onClick={() => onMoveUp(block.id, 'up')}
+        >
+          ↑
+        </button>
+        <button
+          type="button"
+          className="wpb-icon-btn wpb-mobile-order-btn"
+          disabled={!canMoveDown}
+          aria-label={`${block.title} 아래로 이동`}
+          onClick={() => onMoveDown(block.id, 'down')}
+        >
+          ↓
+        </button>
+      </div>
+
       <div ref={menuWrapRef} className="wpb-timeline-menu-wrap">
         <button
           type="button"
