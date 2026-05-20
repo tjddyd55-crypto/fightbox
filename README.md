@@ -51,6 +51,56 @@ npm run dev
 
 상세 구현 상태는 [dev/workout_program_builder_feature_status.md](dev/workout_program_builder_feature_status.md)를 참고하세요.
 
+### 영상 업로드 (mock / API adapter)
+
+프론트는 `videoUploadService`가 선택한 adapter로 presign → PUT 업로드를 수행합니다. 기본값은 **mock**이며, 백엔드 연동 시 환경변수로 전환합니다.
+
+| 환경변수 | 설명 |
+|----------|------|
+| `VITE_VIDEO_UPLOAD_PROVIDER` | `mock` (기본) 또는 `api` |
+| `VITE_API_BASE_URL` | `api`일 때 백엔드 origin (예: `http://localhost:3000`) |
+
+`.env.example`을 복사해 `.env.local`에 설정하세요.
+
+#### Presign API 계약
+
+`POST {VITE_API_BASE_URL}/api/workout-videos/uploads/presign`
+
+**Request**
+
+```json
+{
+  "fileName": "squat-demo.mp4",
+  "fileSize": 10485760,
+  "contentType": "video/mp4",
+  "gymId": "optional-gym-id",
+  "uploaderId": "optional-user-id"
+}
+```
+
+**Response**
+
+```json
+{
+  "uploadUrl": "https://...",
+  "storageKey": "videos/...",
+  "playbackUrl": "https://...",
+  "thumbnailUrl": "https://...",
+  "expiresAt": "2026-05-19T12:00:00.000Z"
+}
+```
+
+**파일 업로드 (클라이언트 → 스토리지)**
+
+```
+PUT {uploadUrl}
+Content-Type: {contentType}
+Body: raw file bytes
+```
+
+타입 정의: `src/features/workout-program-builder/types/videoUpload.types.ts`  
+Adapter: `mockVideoUploadAdapter.ts`, `apiVideoUploadAdapter.ts`
+
 ## 문서
 
 - `dev/fightbox_workout_program_builder_feature_steps.md` — 단계별 개발 지시서

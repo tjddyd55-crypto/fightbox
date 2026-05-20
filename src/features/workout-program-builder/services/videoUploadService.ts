@@ -1,73 +1,37 @@
-import { UPLOADED_VIDEO_PLACEHOLDER_THUMBNAIL } from '../constants/builderConstants';
 import type {
   PresignedUploadRequest,
   PresignedUploadResponse,
+  UploadProviderKind,
   UploadVideoFileParams,
+  VideoUploadAdapter,
   VideoUploadResult,
   VideoUploadStatus,
 } from '../types/videoUpload.types';
+import { apiVideoUploadAdapter } from './apiVideoUploadAdapter';
+import { mockVideoUploadAdapter } from './mockVideoUploadAdapter';
+import { resolveUploadProviderKind } from './videoUploadConfig';
 
-const MOCK_STORAGE_BASE = 'https://mock-storage.fightbox.local';
-const PROGRESS_STEPS = [0, 20, 50, 80, 100] as const;
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, ms);
-  });
+function selectAdapter(kind: UploadProviderKind): VideoUploadAdapter {
+  return kind === 'api' ? apiVideoUploadAdapter : mockVideoUploadAdapter;
 }
 
-function sanitizeFileName(fileName: string): string {
-  return fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+function getActiveAdapter(): VideoUploadAdapter {
+  return selectAdapter(resolveUploadProviderKind());
 }
 
-function buildStorageKey(fileName: string): string {
-  const safeName = sanitizeFileName(fileName);
-  return `videos/${Date.now()}_${safeName}`;
-}
+/** Currently configured upload provider (from env). */
+export const activeVideoUploadProvider: UploadProviderKind = resolveUploadProviderKind();
 
-/**
- * Mock presigned URL issuer — replace with backend API call later.
- */
 export async function requestPresignedUpload(
   input: PresignedUploadRequest,
 ): Promise<PresignedUploadResponse> {
-  await delay(350);
-
-  const storageKey = buildStorageKey(input.fileName);
-  const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
-
-  return {
-    uploadUrl: `${MOCK_STORAGE_BASE}/upload/${storageKey}`,
-    storageKey,
-    playbackUrl: `${MOCK_STORAGE_BASE}/${storageKey}`,
-    thumbnailUrl: `${MOCK_STORAGE_BASE}/thumbnails/${storageKey}.jpg`,
-    expiresAt,
-  };
+  return getActiveAdapter().requestPresignedUpload(input);
 }
 
-/**
- * Mock file upload — simulates PUT to presigned URL with progress callbacks.
- */
-export async function uploadVideoFile({
-  file,
-  presigned,
-  onProgress,
-}: UploadVideoFileParams): Promise<VideoUploadResult> {
-  for (const percent of PROGRESS_STEPS) {
-    await delay(220);
-    onProgress?.(percent);
-  }
-
-  return {
-    storageKey: presigned.storageKey,
-    playbackUrl: presigned.playbackUrl,
-    thumbnailUrl: presigned.thumbnailUrl ?? UPLOADED_VIDEO_PLACEHOLDER_THUMBNAIL,
-    fileName: file.name,
-    fileSize: file.size,
-    contentType: file.type || 'video/*',
-    uploadedAt: new Date().toISOString(),
-    provider: 'mock',
-  };
+export async function uploadVideoFile(
+  params: UploadVideoFileParams,
+): Promise<VideoUploadResult> {
+  return getActiveAdapter().uploadVideoFile(params);
 }
 
 export function getUploadStatusLabel(status: VideoUploadStatus, progress: number): string {
