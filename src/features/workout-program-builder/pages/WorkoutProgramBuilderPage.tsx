@@ -8,8 +8,10 @@ import { SelectedBlockPanel } from '../components/SelectedBlockPanel';
 import { ShareSubmissionModal } from '../components/ShareSubmissionModal';
 import { TemplateLibraryModal } from '../components/TemplateLibraryModal';
 import { TestPlaybackModal } from '../components/TestPlaybackModal';
+import { VideoEditModal } from '../components/VideoEditModal';
 import { VideoLibraryPanel } from '../components/VideoLibraryPanel';
 import { VideoUploadModal } from '../components/VideoUploadModal';
+import type { WorkoutVideo } from '../types/workoutProgramBuilder.types';
 import { useProgramBuilderState } from '../hooks/useProgramBuilderState';
 import { useVideoLibraryFilters } from '../hooks/useVideoLibraryFilters';
 import { isCompactLayout } from '../utils/viewportUtils';
@@ -23,7 +25,24 @@ export function WorkoutProgramBuilderPage() {
   const [isTemplateLibraryOpen, setIsTemplateLibraryOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isVideoUploadOpen, setIsVideoUploadOpen] = useState(false);
+  const [editingVideo, setEditingVideo] = useState<WorkoutVideo | null>(null);
   const { setSelectedBlockId } = state;
+
+  const handleEditVideo = useCallback((video: WorkoutVideo) => {
+    setEditingVideo(video);
+  }, []);
+
+  const handleDeleteVideo = useCallback(
+    (video: WorkoutVideo) => {
+      const confirmed = window.confirm(`「${video.title}」 영상을 삭제할까요?`);
+      if (!confirmed) return;
+      if (!state.deleteRegisteredVideo(video.id)) return;
+      if (videoFilterState.selectedVideoId === video.id) {
+        videoFilterState.setSelectedVideoId(null);
+      }
+    },
+    [state, videoFilterState],
+  );
 
   const handleSelectBlock = useCallback(
     (id: string) => {
@@ -67,6 +86,8 @@ export function WorkoutProgramBuilderPage() {
             filterState={videoFilterState}
             onAddVideo={handleAddVideo}
             onOpenUpload={() => setIsVideoUploadOpen(true)}
+            onEditVideo={handleEditVideo}
+            onDeleteVideo={handleDeleteVideo}
           />
           <ProgramTimelinePanel
             blocks={state.blocks}
@@ -148,6 +169,17 @@ export function WorkoutProgramBuilderPage() {
             setMobileTab('videos');
           }
           setIsVideoUploadOpen(false);
+          return true;
+        }}
+      />
+      <VideoEditModal
+        video={editingVideo}
+        isOpen={editingVideo !== null}
+        onClose={() => setEditingVideo(null)}
+        onSubmit={(videoId, input) => {
+          const ok = state.updateRegisteredVideo(videoId, input);
+          if (!ok) return false;
+          setEditingVideo(null);
           return true;
         }}
       />

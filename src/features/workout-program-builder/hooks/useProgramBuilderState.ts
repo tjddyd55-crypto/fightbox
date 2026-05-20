@@ -10,6 +10,7 @@ import type {
   CreateWorkoutVideoInput,
   ProgramBlock,
   PublicShareSubmissionPayload,
+  UpdateWorkoutVideoInput,
   VideoProgramBlock,
   WorkoutProgramTemplate,
   WorkoutVideo,
@@ -21,7 +22,12 @@ import {
   saveTemplate as persistTemplate,
   submitTemplateForPublicReview,
 } from '../repositories/programTemplateRepository';
-import { createVideo, listVideos } from '../repositories/videoRepository';
+import {
+  createVideo,
+  deleteVideo,
+  listVideos,
+  updateVideoMetadata,
+} from '../repositories/videoRepository';
 import {
   buildWorkoutVideoMap,
   cloneBlocksWithNewIds,
@@ -286,6 +292,78 @@ export function useProgramBuilderState() {
     [showMessage],
   );
 
+  const isVideoUsedInTimeline = useCallback(
+    (videoId: string) =>
+      blocks.some((block) => block.type === 'video' && block.videoId === videoId),
+    [blocks],
+  );
+
+  const syncTimelineBlocksForVideo = useCallback(
+    (updated: WorkoutVideo) => {
+      setTemplate((prev) => {
+        const nextBlocks = prev.blocks.map((block) => {
+          if (block.type !== 'video' || block.videoId !== updated.id) return block;
+          const durationSec = computeVideoBlockDuration(
+            updated,
+            block.playMode,
+            block.repeatCount,
+            block.targetDurationSec,
+          );
+          return { ...block, title: updated.title, durationSec };
+        });
+        const videoMap = buildWorkoutVideoMap(
+          videos.map((video) => (video.id === updated.id ? updated : video)),
+        );
+        return {
+          ...prev,
+          blocks: nextBlocks,
+          totalDurationSec: getTimelineTotalDurationSeconds(nextBlocks, videoMap),
+        };
+      });
+    },
+    [videos],
+  );
+
+  const updateRegisteredVideo = useCallback(
+    (videoId: string, input: UpdateWorkoutVideoInput): boolean => {
+      const updated = updateVideoMetadata(videoId, input);
+      if (!updated) {
+        showMessage('영상 수정에 실패했습니다.');
+        return false;
+      }
+      setVideos(listVideos());
+      syncTimelineBlocksForVideo(updated);
+      showMessage('영상 정보가 수정되었습니다.');
+      return true;
+    },
+    [showMessage, syncTimelineBlocksForVideo],
+  );
+
+  const deleteRegisteredVideo = useCallback(
+    (videoId: string): boolean => {
+      if (isVideoUsedInTimeline(videoId)) {
+        showMessage(
+          '이 영상은 현재 타임라인에서 사용 중입니다. 먼저 타임라인에서 제거하세요.',
+        );
+        return false;
+      }
+      if (!deleteVideo(videoId)) {
+        showMessage('영상 삭제에 실패했습니다.');
+        return false;
+      }
+      setVideos(listVideos());
+      if (selectedBlockId) {
+        const selected = blocks.find((block) => block.id === selectedBlockId);
+        if (selected?.type === 'video' && selected.videoId === videoId) {
+          setSelectedBlockId(null);
+        }
+      }
+      showMessage('영상이 삭제되었습니다.');
+      return true;
+    },
+    [blocks, isVideoUsedInTimeline, selectedBlockId, showMessage],
+  );
+
   const addVideoBlock = useCallback(
     (videoId: string) => {
       const video = getVideoById(videos, videoId);
@@ -429,6 +507,9 @@ export function useProgramBuilderState() {
     addVideoToTimeline,
     addVideoBlock,
     registerVideo,
+    updateRegisteredVideo,
+    deleteRegisteredVideo,
+    isVideoUsedInTimeline,
     addRestBlock,
     addCountdownBlock,
     addVoiceBlock,

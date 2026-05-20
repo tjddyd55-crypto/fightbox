@@ -34,6 +34,18 @@ export interface CreateWorkoutVideoInput {
   mimeType: string;
 }
 
+export interface UpdateWorkoutVideoInput {
+  title: string;
+  description?: string;
+  durationSec: number;
+  tags: string[];
+  bodyParts: string[];
+  difficulty: WorkoutDifficulty;
+  isLoopable: boolean;
+  visibility: UploadedVideoVisibility;
+  isPremium?: boolean;
+}
+
 export interface WorkoutVideo {
   id: string;
   title: string;

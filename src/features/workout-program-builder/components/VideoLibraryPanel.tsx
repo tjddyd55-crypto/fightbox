@@ -11,6 +11,8 @@ interface VideoLibraryPanelProps {
   filterState: VideoLibraryFilterState;
   onAddVideo: (video: WorkoutVideo) => void;
   onOpenUpload: () => void;
+  onEditVideo?: (video: WorkoutVideo) => void;
+  onDeleteVideo?: (video: WorkoutVideo) => void;
 }
 
 export function VideoLibraryPanel({
@@ -18,6 +20,8 @@ export function VideoLibraryPanel({
   filterState,
   onAddVideo,
   onOpenUpload,
+  onEditVideo,
+  onDeleteVideo,
 }: VideoLibraryPanelProps) {
   const {
     filters,
@@ -118,6 +122,8 @@ export function VideoLibraryPanel({
                 isSelected={video.id === selectedVideoId}
                 onSelect={setSelectedVideoId}
                 onAdd={onAddVideo}
+                onEdit={onEditVideo}
+                onDelete={onDeleteVideo}
               />
             ))}
           </div>

@@ -1,4 +1,9 @@
-import type { CreateWorkoutVideoInput } from '../types/workoutProgramBuilder.types';
+import type {
+  CreateWorkoutVideoInput,
+  UpdateWorkoutVideoInput,
+  UploadedVideoVisibility,
+  WorkoutDifficulty,
+} from '../types/workoutProgramBuilder.types';
 
 export interface VideoUploadFormValues {
   file: File | null;
@@ -92,6 +97,69 @@ export function validateVideoUploadForm(
   return {
     isValid: Object.keys(fieldErrors).length === 0,
     fieldErrors,
+  };
+}
+
+export interface VideoEditFormValues {
+  title: string;
+  description: string;
+  tagsText: string;
+  bodyParts: string[];
+  difficulty: WorkoutDifficulty | '';
+  durationSec: number;
+}
+
+export function validateVideoEditForm(
+  values: VideoEditFormValues,
+): VideoUploadValidationResult {
+  const fieldErrors: VideoUploadValidationResult['fieldErrors'] = {};
+
+  if (!values.title.trim()) {
+    fieldErrors.title = '제목을 입력해 주세요.';
+  }
+
+  if (values.durationSec <= 0) {
+    fieldErrors.durationSec = '길이는 1초 이상이어야 합니다.';
+  }
+
+  if (!values.difficulty) {
+    fieldErrors.difficulty = '난이도를 선택해 주세요.';
+  }
+
+  if (values.bodyParts.length === 0) {
+    fieldErrors.bodyParts = '운동 부위를 최소 1개 선택해 주세요.';
+  }
+
+  if (parseTagsInput(values.tagsText).length === 0) {
+    fieldErrors.tagsText = '태그를 최소 1개 입력해 주세요.';
+  }
+
+  return {
+    isValid: Object.keys(fieldErrors).length === 0,
+    fieldErrors,
+  };
+}
+
+export function buildUpdateVideoInput(
+  values: VideoEditFormValues,
+  options: {
+    visibility: UploadedVideoVisibility;
+    isLoopable: boolean;
+    isPremium: boolean;
+  },
+): UpdateWorkoutVideoInput | null {
+  if (!values.difficulty) return null;
+
+  return {
+    title: values.title.trim(),
+    description: values.description.trim() || undefined,
+    durationSec: values.durationSec,
+    tags: parseTagsInput(values.tagsText),
+    bodyParts: values.bodyParts,
+    difficulty: values.difficulty,
+    isLoopable: options.isLoopable,
+    visibility: options.visibility,
+    isPremium: options.isPremium,
   };
 }
 

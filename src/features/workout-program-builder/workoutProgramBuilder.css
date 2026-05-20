@@ -646,6 +646,25 @@
   margin-top: auto;
 }
 
+.wpb-video-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.wpb-video-manage-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.wpb-video-manage-menu {
+  right: 0;
+  top: auto;
+  bottom: 100%;
+  margin: 0 0 4px;
+}
+
 .wpb-body-parts {
   font-size: 11px;
   color: #6f737c;

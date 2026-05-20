@@ -66,3 +66,10 @@ export function updateUploadedVideo(
   if (!writeAll(next)) return null;
   return updated;
 }
+
+export function deleteUploadedVideo(videoId: string): boolean {
+  const list = readRaw();
+  const next = list.filter((item) => item.id !== videoId);
+  if (next.length === list.length) return false;
+  return writeAll(next);
+}
