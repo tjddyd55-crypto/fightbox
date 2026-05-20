@@ -2107,14 +2107,23 @@
 
   .wpb-main--mobile-tab-videos .wpb-panel-library {
     display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
   }
 
   .wpb-main--mobile-tab-timeline .wpb-panel-timeline {
     display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
   }
 
   .wpb-main--mobile-tab-settings .wpb-panel-right {
     display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
   }
 
   .wpb-panel-header-row {
@@ -2208,15 +2217,8 @@
     padding: 8px 16px calc(var(--wpb-bottom-bar-height) + 12px);
   }
 
-  /* Video tab: filters fixed height, list area fills remaining space */
-  .wpb-panel-library.wpb-video-tab-panel {
-    display: flex;
-    flex-direction: column;
-    flex: 1 1 auto;
-    min-height: 0;
-  }
-
-  .wpb-panel-library .wpb-library-scroll-area {
+  /* Video tab: filters fixed height, list area fills remaining space (active tab only) */
+  .wpb-main--mobile-tab-videos .wpb-panel-library .wpb-library-scroll-area {
     flex: 1 1 auto;
     min-height: 0;
     display: flex;
@@ -2226,12 +2228,12 @@
     padding: 6px 12px 12px;
   }
 
-  .wpb-panel-library .wpb-library-preview {
+  .wpb-main--mobile-tab-videos .wpb-panel-library .wpb-library-preview {
     flex: 0 0 auto;
     margin-bottom: 10px;
   }
 
-  .wpb-panel-library .wpb-video-list-area {
+  .wpb-main--mobile-tab-videos .wpb-panel-library .wpb-video-list-area {
     flex: 1 1 auto;
     min-height: 200px;
     overflow-y: auto;
@@ -2240,7 +2242,7 @@
     -webkit-overflow-scrolling: touch;
   }
 
-  .wpb-panel-library .wpb-video-list-area .wpb-empty {
+  .wpb-main--mobile-tab-videos .wpb-panel-library .wpb-video-list-area .wpb-empty {
     min-height: 10rem;
     display: flex;
     flex-direction: column;
@@ -2475,13 +2477,13 @@
     padding-bottom: calc(var(--wpb-bottom-bar-height) + 10px);
   }
 
-  .wpb-panel-library .wpb-library-scroll-area {
+  .wpb-main--mobile-tab-videos .wpb-panel-library .wpb-library-scroll-area {
     padding-left: 12px;
     padding-right: 12px;
     padding-bottom: 12px;
   }
 
-  .wpb-panel-library .wpb-video-list-area {
+  .wpb-main--mobile-tab-videos .wpb-panel-library .wpb-video-list-area {
     min-height: var(--wpb-mobile-video-list-min-h);
   }
 
