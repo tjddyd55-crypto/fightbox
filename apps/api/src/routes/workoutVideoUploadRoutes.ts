@@ -36,6 +36,10 @@ router.post('/presign', async (req, res) => {
       ...(typeof uploaderId === 'string' ? { uploaderId } : {}),
     });
 
+    if (result.debug) {
+      console.info('[presign]', result.debug);
+    }
+
     res.status(200).json(result);
   } catch (error) {
     const { status, body } = toErrorResponse(error);

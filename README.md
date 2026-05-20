@@ -77,6 +77,7 @@ API presign이 정상 확인된 후 `VITE_VIDEO_UPLOAD_PROVIDER=api`와 `VITE_AP
 | `R2_SECRET_ACCESS_KEY` | R2 secret (API 서비스에만) |
 | `R2_BUCKET_NAME` / `R2_BUCKET` | 버킷명 (`fightbox`) |
 | `R2_ENDPOINT` | S3 API endpoint (버킷명 미포함) |
+| `R2_PRESIGN_URL_STYLE` | `path` (기본) 또는 `virtual` — presign URL 스타일 비교 테스트용 |
 | `R2_PUBLIC_URL` / `R2_PUBLIC_CDN_BASE` | 선택 — Public/Custom URL (없으면 `playbackUrl`은 `""`) |
 
 **엔드포인트**
@@ -151,13 +152,20 @@ CDN/Public URL이 없으면 presign 응답의 `playbackUrl`은 빈 문자열(`""
 
 ```json
 {
-  "uploadUrl": "https://...r2.cloudflarestorage.com/...",
+  "uploadUrl": "https://...r2.cloudflarestorage.com/fightbox/workout-videos/...",
   "storageKey": "workout-videos/demo-gym/2026/05/...",
   "playbackUrl": "",
   "thumbnailUrl": null,
-  "expiresAt": "2026-05-19T12:00:00.000Z"
+  "expiresAt": "2026-05-19T12:00:00.000Z",
+  "debug": {
+    "urlStyle": "path",
+    "uploadUrlOrigin": "https://18b23915....r2.cloudflarestorage.com",
+    "uploadUrlPathPrefix": "/fightbox/workout-videos/"
+  }
 }
 ```
+
+`R2_PRESIGN_URL_STYLE=virtual`로 전환하면 `debug.urlStyle`이 `virtual`이며 host가 `fightbox.{account}.r2.cloudflarestorage.com` 형태가 될 수 있습니다. 브라우저 PUT TLS/CORS 비교 테스트용입니다.
 
 에러 응답:
 

@@ -1,13 +1,19 @@
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'node:crypto';
-import { getR2Config } from '../config/r2Config.js';
+import { getR2Config, resolvePresignUrlStyle, type R2PresignUrlStyle } from '../config/r2Config.js';
 import { ApiError } from '../utils/apiError.js';
 
 const MAX_FILE_SIZE_BYTES = 1024 * 1024 * 1024;
 const PRESIGN_EXPIRES_IN_SECONDS = 600;
 
 const UNSAFE_FILE_NAME_CHARS = /[/\\:*?"<>|\0]/g;
+
+export interface PresignedVideoUploadDebug {
+  urlStyle: R2PresignUrlStyle;
+  uploadUrlOrigin: string;
+  uploadUrlPathPrefix: string;
+}
 
 export interface CreatePresignedVideoUploadInput {
   fileName: string;
@@ -23,6 +29,7 @@ export interface CreatePresignedVideoUploadResult {
   playbackUrl: string;
   thumbnailUrl: string | null;
   expiresAt: string;
+  debug?: PresignedVideoUploadDebug;
 }
 
 function sanitizeFileName(fileName: string): string {
@@ -77,23 +84,47 @@ function validateInput(input: CreatePresignedVideoUploadInput): void {
   }
 }
 
-function assertPathStyleUploadUrl(uploadUrl: string, bucketName: string): void {
+function assertUploadUrlShape(
+  uploadUrl: string,
+  bucketName: string,
+  urlStyle: R2PresignUrlStyle,
+): void {
   const url = new URL(uploadUrl);
   const virtualHostedPrefix = `${bucketName.toLowerCase()}.`;
+  const hostname = url.hostname.toLowerCase();
 
-  if (url.hostname.toLowerCase().startsWith(virtualHostedPrefix)) {
+  if (urlStyle === 'path') {
+    if (hostname.startsWith(virtualHostedPrefix)) {
+      throw new ApiError(
+        500,
+        'PRESIGN_FAILED',
+        'Presigned URL must use path-style addressing',
+      );
+    }
+
+    if (!url.pathname.startsWith(`/${bucketName}/`)) {
+      throw new ApiError(
+        500,
+        'PRESIGN_FAILED',
+        'Presigned URL must include bucket name in the path',
+      );
+    }
+    return;
+  }
+
+  if (!hostname.startsWith(virtualHostedPrefix)) {
     throw new ApiError(
       500,
       'PRESIGN_FAILED',
-      'Presigned URL must use path-style addressing',
+      'Presigned URL must use virtual-hosted-style addressing',
     );
   }
 
-  if (!url.pathname.startsWith(`/${bucketName}/`)) {
+  if (!url.pathname.startsWith('/workout-videos/')) {
     throw new ApiError(
       500,
       'PRESIGN_FAILED',
-      'Presigned URL must include bucket name in the path',
+      'Presigned URL path must start with /workout-videos/',
     );
   }
 }
@@ -113,19 +144,40 @@ function assertSimplePresignedUploadUrl(uploadUrl: string): void {
   }
 }
 
+function buildUploadUrlDebug(
+  uploadUrl: string,
+  urlStyle: R2PresignUrlStyle,
+): PresignedVideoUploadDebug {
+  const url = new URL(uploadUrl);
+  const segments = url.pathname.split('/').filter(Boolean);
+
+  const uploadUrlPathPrefix =
+    urlStyle === 'path'
+      ? `/${segments.slice(0, 2).join('/')}/`
+      : `/${segments[0] ?? 'workout-videos'}/`;
+
+  return {
+    urlStyle,
+    uploadUrlOrigin: url.origin,
+    uploadUrlPathPrefix,
+  };
+}
+
 export async function createPresignedVideoUpload(
   input: CreatePresignedVideoUploadInput,
 ): Promise<CreatePresignedVideoUploadResult> {
   validateInput(input);
 
   const config = getR2Config();
+  const urlStyle = resolvePresignUrlStyle();
   const storageKey = buildStorageKey(input);
   const contentType = input.contentType.trim();
+  const forcePathStyle = urlStyle === 'path';
 
   const client = new S3Client({
     region: 'auto',
     endpoint: config.endpoint,
-    forcePathStyle: true,
+    forcePathStyle,
     requestChecksumCalculation: 'WHEN_REQUIRED',
     responseChecksumValidation: 'WHEN_REQUIRED',
     credentials: {
@@ -149,11 +201,12 @@ export async function createPresignedVideoUpload(
     throw new ApiError(500, 'PRESIGN_FAILED', 'Failed to create presigned upload URL');
   }
 
-  assertPathStyleUploadUrl(uploadUrl, config.bucketName);
+  assertUploadUrlShape(uploadUrl, config.bucketName, urlStyle);
   assertSimplePresignedUploadUrl(uploadUrl);
 
   const expiresAt = new Date(Date.now() + PRESIGN_EXPIRES_IN_SECONDS * 1000).toISOString();
   const playbackUrl = config.publicBaseUrl ? `${config.publicBaseUrl}/${storageKey}` : '';
+  const debug = buildUploadUrlDebug(uploadUrl, urlStyle);
 
   return {
     uploadUrl,
@@ -161,5 +214,6 @@ export async function createPresignedVideoUpload(
     playbackUrl,
     thumbnailUrl: null,
     expiresAt,
+    debug,
   };
 }

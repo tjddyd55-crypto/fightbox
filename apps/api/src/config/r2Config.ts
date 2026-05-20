@@ -8,6 +8,10 @@ export interface R2Config {
   publicBaseUrl: string;
 }
 
+export type R2PresignUrlStyle = 'path' | 'virtual';
+
+const DEFAULT_PRESIGN_URL_STYLE: R2PresignUrlStyle = 'path';
+
 function trimEnv(value: string | undefined): string | undefined {
   const trimmed = value?.trim();
   return trimmed ? trimmed : undefined;
@@ -34,6 +38,14 @@ function normalizeEndpoint(rawEndpoint: string): string {
   }
 
   return stripTrailingSlashes(endpointUrl.origin);
+}
+
+export function resolvePresignUrlStyle(): R2PresignUrlStyle {
+  const raw = process.env.R2_PRESIGN_URL_STYLE?.trim().toLowerCase();
+  if (raw === 'virtual') {
+    return 'virtual';
+  }
+  return DEFAULT_PRESIGN_URL_STYLE;
 }
 
 export function getR2Config(): R2Config {
