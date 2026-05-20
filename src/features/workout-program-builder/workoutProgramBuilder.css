@@ -1,15 +1,13 @@
-/* Layout shell — no page scroll; columns scroll internally */
+/* Layout shell — desktop locks viewport; mobile uses document scroll */
 .wpb-root {
   --wpb-header-height: 56px;
   --wpb-mobile-tabs-height: 0px;
   --wpb-bottom-bar-height: 72px;
-  height: 100%;
   min-height: 100vh;
   background: #0b0b0e;
   color: #ffffff;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
   overflow-x: hidden;
   font-family:
     'Pretendard',
@@ -188,6 +186,19 @@
 }
 
 @media (min-width: 1200px) {
+  html,
+  body,
+  #root {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .wpb-root {
+    height: 100vh;
+    min-height: 100vh;
+    overflow: hidden;
+  }
+
   .wpb-main {
     grid-template-columns:
       minmax(300px, 360px)
@@ -2075,34 +2086,51 @@
   .wpb-root {
     --wpb-mobile-tabs-height: 48px;
     --wpb-bottom-bar-height: 88px;
+    width: 100%;
+    max-width: 100%;
     height: auto;
     min-height: 100dvh;
-    overflow-y: auto;
+    overflow: visible;
     overflow-x: hidden;
   }
 
+  .wpb-header,
+  .wpb-bottom-bar {
+    width: 100%;
+    max-width: 100%;
+  }
+
   .wpb-body {
+    display: block;
     flex: none;
+    width: 100%;
+    max-width: 100%;
     overflow: visible;
     min-height: auto;
   }
 
   .wpb-mobile-tabs {
     display: block;
+    width: 100%;
+    max-width: 100%;
   }
 
   .wpb-mobile-tabs-inner {
     max-width: none;
+    width: 100%;
   }
 
   .wpb-sidebar {
     display: none;
   }
 
-  .wpb-main {
-    display: flex;
-    flex-direction: column;
+  .wpb-root .wpb-body .wpb-main {
+    display: block;
+    grid-template-columns: none;
+    grid-template-rows: none;
     flex: none;
+    width: 100%;
+    max-width: 100%;
     min-height: auto;
     min-width: 0;
     overflow: visible;
@@ -2111,11 +2139,15 @@
   .wpb-panel {
     overflow: visible;
     min-height: auto;
+    width: 100%;
+    max-width: 100%;
   }
 
   .wpb-main > .wpb-panel {
     display: none;
     flex: none;
+    width: 100%;
+    max-width: 100%;
     min-height: auto;
     min-width: 0;
     overflow: visible;
@@ -2126,6 +2158,8 @@
     display: flex;
     flex-direction: column;
     flex: none;
+    width: 100%;
+    max-width: 100%;
     height: auto;
     min-height: auto;
     overflow: visible;
@@ -2135,6 +2169,8 @@
     display: flex;
     flex-direction: column;
     flex: none;
+    width: 100%;
+    max-width: 100%;
     height: auto;
     min-height: auto;
     overflow: visible;
@@ -2144,6 +2180,8 @@
     display: flex;
     flex-direction: column;
     flex: none;
+    width: 100%;
+    max-width: 100%;
     height: auto;
     min-height: auto;
     overflow: visible;

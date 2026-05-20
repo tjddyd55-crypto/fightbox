@@ -8,11 +8,12 @@ html,
 body,
 #root {
   margin: 0;
-  height: 100%;
-  overflow: hidden;
+  min-height: 100%;
+  width: 100%;
 }
 
 body {
+  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
 }
 
