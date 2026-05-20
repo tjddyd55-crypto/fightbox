@@ -38,10 +38,6 @@ function sanitizeFileName(fileName: string): string {
   return safe || 'video.mp4';
 }
 
-function sanitizeMetadataValue(value: string): string {
-  return encodeURIComponent(value.slice(0, 256));
-}
-
 function buildStorageKey(input: CreatePresignedVideoUploadInput): string {
   const now = new Date();
   const year = String(now.getFullYear());
@@ -102,6 +98,21 @@ function assertPathStyleUploadUrl(uploadUrl: string, bucketName: string): void {
   }
 }
 
+function assertSimplePresignedUploadUrl(uploadUrl: string): void {
+  const url = new URL(uploadUrl);
+  const queryKeys = [...url.searchParams.keys()].map((key) => key.toLowerCase());
+
+  for (const key of queryKeys) {
+    if (key.startsWith('x-amz-meta-')) {
+      throw new ApiError(500, 'PRESIGN_FAILED', 'Presigned URL must not include object metadata');
+    }
+
+    if (key === 'x-amz-sdk-checksum-algorithm' || key.startsWith('x-amz-checksum-')) {
+      throw new ApiError(500, 'PRESIGN_FAILED', 'Presigned URL must not include checksum parameters');
+    }
+  }
+}
+
 export async function createPresignedVideoUpload(
   input: CreatePresignedVideoUploadInput,
 ): Promise<CreatePresignedVideoUploadResult> {
@@ -111,22 +122,12 @@ export async function createPresignedVideoUpload(
   const storageKey = buildStorageKey(input);
   const contentType = input.contentType.trim();
 
-  const metadata: Record<string, string> = {
-    originalFileName: sanitizeMetadataValue(input.fileName.trim()),
-  };
-
-  if (input.uploaderId?.trim()) {
-    metadata.uploaderId = sanitizeMetadataValue(input.uploaderId.trim());
-  }
-
-  if (input.gymId?.trim()) {
-    metadata.gymId = sanitizeMetadataValue(input.gymId.trim());
-  }
-
   const client = new S3Client({
     region: 'auto',
     endpoint: config.endpoint,
     forcePathStyle: true,
+    requestChecksumCalculation: 'WHEN_REQUIRED',
+    responseChecksumValidation: 'WHEN_REQUIRED',
     credentials: {
       accessKeyId: config.accessKeyId,
       secretAccessKey: config.secretAccessKey,
@@ -137,7 +138,6 @@ export async function createPresignedVideoUpload(
     Bucket: config.bucketName,
     Key: storageKey,
     ContentType: contentType,
-    Metadata: metadata,
   });
 
   let uploadUrl: string;
@@ -150,6 +150,7 @@ export async function createPresignedVideoUpload(
   }
 
   assertPathStyleUploadUrl(uploadUrl, config.bucketName);
+  assertSimplePresignedUploadUrl(uploadUrl);
 
   const expiresAt = new Date(Date.now() + PRESIGN_EXPIRES_IN_SECONDS * 1000).toISOString();
   const playbackUrl = config.publicBaseUrl ? `${config.publicBaseUrl}/${storageKey}` : '';
