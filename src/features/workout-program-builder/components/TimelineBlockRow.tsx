@@ -90,55 +90,6 @@ export function TimelineBlockRow({
         ⠿
       </button>
 
-      <div className="wpb-timeline-mobile-moves" aria-label={`${block.title} 순서 변경`}>
-        <button
-          type="button"
-          className="wpb-icon-btn wpb-timeline-move-btn"
-          aria-label={`${block.order}번 블록 위로 이동`}
-          disabled={!canMoveUp}
-          onClick={(e) => {
-            e.stopPropagation();
-            onMoveUp(block.id, 'up');
-          }}
-        >
-          ↑
-        </button>
-        <button
-          type="button"
-          className="wpb-icon-btn wpb-timeline-move-btn"
-          aria-label={`${block.order}번 블록 아래로 이동`}
-          disabled={!canMoveDown}
-          onClick={(e) => {
-            e.stopPropagation();
-            onMoveDown(block.id, 'down');
-          }}
-        >
-          ↓
-        </button>
-        <button
-          type="button"
-          className="wpb-icon-btn wpb-timeline-move-btn"
-          aria-label={`${block.title} 복제`}
-          onClick={(e) => {
-            e.stopPropagation();
-            onDuplicate(block.id);
-          }}
-        >
-          ⧉
-        </button>
-        <button
-          type="button"
-          className="wpb-icon-btn wpb-timeline-move-btn wpb-timeline-move-btn--danger"
-          aria-label={`${block.title} 삭제`}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleRemove();
-          }}
-        >
-          ✕
-        </button>
-      </div>
-
       <button
         type="button"
         className="wpb-timeline-row-main"
