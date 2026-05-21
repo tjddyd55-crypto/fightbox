@@ -229,9 +229,13 @@ export function VideoUploadModal({ isOpen, onClose, onSubmit }: VideoUploadModal
         setUploadStatus('failed');
         setUploadError('영상 등록에 실패했습니다. 다시 시도해 주세요.');
       }
-    } catch {
+    } catch (error) {
       setUploadStatus('failed');
-      setUploadError('업로드 중 오류가 발생했습니다. 다시 시도해 주세요.');
+      const detail =
+        error instanceof Error && error.message.trim()
+          ? error.message.trim()
+          : '업로드 중 알 수 없는 오류가 발생했습니다.';
+      setUploadError(detail);
     }
   };
 
@@ -506,9 +510,10 @@ export function VideoUploadModal({ isOpen, onClose, onSubmit }: VideoUploadModal
                 />
               </div>
               {uploadError && (
-                <p className="wpb-field-error" role="alert">
-                  {uploadError}
-                </p>
+                <div className="wpb-form-error-banner wpb-upload-error-banner" role="alert">
+                  <strong>업로드 실패</strong>
+                  <p className="wpb-upload-error-detail">{uploadError}</p>
+                </div>
               )}
             </div>
           )}

@@ -1068,6 +1068,18 @@
   color: #ef4444;
 }
 
+.wpb-upload-error-banner {
+  margin-top: 10px;
+}
+
+.wpb-upload-error-detail {
+  margin: 6px 0 0;
+  white-space: pre-wrap;
+  user-select: text;
+  word-break: break-word;
+  font-weight: 400;
+}
+
 .wpb-field-hint {
   margin: 6px 0 0;
   font-size: 12px;

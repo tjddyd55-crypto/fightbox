@@ -31,6 +31,55 @@ interface ApiErrorResponseBody {
   };
 }
 
+function buildSafeUploadTarget(uploadUrl: string): string {
+  try {
+    const url = new URL(uploadUrl);
+    return `${url.origin}${url.pathname}`;
+  } catch {
+    return '(unknown target)';
+  }
+}
+
+function appendPutDebugSuffix(
+  message: string,
+  safeTarget: string,
+  status: number,
+  statusText: string,
+): string {
+  return `${message} target=${safeTarget} transport=xhr PUT xhrStatus=${status} xhrStatusText=${statusText || 'none'}`;
+}
+
+function formatPutErrorMessage(
+  status: number,
+  statusText: string,
+  safeTarget: string,
+): string {
+  if (status === 0) {
+    return appendPutDebugSuffix(
+      'R2 업로드 네트워크 실패(status 0). CORS, TLS, 네트워크 차단 가능성이 있습니다.',
+      safeTarget,
+      status,
+      statusText,
+    );
+  }
+
+  if (status === 403) {
+    return appendPutDebugSuffix(
+      'R2 업로드 권한/서명 실패(403). Content-Type 또는 presigned URL 서명을 확인하세요.',
+      safeTarget,
+      status,
+      statusText,
+    );
+  }
+
+  if (status === 400) {
+    return appendPutDebugSuffix('R2 업로드 요청 형식 오류(400).', safeTarget, status, statusText);
+  }
+
+  const statusLabel = statusText ? `${status} ${statusText}` : String(status);
+  return appendPutDebugSuffix(`R2 업로드 실패: HTTP ${statusLabel}`, safeTarget, status, statusText);
+}
+
 async function readPresignErrorMessage(response: Response): Promise<string> {
   try {
     const data = (await response.json()) as ApiErrorResponseBody;
@@ -43,7 +92,8 @@ async function readPresignErrorMessage(response: Response): Promise<string> {
   } catch {
     // ignore JSON parse errors
   }
-  return `Presign request failed with status ${response.status}`;
+
+  return response.statusText || 'unknown error';
 }
 
 function inferStorageProvider(uploadUrl: string): VideoStorageProvider {
@@ -62,6 +112,8 @@ function putFileWithProgress(
   contentType: string,
   onProgress?: (percent: number) => void,
 ): Promise<void> {
+  const safeTarget = buildSafeUploadTarget(uploadUrl);
+
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('PUT', uploadUrl);
@@ -81,11 +133,55 @@ function putFileWithProgress(
         resolve();
         return;
       }
-      reject(new VideoUploadApiError(`Upload failed with status ${xhr.status}`, xhr.status));
+
+      reject(
+        new VideoUploadApiError(
+          formatPutErrorMessage(xhr.status, xhr.statusText, safeTarget),
+          xhr.status,
+        ),
+      );
     };
 
     xhr.onerror = () => {
-      reject(new VideoUploadApiError('Network error during file upload'));
+      reject(
+        new VideoUploadApiError(
+          appendPutDebugSuffix(
+            'R2 업로드 네트워크 실패(onerror). CORS, TLS, 네트워크 차단 가능성이 있습니다.',
+            safeTarget,
+            xhr.status,
+            xhr.statusText,
+          ),
+          xhr.status || 0,
+        ),
+      );
+    };
+
+    xhr.onabort = () => {
+      reject(
+        new VideoUploadApiError(
+          appendPutDebugSuffix(
+            'R2 업로드가 중단되었습니다(onabort).',
+            safeTarget,
+            xhr.status,
+            xhr.statusText,
+          ),
+          xhr.status || 0,
+        ),
+      );
+    };
+
+    xhr.ontimeout = () => {
+      reject(
+        new VideoUploadApiError(
+          appendPutDebugSuffix(
+            'R2 업로드 시간이 초과되었습니다(ontimeout).',
+            safeTarget,
+            xhr.status,
+            xhr.statusText,
+          ),
+          xhr.status || 0,
+        ),
+      );
     };
 
     xhr.send(file);
@@ -104,15 +200,22 @@ async function requestPresignedUpload(
     ...(input.uploaderId !== undefined ? { uploaderId: input.uploaderId } : {}),
   };
 
-  const response = await fetch(buildPresignUrl(), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(buildPresignUrl(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new VideoUploadApiError(
+      'presign API 네트워크 실패. API 서버 연결 또는 VITE_API_BASE_URL을 확인하세요.',
+    );
+  }
 
   if (!response.ok) {
     const message = await readPresignErrorMessage(response);
-    throw new VideoUploadApiError(message, response.status);
+    throw new VideoUploadApiError(`presign API 실패: ${response.status} ${message}`, response.status);
   }
 
   return (await response.json()) as PresignUploadApiResponse;
