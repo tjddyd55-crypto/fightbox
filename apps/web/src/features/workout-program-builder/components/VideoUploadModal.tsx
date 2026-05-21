@@ -252,14 +252,20 @@ export function VideoUploadModal({ isOpen, onClose, onSubmit }: VideoUploadModal
       if (generatedThumbnail) {
         setUploadStatus('uploading-thumbnail');
         try {
-          const thumbnailUrl = await uploadGeneratedThumbnail({
+          const thumbnailResult = await uploadGeneratedThumbnail({
             blob: generatedThumbnail.blob,
             fileName: generatedThumbnail.fileName,
             contentType: generatedThumbnail.contentType,
             onProgress: (percent) => setUploadProgress(88 + Math.round(percent * 0.1)),
           });
-          if (thumbnailUrl) {
-            finalUploadResult = { ...uploadResult, thumbnailUrl };
+          if (thumbnailResult) {
+            finalUploadResult = {
+              ...uploadResult,
+              ...(thumbnailResult.thumbnailUrl ? { thumbnailUrl: thumbnailResult.thumbnailUrl } : {}),
+              ...(thumbnailResult.thumbnailStorageKey
+                ? { thumbnailStorageKey: thumbnailResult.thumbnailStorageKey }
+                : {}),
+            };
           }
         } catch (error) {
           console.warn('[workout-builder] thumbnail upload failed', error);

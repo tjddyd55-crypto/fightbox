@@ -16,6 +16,7 @@ import {
   workoutVideoToCreateRequest,
   WorkoutBuilderApiError,
 } from '../services/workoutBuilderApiClient';
+import type { R2DeleteResult } from '@fightbox/shared';
 import {
   isApiWorkoutBuilderStorage,
   reportWorkoutBuilderSyncError,
@@ -77,6 +78,9 @@ function buildUploadMeta(
     }
     if (isPersistableRemoteUrl(uploadResult.thumbnailUrl)) {
       meta.remoteThumbnailUrl = uploadResult.thumbnailUrl;
+    }
+    if (uploadResult.thumbnailStorageKey?.trim()) {
+      meta.thumbnailStorageKey = uploadResult.thumbnailStorageKey.trim();
     }
   }
 
@@ -157,9 +161,20 @@ function syncDeleteVideoToApi(id: string): void {
     return;
   }
 
-  void deleteUploadedVideoApi(id).catch((error) => {
-    reportSyncError('영상 API 삭제', error);
-  });
+  void deleteUploadedVideoApi(id)
+    .then((result) => {
+      if (result.r2.failed.length > 0) {
+        const failedKeys = result.r2.failed
+          .map((item: R2DeleteResult['failed'][number]) => item.key)
+          .join(', ');
+        reportWorkoutBuilderSyncError(
+          `영상은 삭제됐지만 일부 R2 객체 정리에 실패했습니다: ${failedKeys}`,
+        );
+      }
+    })
+    .catch((error) => {
+      reportSyncError('영상 API 삭제', error);
+    });
 }
 
 function mergeApiVideosWithLocalCache(apiVideos: WorkoutVideo[]): WorkoutVideo[] {

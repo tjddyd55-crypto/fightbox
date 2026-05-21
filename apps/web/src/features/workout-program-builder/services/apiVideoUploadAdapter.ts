@@ -3,6 +3,7 @@ import {
   type PresignUploadApiRequest,
   type PresignUploadApiResponse,
   type PresignedUploadRequest,
+  type ThumbnailUploadResult,
   type UploadGeneratedThumbnailParams,
   type UploadVideoFileParams,
   type VideoStorageProvider,
@@ -316,7 +317,7 @@ async function uploadGeneratedThumbnail({
   fileName,
   contentType,
   onProgress,
-}: UploadGeneratedThumbnailParams): Promise<string | undefined> {
+}: UploadGeneratedThumbnailParams): Promise<ThumbnailUploadResult | undefined> {
   const presigned = await requestPresignedUpload({
     fileName,
     fileSize: blob.size,
@@ -334,11 +335,15 @@ async function uploadGeneratedThumbnail({
   );
 
   const thumbnailUrl = presigned.thumbnailUrl ?? presigned.playbackUrl ?? '';
+  const result: ThumbnailUploadResult = {
+    thumbnailStorageKey: presigned.storageKey,
+  };
+
   if (thumbnailUrl.startsWith('http://') || thumbnailUrl.startsWith('https://')) {
-    return thumbnailUrl;
+    result.thumbnailUrl = thumbnailUrl;
   }
 
-  return undefined;
+  return result;
 }
 
 async function uploadVideoFile({

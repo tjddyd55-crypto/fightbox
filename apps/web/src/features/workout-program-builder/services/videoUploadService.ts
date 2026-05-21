@@ -1,6 +1,7 @@
 import type {
   PresignedUploadRequest,
   PresignedUploadResponse,
+  ThumbnailUploadResult,
   UploadGeneratedThumbnailParams,
   UploadProviderKind,
   UploadVideoFileParams,
@@ -37,7 +38,7 @@ export async function uploadVideoFile(
 
 export async function uploadGeneratedThumbnail(
   params: UploadGeneratedThumbnailParams,
-): Promise<string | undefined> {
+): Promise<ThumbnailUploadResult | undefined> {
   return getActiveAdapter().uploadGeneratedThumbnail(params);
 }
 

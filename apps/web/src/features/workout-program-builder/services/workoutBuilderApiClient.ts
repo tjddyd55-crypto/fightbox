@@ -2,6 +2,7 @@ import {
   WORKOUT_BUILDER_API_PATHS,
   type CreateProgramTemplateRequest,
   type CreateUploadedVideoRequest,
+  type DeleteUploadedVideoResponse,
   type ProgramTemplateDto,
   type UpdateProgramTemplateRequest,
   type UpdateUploadedVideoRequest,
@@ -145,6 +146,7 @@ export function uploadedVideoDtoToWorkoutVideo(dto: UploadedVideoDto): WorkoutVi
       storageKey: dto.storageKey,
       playbackUrl: dto.playbackUrl || undefined,
       remoteThumbnailUrl: remoteThumbnail ?? undefined,
+      thumbnailStorageKey: dto.thumbnailStorageKey ?? undefined,
       provider,
     },
   };
@@ -176,6 +178,7 @@ export function workoutVideoToCreateRequest(video: WorkoutVideo): CreateUploaded
     thumbnailUrl:
       resolveHttpThumbnailUrl(meta.remoteThumbnailUrl) ??
       resolveHttpThumbnailUrl(video.thumbnailUrl),
+    thumbnailStorageKey: meta.thumbnailStorageKey ?? null,
     fileName,
     fileSize,
     contentType,
@@ -305,10 +308,14 @@ export async function updateUploadedVideoApi(
   return response.data;
 }
 
-export async function deleteUploadedVideoApi(id: string): Promise<void> {
-  await requestJson(`${WORKOUT_BUILDER_API_PATHS.videos}/${encodeURIComponent(id)}`, {
-    method: 'DELETE',
-  });
+export async function deleteUploadedVideoApi(id: string): Promise<DeleteUploadedVideoResponse> {
+  const response = await requestJson<WorkoutBuilderApiItemResponse<DeleteUploadedVideoResponse>>(
+    `${WORKOUT_BUILDER_API_PATHS.videos}/${encodeURIComponent(id)}`,
+    {
+      method: 'DELETE',
+    },
+  );
+  return response.data;
 }
 
 export async function fetchProgramTemplates(): Promise<ProgramTemplateDto[]> {

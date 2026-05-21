@@ -43,10 +43,16 @@ export type PresignUploadApiRequest = PresignedUploadRequest;
 /** POST /api/workout-videos/uploads/presign response body. */
 export type PresignUploadApiResponse = PresignedUploadResponse;
 
+export interface ThumbnailUploadResult {
+  thumbnailUrl?: string;
+  thumbnailStorageKey?: string;
+}
+
 export interface VideoUploadResult {
   storageKey: string;
   playbackUrl: string;
   thumbnailUrl?: string;
+  thumbnailStorageKey?: string;
   fileName: string;
   fileSize: number;
   contentType: string;
@@ -71,5 +77,5 @@ export interface VideoUploadAdapter {
   readonly kind: UploadProviderKind;
   requestPresignedUpload(input: PresignedUploadRequest): Promise<PresignedUploadResponse>;
   uploadVideoFile(params: UploadVideoFileParams): Promise<VideoUploadResult>;
-  uploadGeneratedThumbnail(params: UploadGeneratedThumbnailParams): Promise<string | undefined>;
+  uploadGeneratedThumbnail(params: UploadGeneratedThumbnailParams): Promise<ThumbnailUploadResult | undefined>;
 }

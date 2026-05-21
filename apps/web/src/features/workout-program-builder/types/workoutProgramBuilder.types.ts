@@ -25,6 +25,8 @@ export interface WorkoutVideoUploadMeta {
   playbackUrl?: string;
   /** Remote thumbnail URL when different from WorkoutVideo.thumbnailUrl. */
   remoteThumbnailUrl?: string;
+  /** Remote thumbnail object key for R2 cleanup on delete. */
+  thumbnailStorageKey?: string;
   provider?: VideoStorageProvider;
 }
 
