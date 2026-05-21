@@ -11,12 +11,15 @@ import {
   createUploadedVideoApi,
   deleteUploadedVideoApi,
   fetchUploadedVideos,
-  updateUploadedVideoApi,
+  upsertUploadedVideoApi,
   uploadedVideoDtoToWorkoutVideo,
   workoutVideoToCreateRequest,
-  workoutVideoToUpdateRequest,
+  WorkoutBuilderApiError,
 } from '../services/workoutBuilderApiClient';
-import { isApiWorkoutBuilderStorage } from '../services/workoutBuilderStorageConfig';
+import {
+  isApiWorkoutBuilderStorage,
+  reportWorkoutBuilderSyncError,
+} from '../services/workoutBuilderStorageConfig';
 import {
   deleteUploadedVideo,
   getUploadedVideos,
@@ -86,12 +89,32 @@ function mapVisibilityToSourceType(
   return visibility === 'gym_only' ? 'gym' : 'private';
 }
 
+function reportSyncError(action: string, error: unknown): void {
+  if (error instanceof WorkoutBuilderApiError) {
+    reportWorkoutBuilderSyncError(`${action} 실패: ${error.message}`);
+    return;
+  }
+  if (error instanceof Error) {
+    reportWorkoutBuilderSyncError(`${action} 실패: ${error.message}`);
+    return;
+  }
+  reportWorkoutBuilderSyncError(`${action} 실패: 알 수 없는 오류`);
+}
+
+function mergeApiVideosWithLocalCache(apiVideos: WorkoutVideo[]): WorkoutVideo[] {
+  const apiIds = new Set(apiVideos.map((video) => video.id));
+  const localPending = getUploadedVideos().filter((video) => !apiIds.has(video.id));
+  return [...apiVideos, ...localPending];
+}
+
 function syncCreateVideoToApi(video: WorkoutVideo): void {
   if (!isApiWorkoutBuilderStorage() || !isUploadedVideo(video)) {
     return;
   }
 
-  void createUploadedVideoApi(workoutVideoToCreateRequest(video)).catch(() => undefined);
+  void createUploadedVideoApi(workoutVideoToCreateRequest(video)).catch((error) => {
+    reportSyncError('영상 API 저장', error);
+  });
 }
 
 function syncUpdateVideoToApi(video: WorkoutVideo): void {
@@ -99,20 +122,9 @@ function syncUpdateVideoToApi(video: WorkoutVideo): void {
     return;
   }
 
-  void updateUploadedVideoApi(
-    video.id,
-    workoutVideoToUpdateRequest({
-      title: video.title,
-      description: video.description,
-      durationSec: video.durationSec,
-      difficulty: video.difficulty,
-      bodyParts: video.bodyParts,
-      tags: video.tags,
-      isLoopable: video.isLoopable,
-      sourceType: video.sourceType,
-      isPremium: video.isPremium,
-    }),
-  ).catch(() => undefined);
+  void upsertUploadedVideoApi(video).catch((error) => {
+    reportSyncError('영상 API 수정', error);
+  });
 }
 
 function syncDeleteVideoToApi(id: string): void {
@@ -120,7 +132,9 @@ function syncDeleteVideoToApi(id: string): void {
     return;
   }
 
-  void deleteUploadedVideoApi(id).catch(() => undefined);
+  void deleteUploadedVideoApi(id).catch((error) => {
+    reportSyncError('영상 API 삭제', error);
+  });
 }
 
 export function listVideos(): WorkoutVideo[] {
@@ -135,9 +149,9 @@ export async function refreshVideosFromApi(): Promise<WorkoutVideo[]> {
   try {
     const dtos = await fetchUploadedVideos();
     const apiVideos = dtos.map(uploadedVideoDtoToWorkoutVideo);
-    replaceUploadedVideos(apiVideos);
-  } catch {
-    // keep localStorage fallback cache
+    replaceUploadedVideos(mergeApiVideosWithLocalCache(apiVideos));
+  } catch (error) {
+    reportSyncError('영상 목록 불러오기', error);
   }
 
   return listVideos();

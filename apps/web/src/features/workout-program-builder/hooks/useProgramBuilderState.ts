@@ -47,6 +47,9 @@ import {
   validateProgramBlocks,
   type ProgramValidationResult,
 } from '../utils/programValidationUtils';
+import {
+  setWorkoutBuilderSyncErrorHandler,
+} from '../services/workoutBuilderStorageConfig';
 
 export function useProgramBuilderState() {
   const [template, setTemplate] = useState<WorkoutProgramTemplate>(() => ({
@@ -62,12 +65,6 @@ export function useProgramBuilderState() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isTestPlaying, setIsTestPlaying] = useState(false);
   const [videos, setVideos] = useState<WorkoutVideo[]>(() => listVideos());
-
-  useEffect(() => {
-    void refreshVideosFromApi().then((nextVideos) => {
-      setVideos(nextVideos);
-    });
-  }, []);
 
   const blocks = template.blocks;
   const videoMap = useMemo(() => buildWorkoutVideoMap(videos), [videos]);
@@ -85,6 +82,17 @@ export function useProgramBuilderState() {
   const showMessage = useCallback((message: string) => {
     setStatusMessage(message);
     window.setTimeout(() => setStatusMessage(null), 3000);
+  }, []);
+
+  useEffect(() => {
+    setWorkoutBuilderSyncErrorHandler(showMessage);
+    return () => setWorkoutBuilderSyncErrorHandler(null);
+  }, [showMessage]);
+
+  useEffect(() => {
+    void refreshVideosFromApi().then((nextVideos) => {
+      setVideos(nextVideos);
+    });
   }, []);
 
   const buildTemplateSnapshot = useCallback((): WorkoutProgramTemplate => {

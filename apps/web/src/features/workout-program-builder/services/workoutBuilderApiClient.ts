@@ -336,6 +336,30 @@ export async function deleteProgramTemplateApi(id: string): Promise<void> {
   });
 }
 
+export async function upsertUploadedVideoApi(video: WorkoutVideo): Promise<void> {
+  try {
+    await updateUploadedVideoApi(
+      video.id,
+      workoutVideoToUpdateRequest({
+        title: video.title,
+        description: video.description,
+        durationSec: video.durationSec,
+        difficulty: video.difficulty,
+        bodyParts: video.bodyParts,
+        tags: video.tags,
+        isLoopable: video.isLoopable,
+        sourceType: video.sourceType,
+        isPremium: video.isPremium,
+      }),
+    );
+  } catch (error) {
+    if (error instanceof WorkoutBuilderApiError && error.status === 404) {
+      await createUploadedVideoApi(workoutVideoToCreateRequest(video));
+      return;
+    }
+    throw error;
+  }
+}
 export async function upsertProgramTemplateApi(
   template: WorkoutProgramTemplate,
 ): Promise<void> {

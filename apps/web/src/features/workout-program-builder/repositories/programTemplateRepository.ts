@@ -12,8 +12,12 @@ import {
   fetchProgramTemplates,
   programTemplateDtoToWorkoutProgramTemplate,
   upsertProgramTemplateApi,
+  WorkoutBuilderApiError,
 } from '../services/workoutBuilderApiClient';
-import { isApiWorkoutBuilderStorage } from '../services/workoutBuilderStorageConfig';
+import {
+  isApiWorkoutBuilderStorage,
+  reportWorkoutBuilderSyncError,
+} from '../services/workoutBuilderStorageConfig';
 import {
   buildWorkoutVideoMap,
   cloneBlocksWithNewIds,
@@ -29,12 +33,34 @@ import {
   updateProgramTemplate,
 } from '../storage/programTemplateStorage';
 
+function reportSyncError(action: string, error: unknown): void {
+  if (error instanceof WorkoutBuilderApiError) {
+    reportWorkoutBuilderSyncError(`${action} 실패: ${error.message}`);
+    return;
+  }
+  if (error instanceof Error) {
+    reportWorkoutBuilderSyncError(`${action} 실패: ${error.message}`);
+    return;
+  }
+  reportWorkoutBuilderSyncError(`${action} 실패: 알 수 없는 오류`);
+}
+
+function mergeApiTemplatesWithLocalCache(
+  apiTemplates: WorkoutProgramTemplate[],
+): WorkoutProgramTemplate[] {
+  const apiIds = new Set(apiTemplates.map((template) => template.id));
+  const localPending = getSavedProgramTemplates().filter((template) => !apiIds.has(template.id));
+  return [...apiTemplates, ...localPending];
+}
+
 function syncTemplateToApi(template: WorkoutProgramTemplate): void {
   if (!isApiWorkoutBuilderStorage()) {
     return;
   }
 
-  void upsertProgramTemplateApi(template).catch(() => undefined);
+  void upsertProgramTemplateApi(template).catch((error) => {
+    reportSyncError('템플릿 API 저장', error);
+  });
 }
 
 function syncDeleteTemplateToApi(id: string): void {
@@ -42,7 +68,9 @@ function syncDeleteTemplateToApi(id: string): void {
     return;
   }
 
-  void deleteProgramTemplateApi(id).catch(() => undefined);
+  void deleteProgramTemplateApi(id).catch((error) => {
+    reportSyncError('템플릿 API 삭제', error);
+  });
 }
 
 export function listTemplates(): WorkoutProgramTemplate[] {
@@ -59,9 +87,9 @@ export async function refreshTemplatesFromApi(): Promise<WorkoutProgramTemplate[
     const templates = dtos
       .map(programTemplateDtoToWorkoutProgramTemplate)
       .filter((template): template is WorkoutProgramTemplate => template !== null);
-    replaceProgramTemplates(templates);
-  } catch {
-    // keep localStorage fallback cache
+    replaceProgramTemplates(mergeApiTemplatesWithLocalCache(templates));
+  } catch (error) {
+    reportSyncError('템플릿 목록 불러오기', error);
   }
 
   return listTemplates();
