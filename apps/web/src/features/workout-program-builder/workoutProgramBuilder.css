@@ -1985,6 +1985,19 @@
   font-weight: 600;
 }
 
+.wpb-template-library-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px 0;
+  border-bottom: 1px solid #2c2d34;
+  flex-shrink: 0;
+}
+
+.wpb-template-library-tabs .wpb-btn.is-active {
+  border-color: #ffd60a;
+  color: #ffd60a;
+}
+
 .wpb-template-library-empty {
   padding: 32px 20px;
   text-align: center;
