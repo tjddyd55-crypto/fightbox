@@ -18,6 +18,7 @@ export interface UploadedVideoDto {
   storageKey: string;
   playbackUrl: string;
   thumbnailUrl: string | null;
+  thumbnailStorageKey?: string | null;
   fileName: string;
   fileSize: number;
   contentType: string;
@@ -41,6 +42,7 @@ export interface CreateUploadedVideoRequest {
   storageKey: string;
   playbackUrl?: string;
   thumbnailUrl?: string | null;
+  thumbnailStorageKey?: string | null;
   fileName: string;
   fileSize: number;
   contentType: string;
@@ -57,6 +59,18 @@ export interface UpdateUploadedVideoRequest {
   isLoopable?: boolean;
   visibility?: string;
   isPremium?: boolean;
+  thumbnailStorageKey?: string | null;
+}
+
+export interface R2DeleteResult {
+  deleted: string[];
+  failed: { key: string; message: string }[];
+}
+
+export interface DeleteUploadedVideoResponse {
+  id: string;
+  deleted: boolean;
+  r2: R2DeleteResult;
 }
 
 export interface ProgramTemplateDto {

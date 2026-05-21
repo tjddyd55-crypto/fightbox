@@ -1,10 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import type {
   CreateUploadedVideoRequest,
+  DeleteUploadedVideoResponse,
   UpdateUploadedVideoRequest,
   UploadedVideoDto,
 } from '@fightbox/shared';
 import { getDatabasePool } from '../config/database.js';
+import { deleteR2ObjectsByKeys } from '../services/r2ObjectService.js';
 import { ApiError } from '../utils/apiError.js';
 
 interface UploadedVideoRow {
@@ -22,6 +24,7 @@ interface UploadedVideoRow {
   storage_key: string;
   playback_url: string;
   thumbnail_url: string | null;
+  thumbnail_storage_key: string | null;
   file_name: string;
   file_size: string;
   content_type: string;
@@ -52,6 +55,7 @@ function mapUploadedVideoRow(row: UploadedVideoRow): UploadedVideoDto {
     storageKey: row.storage_key,
     playbackUrl: row.playback_url,
     thumbnailUrl: row.thumbnail_url,
+    thumbnailStorageKey: row.thumbnail_storage_key,
     fileName: row.file_name,
     fileSize: Number(row.file_size),
     contentType: row.content_type,
@@ -114,6 +118,7 @@ export async function createUploadedVideo(
           storage_key,
           playback_url,
           thumbnail_url,
+          thumbnail_storage_key,
           file_name,
           file_size,
           content_type,
@@ -122,7 +127,7 @@ export async function createUploadedVideo(
         )
         VALUES (
           $1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb,
-          $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19
+          $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20
         )
         RETURNING *
       `,
@@ -141,6 +146,7 @@ export async function createUploadedVideo(
         input.storageKey,
         input.playbackUrl ?? '',
         input.thumbnailUrl ?? null,
+        input.thumbnailStorageKey ?? null,
         input.fileName,
         input.fileSize,
         input.contentType,
@@ -183,6 +189,9 @@ export async function updateUploadedVideo(
   if (input.isLoopable !== undefined) assign('is_loopable', input.isLoopable);
   if (input.visibility !== undefined) assign('visibility', input.visibility);
   if (input.isPremium !== undefined) assign('is_premium', input.isPremium);
+  if (input.thumbnailStorageKey !== undefined) {
+    assign('thumbnail_storage_key', input.thumbnailStorageKey);
+  }
 
   if (fields.length === 0) {
     throw new ApiError(400, 'INVALID_BODY', 'No updatable fields provided');
@@ -208,6 +217,53 @@ export async function updateUploadedVideo(
   } catch (error) {
     throw wrapDatabaseError(error);
   }
+}
+
+export async function getUploadedVideoForDelete(
+  id: string,
+  gymId: string,
+): Promise<UploadedVideoRow | null> {
+  try {
+    const pool = getDatabasePool();
+    const result = await pool.query<UploadedVideoRow>(
+      `
+        SELECT *
+        FROM uploaded_videos
+        WHERE id = $1 AND gym_id = $2 AND deleted_at IS NULL
+      `,
+      [id, gymId],
+    );
+    return result.rows[0] ?? null;
+  } catch (error) {
+    throw wrapDatabaseError(error);
+  }
+}
+
+export async function deleteUploadedVideoWithMedia(
+  id: string,
+  gymId: string,
+): Promise<DeleteUploadedVideoResponse | null> {
+  const row = await getUploadedVideoForDelete(id, gymId);
+  if (!row) {
+    return null;
+  }
+
+  const keysToDelete = [row.storage_key, row.thumbnail_storage_key].filter(
+    (key): key is string => Boolean(key?.trim()),
+  );
+  // R2 delete is best-effort; DB soft delete proceeds even when object removal fails.
+  const r2 = await deleteR2ObjectsByKeys(keysToDelete);
+
+  const deleted = await softDeleteUploadedVideo(id, gymId);
+  if (!deleted) {
+    return null;
+  }
+
+  return {
+    id,
+    deleted: true,
+    r2,
+  };
 }
 
 export async function softDeleteUploadedVideo(id: string, gymId: string): Promise<boolean> {

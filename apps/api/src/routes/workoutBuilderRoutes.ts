@@ -15,8 +15,8 @@ import {
 } from '../repositories/programTemplateRepository.js';
 import {
   createUploadedVideo,
+  deleteUploadedVideoWithMedia,
   listUploadedVideos,
-  softDeleteUploadedVideo,
   updateUploadedVideo,
 } from '../repositories/workoutVideoRepository.js';
 import { ApiError, toErrorResponse } from '../utils/apiError.js';
@@ -89,6 +89,9 @@ function parseCreateUploadedVideoBody(body: Record<string, unknown>): CreateUplo
     ...(body.thumbnailUrl === null || typeof body.thumbnailUrl === 'string'
       ? { thumbnailUrl: body.thumbnailUrl as string | null }
       : {}),
+    ...(body.thumbnailStorageKey === null || typeof body.thumbnailStorageKey === 'string'
+      ? { thumbnailStorageKey: body.thumbnailStorageKey as string | null }
+      : {}),
     fileName: assertStringField(body, 'fileName'),
     fileSize: assertNumberField(body, 'fileSize'),
     contentType: assertStringField(body, 'contentType'),
@@ -108,6 +111,9 @@ function parseUpdateUploadedVideoBody(body: Record<string, unknown>): UpdateUplo
   if (body.isLoopable !== undefined) patch.isLoopable = assertBooleanField(body, 'isLoopable');
   if (body.visibility !== undefined) patch.visibility = assertStringField(body, 'visibility');
   if (body.isPremium !== undefined) patch.isPremium = assertBooleanField(body, 'isPremium');
+  if (body.thumbnailStorageKey === null || typeof body.thumbnailStorageKey === 'string') {
+    patch.thumbnailStorageKey = body.thumbnailStorageKey as string | null;
+  }
 
   return patch;
 }
@@ -193,11 +199,11 @@ router.patch('/videos/:id', async (req, res) => {
 router.delete('/videos/:id', async (req, res) => {
   try {
     const gymId = resolveGymId(req.header('x-gym-id'));
-    const deleted = await softDeleteUploadedVideo(req.params.id, gymId);
-    if (!deleted) {
+    const result = await deleteUploadedVideoWithMedia(req.params.id, gymId);
+    if (!result) {
       throw new ApiError(404, 'NOT_FOUND', 'Uploaded video not found');
     }
-    res.status(200).json({ data: { id: req.params.id, deleted: true } });
+    res.status(200).json({ data: result });
   } catch (error) {
     const { status, body } = toErrorResponse(error);
     res.status(status).json(body);
