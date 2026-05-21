@@ -141,9 +141,13 @@ export function uploadedVideoDtoToWorkoutVideo(dto: UploadedVideoDto): WorkoutVi
 
 export function workoutVideoToCreateRequest(video: WorkoutVideo): CreateUploadedVideoRequest {
   const meta = video.uploadMeta;
-  if (!meta?.storageKey) {
+  if (!meta?.storageKey?.trim()) {
     throw new Error('Uploaded video metadata is incomplete');
   }
+
+  const fileName = meta.originalFileName?.trim() || 'upload.mp4';
+  const contentType = meta.mimeType?.trim() || 'video/mp4';
+  const fileSize = Number.isFinite(meta.fileSizeBytes) ? meta.fileSizeBytes : 0;
 
   return {
     id: video.id,
@@ -155,15 +159,15 @@ export function workoutVideoToCreateRequest(video: WorkoutVideo): CreateUploaded
     tags: video.tags,
     isLoopable: video.isLoopable,
     visibility: mapSourceTypeToVisibility(video.sourceType),
-    isPremium: video.isPremium,
+    isPremium: video.isPremium ?? false,
     storageKey: meta.storageKey,
     playbackUrl: meta.playbackUrl ?? video.previewUrl ?? '',
     thumbnailUrl:
       meta.remoteThumbnailUrl ??
       (video.thumbnailUrl.startsWith('http') ? video.thumbnailUrl : null),
-    fileName: meta.originalFileName,
-    fileSize: meta.fileSizeBytes,
-    contentType: meta.mimeType,
+    fileName,
+    fileSize,
+    contentType,
     provider: meta.provider ?? 'r2',
   };
 }
@@ -336,9 +340,9 @@ export async function deleteProgramTemplateApi(id: string): Promise<void> {
   });
 }
 
-export async function upsertUploadedVideoApi(video: WorkoutVideo): Promise<void> {
+export async function upsertUploadedVideoApi(video: WorkoutVideo): Promise<UploadedVideoDto> {
   try {
-    await updateUploadedVideoApi(
+    return await updateUploadedVideoApi(
       video.id,
       workoutVideoToUpdateRequest({
         title: video.title,
@@ -354,21 +358,23 @@ export async function upsertUploadedVideoApi(video: WorkoutVideo): Promise<void>
     );
   } catch (error) {
     if (error instanceof WorkoutBuilderApiError && error.status === 404) {
-      await createUploadedVideoApi(workoutVideoToCreateRequest(video));
-      return;
+      return createUploadedVideoApi(workoutVideoToCreateRequest(video));
     }
     throw error;
   }
 }
+
 export async function upsertProgramTemplateApi(
   template: WorkoutProgramTemplate,
-): Promise<void> {
+): Promise<ProgramTemplateDto> {
   try {
-    await updateProgramTemplateApi(template.id, workoutProgramTemplateToUpdateRequest(template));
+    return await updateProgramTemplateApi(
+      template.id,
+      workoutProgramTemplateToUpdateRequest(template),
+    );
   } catch (error) {
     if (error instanceof WorkoutBuilderApiError && error.status === 404) {
-      await createProgramTemplateApi(workoutProgramTemplateToCreateRequest(template));
-      return;
+      return createProgramTemplateApi(workoutProgramTemplateToCreateRequest(template));
     }
     throw error;
   }

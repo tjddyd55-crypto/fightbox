@@ -91,40 +91,65 @@ function mapVisibilityToSourceType(
 
 function reportSyncError(action: string, error: unknown): void {
   if (error instanceof WorkoutBuilderApiError) {
-    reportWorkoutBuilderSyncError(`${action} 실패: ${error.message}`);
+    reportWorkoutBuilderSyncError(`${action}: ${error.message}`);
     return;
   }
   if (error instanceof Error) {
-    reportWorkoutBuilderSyncError(`${action} 실패: ${error.message}`);
+    reportWorkoutBuilderSyncError(`${action}: ${error.message}`);
     return;
   }
-  reportWorkoutBuilderSyncError(`${action} 실패: 알 수 없는 오류`);
+  reportWorkoutBuilderSyncError(`${action}: 알 수 없는 오류`);
 }
 
-function mergeApiVideosWithLocalCache(apiVideos: WorkoutVideo[]): WorkoutVideo[] {
-  const apiIds = new Set(apiVideos.map((video) => video.id));
-  const localPending = getUploadedVideos().filter((video) => !apiIds.has(video.id));
-  return [...apiVideos, ...localPending];
+function applySyncedVideoToLocalCache(dto: Awaited<ReturnType<typeof createUploadedVideoApi>>): WorkoutVideo {
+  const synced = uploadedVideoDtoToWorkoutVideo(dto);
+  saveUploadedVideo(synced);
+  return synced;
 }
 
-function syncCreateVideoToApi(video: WorkoutVideo): void {
+export async function persistCreatedVideoToApi(video: WorkoutVideo): Promise<WorkoutVideo | null> {
   if (!isApiWorkoutBuilderStorage() || !isUploadedVideo(video)) {
-    return;
+    return null;
   }
 
-  void createUploadedVideoApi(workoutVideoToCreateRequest(video)).catch((error) => {
-    reportSyncError('영상 API 저장', error);
-  });
+  try {
+    const request = workoutVideoToCreateRequest(video);
+    const dto = await createUploadedVideoApi(request);
+    return applySyncedVideoToLocalCache(dto);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Uploaded video metadata is incomplete') {
+      reportWorkoutBuilderSyncError(
+        '영상은 로컬에 저장됐지만 DB 저장에 실패했습니다: 업로드 메타데이터(storageKey)가 없습니다.',
+      );
+      return null;
+    }
+    reportSyncError('영상은 로컬에 저장됐지만 DB 저장에 실패했습니다', error);
+    return null;
+  }
+}
+
+async function persistUpdatedVideoToApi(video: WorkoutVideo): Promise<WorkoutVideo | null> {
+  if (!isApiWorkoutBuilderStorage() || !isUploadedVideo(video)) {
+    return null;
+  }
+
+  try {
+    const dto = await upsertUploadedVideoApi(video);
+    return applySyncedVideoToLocalCache(dto);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Uploaded video metadata is incomplete') {
+      reportWorkoutBuilderSyncError(
+        '영상은 로컬에 저장됐지만 DB 저장에 실패했습니다: 업로드 메타데이터(storageKey)가 없습니다.',
+      );
+      return null;
+    }
+    reportSyncError('영상은 로컬에 저장됐지만 DB 저장에 실패했습니다', error);
+    return null;
+  }
 }
 
 function syncUpdateVideoToApi(video: WorkoutVideo): void {
-  if (!isApiWorkoutBuilderStorage() || !isUploadedVideo(video)) {
-    return;
-  }
-
-  void upsertUploadedVideoApi(video).catch((error) => {
-    reportSyncError('영상 API 수정', error);
-  });
+  void persistUpdatedVideoToApi(video);
 }
 
 function syncDeleteVideoToApi(id: string): void {
@@ -135,6 +160,12 @@ function syncDeleteVideoToApi(id: string): void {
   void deleteUploadedVideoApi(id).catch((error) => {
     reportSyncError('영상 API 삭제', error);
   });
+}
+
+function mergeApiVideosWithLocalCache(apiVideos: WorkoutVideo[]): WorkoutVideo[] {
+  const apiIds = new Set(apiVideos.map((video) => video.id));
+  const localPending = getUploadedVideos().filter((video) => !apiIds.has(video.id));
+  return [...apiVideos, ...localPending];
 }
 
 export function listVideos(): WorkoutVideo[] {
@@ -197,7 +228,6 @@ export function createVideo(input: CreateWorkoutVideoInput): WorkoutVideo | null
   };
 
   if (!saveUploadedVideo(video)) return null;
-  syncCreateVideoToApi(video);
   return video;
 }
 

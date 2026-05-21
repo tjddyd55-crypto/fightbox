@@ -26,6 +26,7 @@ import {
   createVideo,
   deleteVideo,
   listVideos,
+  persistCreatedVideoToApi,
   refreshVideosFromApi,
   updateVideoMetadata,
 } from '../repositories/videoRepository';
@@ -49,6 +50,7 @@ import {
 } from '../utils/programValidationUtils';
 import {
   setWorkoutBuilderSyncErrorHandler,
+  logWorkoutBuilderStorageConfig,
 } from '../services/workoutBuilderStorageConfig';
 
 export function useProgramBuilderState() {
@@ -85,15 +87,13 @@ export function useProgramBuilderState() {
   }, []);
 
   useEffect(() => {
+    logWorkoutBuilderStorageConfig();
     setWorkoutBuilderSyncErrorHandler(showMessage);
-    return () => setWorkoutBuilderSyncErrorHandler(null);
-  }, [showMessage]);
-
-  useEffect(() => {
     void refreshVideosFromApi().then((nextVideos) => {
       setVideos(nextVideos);
     });
-  }, []);
+    return () => setWorkoutBuilderSyncErrorHandler(null);
+  }, [showMessage]);
 
   const buildTemplateSnapshot = useCallback((): WorkoutProgramTemplate => {
     const now = new Date().toISOString();
@@ -301,6 +301,9 @@ export function useProgramBuilderState() {
         return null;
       }
       setVideos(listVideos());
+      void persistCreatedVideoToApi(created).then(() => {
+        setVideos(listVideos());
+      });
       showMessage(`「${created.title}」 영상이 등록되었습니다.`);
       return created;
     },

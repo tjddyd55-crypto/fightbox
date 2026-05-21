@@ -1,6 +1,10 @@
+import { getApiBaseUrl } from './videoUploadConfig';
+
 export type WorkoutBuilderStorageMode = 'local' | 'api';
 
 const DEFAULT_STORAGE_MODE: WorkoutBuilderStorageMode = 'local';
+
+let storageConfigLogged = false;
 
 export function resolveWorkoutBuilderStorage(): WorkoutBuilderStorageMode {
   const raw = import.meta.env.VITE_WORKOUT_BUILDER_STORAGE?.trim().toLowerCase();
@@ -12,6 +16,23 @@ export function resolveWorkoutBuilderStorage(): WorkoutBuilderStorageMode {
 
 export function isApiWorkoutBuilderStorage(): boolean {
   return resolveWorkoutBuilderStorage() === 'api';
+}
+
+export function logWorkoutBuilderStorageConfig(): void {
+  if (storageConfigLogged) {
+    return;
+  }
+  storageConfigLogged = true;
+
+  const mode = resolveWorkoutBuilderStorage();
+  const apiBase = getApiBaseUrl();
+
+  console.info(`[workout-builder] storage mode ${mode}`);
+  if (apiBase) {
+    console.info(`[workout-builder] api base ${apiBase}`);
+  } else {
+    console.info('[workout-builder] api base (not configured)');
+  }
 }
 
 export const DEFAULT_GYM_ID = 'demo-gym';

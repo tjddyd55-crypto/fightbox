@@ -35,32 +35,42 @@ import {
 
 function reportSyncError(action: string, error: unknown): void {
   if (error instanceof WorkoutBuilderApiError) {
-    reportWorkoutBuilderSyncError(`${action} 실패: ${error.message}`);
+    reportWorkoutBuilderSyncError(`${action}: ${error.message}`);
     return;
   }
   if (error instanceof Error) {
-    reportWorkoutBuilderSyncError(`${action} 실패: ${error.message}`);
+    reportWorkoutBuilderSyncError(`${action}: ${error.message}`);
     return;
   }
-  reportWorkoutBuilderSyncError(`${action} 실패: 알 수 없는 오류`);
+  reportWorkoutBuilderSyncError(`${action}: 알 수 없는 오류`);
 }
 
-function mergeApiTemplatesWithLocalCache(
-  apiTemplates: WorkoutProgramTemplate[],
-): WorkoutProgramTemplate[] {
-  const apiIds = new Set(apiTemplates.map((template) => template.id));
-  const localPending = getSavedProgramTemplates().filter((template) => !apiIds.has(template.id));
-  return [...apiTemplates, ...localPending];
+function applySyncedTemplateToLocalCache(
+  dto: Awaited<ReturnType<typeof upsertProgramTemplateApi>>,
+): WorkoutProgramTemplate | null {
+  const synced = programTemplateDtoToWorkoutProgramTemplate(dto);
+  if (!synced) {
+    return null;
+  }
+  saveProgramTemplate(synced);
+  return synced;
 }
 
-function syncTemplateToApi(template: WorkoutProgramTemplate): void {
+async function persistTemplateToApi(template: WorkoutProgramTemplate): Promise<void> {
   if (!isApiWorkoutBuilderStorage()) {
     return;
   }
 
-  void upsertProgramTemplateApi(template).catch((error) => {
-    reportSyncError('템플릿 API 저장', error);
-  });
+  try {
+    const dto = await upsertProgramTemplateApi(template);
+    applySyncedTemplateToLocalCache(dto);
+  } catch (error) {
+    reportSyncError('템플릿은 로컬에 저장됐지만 DB 저장에 실패했습니다', error);
+  }
+}
+
+function syncTemplateToApi(template: WorkoutProgramTemplate): void {
+  void persistTemplateToApi(template);
 }
 
 function syncDeleteTemplateToApi(id: string): void {
@@ -71,6 +81,14 @@ function syncDeleteTemplateToApi(id: string): void {
   void deleteProgramTemplateApi(id).catch((error) => {
     reportSyncError('템플릿 API 삭제', error);
   });
+}
+
+function mergeApiTemplatesWithLocalCache(
+  apiTemplates: WorkoutProgramTemplate[],
+): WorkoutProgramTemplate[] {
+  const apiIds = new Set(apiTemplates.map((template) => template.id));
+  const localPending = getSavedProgramTemplates().filter((template) => !apiIds.has(template.id));
+  return [...apiTemplates, ...localPending];
 }
 
 export function listTemplates(): WorkoutProgramTemplate[] {
