@@ -1,7 +1,39 @@
 export const WORKOUT_BUILDER_API_PATHS = {
   videos: '/api/workout-builder/videos',
   templates: '/api/workout-builder/templates',
+  adminPublicSubmissions: '/api/workout-builder/admin/public-submissions',
 } as const;
+
+/** Template visibility in DB/API. Legacy aliases (gym, public_approved) are normalized on read. */
+export type TemplateVisibility =
+  | 'private'
+  | 'gym_only'
+  | 'public_pending'
+  | 'public'
+  | 'public_rejected';
+
+/** Template lifecycle status — separate from public review visibility. */
+export type TemplateStatus = 'draft' | 'active' | 'archived';
+
+export type TemplatePublicReviewStatus = 'pending' | 'approved' | 'rejected';
+
+export interface ProgramTemplateDto {
+  id: string;
+  gymId: string;
+  title: string;
+  description: string;
+  visibility: TemplateVisibility | string;
+  status: TemplateStatus | string;
+  totalDurationSec: number;
+  templateJson: unknown;
+  publicReviewStatus?: TemplatePublicReviewStatus | string | null;
+  publicRejectionReason?: string | null;
+  publicReviewedAt?: string | null;
+  publicReviewedBy?: string | null;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface UploadedVideoDto {
   id: string;
@@ -73,18 +105,14 @@ export interface DeleteUploadedVideoResponse {
   r2: R2DeleteResult;
 }
 
-export interface ProgramTemplateDto {
-  id: string;
-  gymId: string;
-  title: string;
-  description: string;
-  visibility: string;
-  status: string;
-  totalDurationSec: number;
-  templateJson: unknown;
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
+export interface SubmitPublicTemplateRequest {
+  title?: string;
+  description?: string;
+  tags?: string[];
+}
+
+export interface RejectPublicTemplateRequest {
+  reason: string;
 }
 
 export interface CreateProgramTemplateRequest {

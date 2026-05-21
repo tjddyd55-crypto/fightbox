@@ -95,7 +95,7 @@ export const mockProgramTemplate: WorkoutProgramTemplate = {
     buildWorkoutVideoMap(mockWorkoutVideos),
   ),
   blocks,
-  visibility: 'gym',
+  visibility: 'gym_only',
   createdAt: now,
   updatedAt: now,
   ownerGymId: 'gym_demo_001',

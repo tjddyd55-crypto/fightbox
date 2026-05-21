@@ -4,10 +4,14 @@ export type WorkoutDifficulty = 'beginner' | 'intermediate' | 'advanced';
 
 export type TemplateVisibility =
   | 'private'
-  | 'gym'
+  | 'gym_only'
   | 'public_pending'
-  | 'public_approved'
+  | 'public'
   | 'public_rejected';
+
+export type TemplateStatus = 'draft' | 'active' | 'archived';
+
+export type TemplatePublicReviewStatus = 'pending' | 'approved' | 'rejected';
 
 export type ContentSourceKind = 'own' | 'shared' | 'public';
 
@@ -147,6 +151,11 @@ export interface WorkoutProgramTemplate {
   totalDurationSec: number;
   blocks: ProgramBlock[];
   visibility: TemplateVisibility;
+  status?: TemplateStatus;
+  publicReviewStatus?: TemplatePublicReviewStatus;
+  publicRejectionReason?: string;
+  publicReviewedAt?: string;
+  publicReviewedBy?: string;
   createdAt: string;
   updatedAt: string;
   /** Gym scope for multi-tenant API (optional until backend). */
