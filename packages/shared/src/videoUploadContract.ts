@@ -1,11 +1,14 @@
 export type R2PresignUrlStyle = 'path' | 'virtual';
 
+export type PresignAssetType = 'video' | 'thumbnail';
+
 export interface PresignedVideoUploadRequest {
   fileName: string;
   fileSize: number;
   contentType: string;
   gymId?: string;
   uploaderId?: string;
+  assetType?: PresignAssetType;
 }
 
 export interface PresignedVideoUploadDebug {

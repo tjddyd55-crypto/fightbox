@@ -1,6 +1,7 @@
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'node:crypto';
+import type { PresignAssetType } from '@fightbox/shared';
 import {
   getR2Config,
   resolvePresignIncludeContentType,
@@ -10,6 +11,7 @@ import {
 import { ApiError } from '../utils/apiError.js';
 
 const MAX_FILE_SIZE_BYTES = 1024 * 1024 * 1024;
+const MAX_THUMBNAIL_SIZE_BYTES = 5 * 1024 * 1024;
 const PRESIGN_EXPIRES_IN_SECONDS = 600;
 
 const UNSAFE_FILE_NAME_CHARS = /[/\\:*?"<>|\0]/g;
@@ -26,6 +28,15 @@ export interface CreatePresignedVideoUploadInput {
   contentType: string;
   gymId?: string;
   uploaderId?: string;
+  assetType?: PresignAssetType;
+}
+
+function resolveAssetType(input: CreatePresignedVideoUploadInput): PresignAssetType {
+  return input.assetType === 'thumbnail' ? 'thumbnail' : 'video';
+}
+
+function getStoragePrefix(assetType: PresignAssetType): string {
+  return assetType === 'thumbnail' ? 'workout-video-thumbnails' : 'workout-videos';
 }
 
 export interface CreatePresignedVideoUploadResult {
@@ -58,11 +69,43 @@ function buildStorageKey(input: CreatePresignedVideoUploadInput): string {
     .replace(/[^a-zA-Z0-9._-]/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-+|-+$/g, '') || 'demo-gym';
+  const prefix = getStoragePrefix(resolveAssetType(input));
 
-  return `workout-videos/${gymSegment}/${year}/${month}/${randomUUID()}-${sanitizeFileName(input.fileName)}`;
+  return `${prefix}/${gymSegment}/${year}/${month}/${randomUUID()}-${sanitizeFileName(input.fileName)}`;
 }
 
-function validateInput(input: CreatePresignedVideoUploadInput): void {
+function validateThumbnailInput(input: CreatePresignedVideoUploadInput): void {
+  if (!input.fileName.trim()) {
+    throw new ApiError(400, 'INVALID_BODY', 'fileName is required');
+  }
+
+  if (!Number.isFinite(input.fileSize)) {
+    throw new ApiError(400, 'INVALID_BODY', 'fileSize must be a number');
+  }
+
+  if (input.fileSize <= 0) {
+    throw new ApiError(400, 'INVALID_BODY', 'fileSize must be greater than 0');
+  }
+
+  if (input.fileSize > MAX_THUMBNAIL_SIZE_BYTES) {
+    throw new ApiError(400, 'FILE_TOO_LARGE', 'Thumbnail fileSize must be 5MB or less');
+  }
+
+  const contentType = input.contentType.trim().toLowerCase();
+  if (!contentType) {
+    throw new ApiError(400, 'INVALID_BODY', 'contentType is required');
+  }
+
+  if (contentType !== 'image/jpeg' && contentType !== 'image/webp') {
+    throw new ApiError(
+      400,
+      'UNSUPPORTED_CONTENT_TYPE',
+      'Only image/jpeg and image/webp thumbnails are supported.',
+    );
+  }
+}
+
+function validateVideoInput(input: CreatePresignedVideoUploadInput): void {
   if (!input.fileName.trim()) {
     throw new ApiError(400, 'INVALID_BODY', 'fileName is required');
   }
@@ -89,10 +132,20 @@ function validateInput(input: CreatePresignedVideoUploadInput): void {
   }
 }
 
+function validateInput(input: CreatePresignedVideoUploadInput): void {
+  const assetType = resolveAssetType(input);
+  if (assetType === 'thumbnail') {
+    validateThumbnailInput(input);
+    return;
+  }
+  validateVideoInput(input);
+}
+
 function assertUploadUrlShape(
   uploadUrl: string,
   bucketName: string,
   urlStyle: R2PresignUrlStyle,
+  storagePrefix: string,
 ): void {
   const url = new URL(uploadUrl);
   const virtualHostedPrefix = `${bucketName.toLowerCase()}.`;
@@ -125,11 +178,11 @@ function assertUploadUrlShape(
     );
   }
 
-  if (!url.pathname.startsWith('/workout-videos/')) {
+  if (!url.pathname.startsWith(`/${storagePrefix}/`)) {
     throw new ApiError(
       500,
       'PRESIGN_FAILED',
-      'Presigned URL path must start with /workout-videos/',
+      `Presigned URL path must start with /${storagePrefix}/`,
     );
   }
 }
@@ -173,6 +226,8 @@ export async function createPresignedVideoUpload(
 ): Promise<CreatePresignedVideoUploadResult> {
   validateInput(input);
 
+  const assetType = resolveAssetType(input);
+  const storagePrefix = getStoragePrefix(assetType);
   const config = getR2Config();
   const urlStyle = resolvePresignUrlStyle();
   const includeContentType = resolvePresignIncludeContentType();
@@ -207,18 +262,18 @@ export async function createPresignedVideoUpload(
     throw new ApiError(500, 'PRESIGN_FAILED', 'Failed to create presigned upload URL');
   }
 
-  assertUploadUrlShape(uploadUrl, config.bucketName, urlStyle);
+  assertUploadUrlShape(uploadUrl, config.bucketName, urlStyle, storagePrefix);
   assertSimplePresignedUploadUrl(uploadUrl);
 
   const expiresAt = new Date(Date.now() + PRESIGN_EXPIRES_IN_SECONDS * 1000).toISOString();
-  const playbackUrl = config.publicBaseUrl ? `${config.publicBaseUrl}/${storageKey}` : '';
+  const publicUrl = config.publicBaseUrl ? `${config.publicBaseUrl}/${storageKey}` : '';
   const debug = buildUploadUrlDebug(uploadUrl, urlStyle);
 
   return {
     uploadUrl,
     storageKey,
-    playbackUrl,
-    thumbnailUrl: null,
+    playbackUrl: publicUrl,
+    thumbnailUrl: assetType === 'thumbnail' ? publicUrl || null : null,
     expiresAt,
     debug,
   };

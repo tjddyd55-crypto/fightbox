@@ -27,7 +27,7 @@ router.post('/presign', async (req, res) => {
       throw new ApiError(400, 'INVALID_BODY', 'Request body must be a JSON object');
     }
 
-    const { fileName, fileSize, contentType, gymId, uploaderId } = body as Record<
+    const { fileName, fileSize, contentType, gymId, uploaderId, assetType } = body as Record<
       string,
       unknown
     >;
@@ -44,12 +44,21 @@ router.post('/presign', async (req, res) => {
       throw new ApiError(400, 'INVALID_BODY', 'contentType must be a string');
     }
 
+    let resolvedAssetType: 'video' | 'thumbnail' | undefined;
+    if (assetType !== undefined) {
+      if (assetType !== 'video' && assetType !== 'thumbnail') {
+        throw new ApiError(400, 'INVALID_BODY', 'assetType must be "video" or "thumbnail"');
+      }
+      resolvedAssetType = assetType;
+    }
+
     const result = await createPresignedVideoUpload({
       fileName,
       fileSize,
       contentType,
       ...(typeof gymId === 'string' ? { gymId } : {}),
       ...(typeof uploaderId === 'string' ? { uploaderId } : {}),
+      ...(resolvedAssetType ? { assetType: resolvedAssetType } : {}),
     });
 
     if (result.debug) {
