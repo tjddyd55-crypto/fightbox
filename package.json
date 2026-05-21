@@ -14,7 +14,7 @@
     "dev:api": "npm run dev -w @fightbox/api",
     "build": "npm run build -w @fightbox/shared && npm run build -w @fightbox/web && npm run build -w @fightbox/api",
     "build:web": "npm run build -w @fightbox/web",
-    "build:api": "npm run build -w @fightbox/api",
+    "build:api": "npm run build -w @fightbox/shared && npm run build -w @fightbox/api",
     "typecheck": "npm run typecheck -w @fightbox/shared && npm run typecheck -w @fightbox/web && npm run typecheck -w @fightbox/api",
     "lint": "eslint .",
     "start": "npm run start:web",
