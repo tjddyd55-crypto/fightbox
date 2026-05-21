@@ -174,6 +174,17 @@ npm run db:migrate:prod -w @fightbox/api
 - `x-gym-id` (기본 `demo-gym`)
 - `x-user-id` (기본 `demo-coach`)
 
+#### 업로드 영상 삭제 정책
+
+업로드 영상(`uploaded_videos`) 삭제 시:
+
+- DB row는 **soft delete** (`deleted_at` 설정)로 유지합니다.
+- R2 원본(`storage_key`)과 썸네일(`thumbnail_storage_key`) 객체 삭제는 **best-effort**로 시도합니다.
+- R2 삭제가 일부 실패해도 DB soft delete는 진행합니다.
+- 실패한 object key는 API 응답 `data.r2.failed`와 서버 로그에 남깁니다.
+- 더미/mock 카탈로그 영상은 삭제 대상이 아닙니다.
+- orphan R2 객체 정리는 추후 배치 job으로 보완할 수 있습니다.
+
 CDN/Public URL이 없으면 presign 응답의 `playbackUrl`은 빈 문자열(`""`)입니다. 실제 재생 URL은 추후 R2 Public Development URL 또는 Custom Domain 연결 후 `R2_PUBLIC_URL` / `R2_PUBLIC_CDN_BASE`를 설정하세요.
 
 #### Presign API 계약
