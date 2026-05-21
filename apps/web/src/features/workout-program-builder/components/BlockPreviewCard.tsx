@@ -2,7 +2,7 @@ import type { ProgramBlock, WorkoutVideo } from '../types/workoutProgramBuilder.
 import { formatDuration } from '../utils/durationUtils';
 import { getVideoById } from '../utils/programTimelineUtils';
 import { isUploadedVideo } from '../utils/videoManageUtils';
-import { getWorkoutVideoPlaybackUrl } from '../utils/videoPlaybackUtils';
+import { getWorkoutVideoPlaybackUrl, getWorkoutVideoPosterUrl } from '../utils/videoPlaybackUtils';
 import { WorkoutVideoPlayer } from './WorkoutVideoPlayer';
 
 const DIFFICULTY_LABEL: Record<WorkoutVideo['difficulty'], string> = {
@@ -29,6 +29,7 @@ function PreviewMedia({ block, videos }: { block: ProgramBlock; videos: WorkoutV
   if (block.type === 'video') {
     const video = getVideoById(videos, block.videoId);
     const playbackUrl = getWorkoutVideoPlaybackUrl(video);
+    const posterUrl = getWorkoutVideoPosterUrl(video);
 
     if (playbackUrl) {
       return (
@@ -46,10 +47,14 @@ function PreviewMedia({ block, videos }: { block: ProgramBlock; videos: WorkoutV
         className="wpb-preview-media wpb-preview-media--video"
         aria-label="영상 미리보기"
       >
-        <span className="wpb-preview-play-icon" aria-hidden>
-          ▶
-        </span>
-        {video && isUploadedVideo(video) && (
+        {posterUrl ? (
+          <img src={posterUrl} alt="" className="wpb-preview-poster-image" />
+        ) : (
+          <span className="wpb-preview-play-icon" aria-hidden>
+            ▶
+          </span>
+        )}
+        {video && isUploadedVideo(video) && !posterUrl && (
           <p className="wpb-preview-no-playback-hint">
             재생 URL이 없습니다. Public URL 설정 후 새로 업로드해 주세요.
           </p>

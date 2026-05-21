@@ -28,13 +28,12 @@ export function getWorkoutVideoPosterUrl(video?: WorkoutVideo | null): string | 
     return undefined;
   }
 
-  const remoteThumbnail = video.uploadMeta?.remoteThumbnailUrl;
-  if (isRemoteHttpUrl(remoteThumbnail)) {
-    return remoteThumbnail;
-  }
+  const candidates = [video.thumbnailUrl, video.uploadMeta?.remoteThumbnailUrl];
 
-  if (isRemoteHttpUrl(video.thumbnailUrl)) {
-    return video.thumbnailUrl;
+  for (const candidate of candidates) {
+    if (isRemoteHttpUrl(candidate)) {
+      return candidate;
+    }
   }
 
   return undefined;

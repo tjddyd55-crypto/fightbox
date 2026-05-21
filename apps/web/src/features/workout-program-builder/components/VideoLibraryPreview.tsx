@@ -1,7 +1,7 @@
 import type { WorkoutVideo } from '../types/workoutProgramBuilder.types';
 import { formatDuration } from '../utils/durationUtils';
 import { isUploadedVideo } from '../utils/videoManageUtils';
-import { getWorkoutVideoPlaybackUrl } from '../utils/videoPlaybackUtils';
+import { getWorkoutVideoPlaybackUrl, getWorkoutVideoPosterUrl } from '../utils/videoPlaybackUtils';
 import { WorkoutVideoPlayer } from './WorkoutVideoPlayer';
 
 const DIFFICULTY_LABEL: Record<WorkoutVideo['difficulty'], string> = {
@@ -17,6 +17,7 @@ interface VideoLibraryPreviewProps {
 
 export function VideoLibraryPreview({ video, onAdd }: VideoLibraryPreviewProps) {
   const playbackUrl = getWorkoutVideoPlaybackUrl(video);
+  const posterUrl = getWorkoutVideoPosterUrl(video);
 
   return (
     <section className="wpb-library-preview" aria-label="라이브러리 미리보기">
@@ -31,6 +32,8 @@ export function VideoLibraryPreview({ video, onAdd }: VideoLibraryPreviewProps) 
         >
           {playbackUrl ? (
             <WorkoutVideoPlayer video={video} className="wpb-preview-video" />
+          ) : posterUrl ? (
+            <img src={posterUrl} alt="" className="wpb-thumb-image wpb-library-preview-poster" />
           ) : (
             <>
               <span className="wpb-thumb-placeholder" />

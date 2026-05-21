@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { WorkoutVideo } from '../types/workoutProgramBuilder.types';
 import { formatDuration } from '../utils/durationUtils';
 import { isUploadedVideo } from '../utils/videoManageUtils';
-import { getWorkoutVideoPlaybackUrl } from '../utils/videoPlaybackUtils';
+import { getWorkoutVideoPlaybackUrl, getWorkoutVideoPosterUrl } from '../utils/videoPlaybackUtils';
 
 const DIFFICULTY_LABEL: Record<WorkoutVideo['difficulty'], string> = {
   beginner: '초급',
@@ -37,9 +37,7 @@ export function VideoCard({
   const menuWrapRef = useRef<HTMLDivElement>(null);
   const canManage = isUploadedVideo(video);
   const playbackUrl = getWorkoutVideoPlaybackUrl(video);
-  const remoteThumbUrl =
-    video.uploadMeta?.remoteThumbnailUrl ??
-    (video.thumbnailUrl.startsWith('http') ? video.thumbnailUrl : null);
+  const posterUrl = getWorkoutVideoPosterUrl(video);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -71,14 +69,14 @@ export function VideoCard({
           <video
             className="wpb-thumb-video"
             src={playbackUrl}
-            poster={remoteThumbUrl ?? undefined}
+            poster={posterUrl}
             preload="metadata"
             muted
             playsInline
             tabIndex={-1}
           />
-        ) : remoteThumbUrl ? (
-          <img src={remoteThumbUrl} alt="" className="wpb-thumb-image" />
+        ) : posterUrl ? (
+          <img src={posterUrl} alt="" className="wpb-thumb-image" />
         ) : (
           <span className="wpb-thumb-placeholder" />
         )}
