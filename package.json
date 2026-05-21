@@ -19,7 +19,8 @@
     "lint": "eslint .",
     "start": "npm run start:web",
     "start:web": "npm run preview -w @fightbox/web",
-    "start:api": "node apps/api/dist/index.js"
+    "start:api": "node apps/api/dist/index.js",
+    "db:migrate:api": "npm run db:migrate -w @fightbox/api"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
