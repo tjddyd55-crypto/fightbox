@@ -1,8 +1,24 @@
 import { Router } from 'express';
+import { resolveR2DiagnosticsEnabled } from '../config/r2Config.js';
+import { diagnoseR2Cors } from '../services/r2CorsDiagnosticService.js';
 import { createPresignedVideoUpload } from '../services/r2PresignService.js';
 import { ApiError, toErrorResponse } from '../utils/apiError.js';
 
 const router = Router();
+
+router.get('/diagnostics/r2-cors', async (_req, res) => {
+  try {
+    if (!resolveR2DiagnosticsEnabled()) {
+      throw new ApiError(404, 'NOT_FOUND', 'Not found');
+    }
+
+    const result = await diagnoseR2Cors();
+    res.status(200).json(result);
+  } catch (error) {
+    const { status, body } = toErrorResponse(error);
+    res.status(status).json(body);
+  }
+});
 
 router.post('/presign', async (req, res) => {
   try {

@@ -72,6 +72,7 @@ API presign이 정상 확인된 후 `VITE_VIDEO_UPLOAD_PROVIDER=api`와 `VITE_AP
 |------|------|
 | `PORT` | Railway가 주입 (예: `3000`) |
 | `FRONTEND_ORIGIN` | web app origin (CORS, 예: `https://app-production-6692.up.railway.app`) |
+| `ENABLE_R2_DIAGNOSTICS` | `true`일 때만 R2 CORS 진단 endpoint 활성화 |
 | `R2_ACCOUNT_ID` | Cloudflare account ID |
 | `R2_ACCESS_KEY_ID` | R2 access key |
 | `R2_SECRET_ACCESS_KEY` | R2 secret (API 서비스에만) |
@@ -84,6 +85,7 @@ API presign이 정상 확인된 후 `VITE_VIDEO_UPLOAD_PROVIDER=api`와 `VITE_AP
 
 - `GET /health` — 서비스 상태
 - `POST /api/workout-videos/uploads/presign` — R2 presigned PUT URL 발급
+- `GET /api/workout-videos/uploads/diagnostics/r2-cors` — `ENABLE_R2_DIAGNOSTICS=true`일 때 R2 OPTIONS preflight 진단
 
 루트 `npm run build` / `npm run start` 도 web 기준으로 동작합니다.
 

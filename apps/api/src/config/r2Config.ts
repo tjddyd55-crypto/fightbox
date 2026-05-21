@@ -53,6 +53,11 @@ export function resolvePresignIncludeContentType(): boolean {
   return raw === 'true';
 }
 
+export function resolveR2DiagnosticsEnabled(): boolean {
+  const raw = process.env.ENABLE_R2_DIAGNOSTICS?.trim().toLowerCase();
+  return raw === 'true';
+}
+
 export function getR2Config(): R2Config {
   const accessKeyId = trimEnv(process.env.R2_ACCESS_KEY_ID);
   const secretAccessKey = trimEnv(process.env.R2_SECRET_ACCESS_KEY);
