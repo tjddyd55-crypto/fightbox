@@ -2,15 +2,21 @@ import { Router } from 'express';
 import type {
   CreateProgramTemplateRequest,
   CreateUploadedVideoRequest,
+  RejectPublicTemplateRequest,
+  SubmitPublicTemplateRequest,
   UpdateProgramTemplateRequest,
   UpdateUploadedVideoRequest,
 } from '@fightbox/shared';
-import { DEFAULT_ACTOR_ID, DEFAULT_GYM_ID } from '../constants/workoutBuilderConstants.js';
+import { DEFAULT_ACTOR_ID, DEFAULT_DEMO_ADMIN_ID, DEFAULT_GYM_ID } from '../constants/workoutBuilderConstants.js';
 import {
+  approvePublicSubmission,
   createProgramTemplate,
   getProgramTemplate,
   listProgramTemplates,
+  listPublicPendingSubmissions,
+  rejectPublicSubmission,
   softDeleteProgramTemplate,
+  submitProgramTemplateForPublic,
   updateProgramTemplate,
 } from '../repositories/programTemplateRepository.js';
 import {
@@ -153,6 +159,31 @@ function parseUpdateProgramTemplateBody(
   return patch;
 }
 
+function parseSubmitPublicTemplateBody(body: Record<string, unknown>): SubmitPublicTemplateRequest {
+  const request: SubmitPublicTemplateRequest = {};
+  if (typeof body.title === 'string' && body.title.trim()) {
+    request.title = body.title.trim();
+  }
+  if (typeof body.description === 'string') {
+    request.description = body.description;
+  }
+  if (Array.isArray(body.tags) && body.tags.every((item) => typeof item === 'string')) {
+    request.tags = body.tags;
+  }
+  return request;
+}
+
+function parseRejectPublicTemplateBody(body: Record<string, unknown>): RejectPublicTemplateRequest {
+  return {
+    reason: assertStringField(body, 'reason'),
+  };
+}
+
+function resolveDemoAdminId(headerValue: string | undefined): string {
+  const adminId = headerValue?.trim();
+  return adminId || DEFAULT_DEMO_ADMIN_ID;
+}
+
 router.get('/videos', async (req, res) => {
   try {
     const gymId = resolveGymId(req.header('x-gym-id'));
@@ -275,6 +306,64 @@ router.delete('/templates/:id', async (req, res) => {
       throw new ApiError(404, 'NOT_FOUND', 'Program template not found');
     }
     res.status(200).json({ data: { id: req.params.id, deleted: true } });
+  } catch (error) {
+    const { status, body } = toErrorResponse(error);
+    res.status(status).json(body);
+  }
+});
+
+// Demo admin moderation — no auth yet; protect with real roles later.
+router.post('/templates/:id/submit-public', async (req, res) => {
+  try {
+    const gymId = resolveGymId(req.header('x-gym-id'));
+    const body =
+      req.body && typeof req.body === 'object' && !Array.isArray(req.body)
+        ? parseSubmitPublicTemplateBody(req.body as Record<string, unknown>)
+        : {};
+    const data = await submitProgramTemplateForPublic(req.params.id, gymId, body);
+    if (!data) {
+      throw new ApiError(404, 'NOT_FOUND', 'Program template not found');
+    }
+    res.status(200).json({ data });
+  } catch (error) {
+    const { status, body } = toErrorResponse(error);
+    res.status(status).json(body);
+  }
+});
+
+router.get('/admin/public-submissions', async (_req, res) => {
+  try {
+    const data = await listPublicPendingSubmissions();
+    res.status(200).json({ data });
+  } catch (error) {
+    const { status, body } = toErrorResponse(error);
+    res.status(status).json(body);
+  }
+});
+
+router.post('/admin/public-submissions/:id/approve', async (req, res) => {
+  try {
+    const reviewedBy = resolveDemoAdminId(req.header('x-user-id'));
+    const data = await approvePublicSubmission(req.params.id, reviewedBy);
+    if (!data) {
+      throw new ApiError(404, 'NOT_FOUND', 'Pending public submission not found');
+    }
+    res.status(200).json({ data });
+  } catch (error) {
+    const { status, body } = toErrorResponse(error);
+    res.status(status).json(body);
+  }
+});
+
+router.post('/admin/public-submissions/:id/reject', async (req, res) => {
+  try {
+    const reviewedBy = resolveDemoAdminId(req.header('x-user-id'));
+    const { reason } = parseRejectPublicTemplateBody(assertObjectBody(req.body));
+    const data = await rejectPublicSubmission(req.params.id, reason, reviewedBy);
+    if (!data) {
+      throw new ApiError(404, 'NOT_FOUND', 'Pending public submission not found');
+    }
+    res.status(200).json({ data });
   } catch (error) {
     const { status, body } = toErrorResponse(error);
     res.status(status).json(body);

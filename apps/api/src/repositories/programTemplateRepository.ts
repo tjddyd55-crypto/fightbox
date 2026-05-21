@@ -2,9 +2,11 @@ import { randomUUID } from 'node:crypto';
 import type {
   CreateProgramTemplateRequest,
   ProgramTemplateDto,
+  SubmitPublicTemplateRequest,
   UpdateProgramTemplateRequest,
 } from '@fightbox/shared';
 import { getDatabasePool } from '../config/database.js';
+import { DEFAULT_DEMO_ADMIN_ID } from '../constants/workoutBuilderConstants.js';
 import { ApiError } from '../utils/apiError.js';
 
 interface ProgramTemplateRow {
@@ -16,6 +18,10 @@ interface ProgramTemplateRow {
   status: string;
   total_duration_sec: number;
   template_json: unknown;
+  public_review_status: string | null;
+  public_rejection_reason: string | null;
+  public_reviewed_at: Date | null;
+  public_reviewed_by: string | null;
   created_by: string;
   created_at: Date;
   updated_at: Date;
@@ -36,6 +42,10 @@ function mapProgramTemplateRow(row: ProgramTemplateRow): ProgramTemplateDto {
     status: row.status,
     totalDurationSec: row.total_duration_sec,
     templateJson: row.template_json,
+    publicReviewStatus: row.public_review_status,
+    publicRejectionReason: row.public_rejection_reason,
+    publicReviewedAt: row.public_reviewed_at?.toISOString() ?? null,
+    publicReviewedBy: row.public_reviewed_by,
     createdBy: row.created_by,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
@@ -52,6 +62,24 @@ function wrapDatabaseError(error: unknown): ApiError {
   return new ApiError(500, 'DATABASE_ERROR', 'Unexpected database error');
 }
 
+function mergeTemplateJsonVisibility(
+  templateJson: unknown,
+  visibility: string,
+  patch?: SubmitPublicTemplateRequest,
+): Record<string, unknown> {
+  const base =
+    templateJson && typeof templateJson === 'object' && !Array.isArray(templateJson)
+      ? { ...(templateJson as Record<string, unknown>) }
+      : {};
+
+  base.visibility = visibility;
+  if (patch?.title !== undefined) base.title = patch.title;
+  if (patch?.description !== undefined) base.description = patch.description;
+  if (patch?.tags !== undefined) base.tags = patch.tags;
+
+  return base;
+}
+
 export async function listProgramTemplates(gymId: string): Promise<ProgramTemplateDto[]> {
   try {
     const pool = getDatabasePool();
@@ -63,6 +91,23 @@ export async function listProgramTemplates(gymId: string): Promise<ProgramTempla
         ORDER BY updated_at DESC
       `,
       [gymId],
+    );
+    return result.rows.map(mapProgramTemplateRow);
+  } catch (error) {
+    throw wrapDatabaseError(error);
+  }
+}
+
+export async function listPublicPendingSubmissions(): Promise<ProgramTemplateDto[]> {
+  try {
+    const pool = getDatabasePool();
+    const result = await pool.query<ProgramTemplateRow>(
+      `
+        SELECT *
+        FROM program_templates
+        WHERE visibility = 'public_pending' AND deleted_at IS NULL
+        ORDER BY updated_at DESC
+      `,
     );
     return result.rows.map(mapProgramTemplateRow);
   } catch (error) {
@@ -89,6 +134,19 @@ export async function getProgramTemplate(
   } catch (error) {
     throw wrapDatabaseError(error);
   }
+}
+
+async function getProgramTemplateById(id: string): Promise<ProgramTemplateRow | null> {
+  const pool = getDatabasePool();
+  const result = await pool.query<ProgramTemplateRow>(
+    `
+      SELECT *
+      FROM program_templates
+      WHERE id = $1 AND deleted_at IS NULL
+    `,
+    [id],
+  );
+  return result.rows[0] ?? null;
 }
 
 export async function createProgramTemplate(
@@ -194,6 +252,146 @@ export async function updateProgramTemplate(
   } catch (error) {
     throw wrapDatabaseError(error);
   }
+}
+
+export async function submitProgramTemplateForPublic(
+  id: string,
+  gymId: string,
+  input: SubmitPublicTemplateRequest = {},
+): Promise<ProgramTemplateDto | null> {
+  const existing = await getProgramTemplate(id, gymId);
+  if (!existing) {
+    return null;
+  }
+
+  if (existing.visibility === 'public_pending') {
+    throw new ApiError(409, 'ALREADY_PENDING', 'Template is already pending public review');
+  }
+
+  const title = input.title?.trim() || existing.title;
+  const description =
+    input.description !== undefined ? input.description.trim() : existing.description;
+  const tags = input.tags ?? extractTagsFromTemplateJson(existing.templateJson);
+  const templateJson = mergeTemplateJsonVisibility(existing.templateJson, 'public_pending', {
+    title,
+    description,
+    tags,
+  });
+
+  try {
+    const pool = getDatabasePool();
+    const result = await pool.query<ProgramTemplateRow>(
+      `
+        UPDATE program_templates
+        SET
+          title = $1,
+          description = $2,
+          visibility = 'public_pending',
+          public_review_status = 'pending',
+          public_rejection_reason = NULL,
+          public_reviewed_at = NULL,
+          public_reviewed_by = NULL,
+          template_json = $3::jsonb,
+          updated_at = now()
+        WHERE id = $4 AND gym_id = $5 AND deleted_at IS NULL
+        RETURNING *
+      `,
+      [title, description, JSON.stringify(templateJson), id, gymId],
+    );
+
+    const row = result.rows[0];
+    return row ? mapProgramTemplateRow(row) : null;
+  } catch (error) {
+    throw wrapDatabaseError(error);
+  }
+}
+
+export async function approvePublicSubmission(
+  id: string,
+  reviewedBy: string = DEFAULT_DEMO_ADMIN_ID,
+): Promise<ProgramTemplateDto | null> {
+  const existing = await getProgramTemplateById(id);
+  if (!existing || existing.visibility !== 'public_pending') {
+    return null;
+  }
+
+  const templateJson = mergeTemplateJsonVisibility(existing.template_json, 'public');
+
+  try {
+    const pool = getDatabasePool();
+    const result = await pool.query<ProgramTemplateRow>(
+      `
+        UPDATE program_templates
+        SET
+          visibility = 'public',
+          status = 'active',
+          public_review_status = 'approved',
+          public_rejection_reason = NULL,
+          public_reviewed_at = now(),
+          public_reviewed_by = $1,
+          template_json = $2::jsonb,
+          updated_at = now()
+        WHERE id = $3 AND visibility = 'public_pending' AND deleted_at IS NULL
+        RETURNING *
+      `,
+      [reviewedBy, JSON.stringify(templateJson), id],
+    );
+
+    const row = result.rows[0];
+    return row ? mapProgramTemplateRow(row) : null;
+  } catch (error) {
+    throw wrapDatabaseError(error);
+  }
+}
+
+export async function rejectPublicSubmission(
+  id: string,
+  reason: string,
+  reviewedBy: string = DEFAULT_DEMO_ADMIN_ID,
+): Promise<ProgramTemplateDto | null> {
+  const existing = await getProgramTemplateById(id);
+  if (!existing || existing.visibility !== 'public_pending') {
+    return null;
+  }
+
+  const templateJson = mergeTemplateJsonVisibility(existing.template_json, 'public_rejected');
+
+  try {
+    const pool = getDatabasePool();
+    const result = await pool.query<ProgramTemplateRow>(
+      `
+        UPDATE program_templates
+        SET
+          visibility = 'public_rejected',
+          status = 'active',
+          public_review_status = 'rejected',
+          public_rejection_reason = $1,
+          public_reviewed_at = now(),
+          public_reviewed_by = $2,
+          template_json = $3::jsonb,
+          updated_at = now()
+        WHERE id = $4 AND visibility = 'public_pending' AND deleted_at IS NULL
+        RETURNING *
+      `,
+      [reason.trim(), reviewedBy, JSON.stringify(templateJson), id],
+    );
+
+    const row = result.rows[0];
+    return row ? mapProgramTemplateRow(row) : null;
+  } catch (error) {
+    throw wrapDatabaseError(error);
+  }
+}
+
+function extractTagsFromTemplateJson(templateJson: unknown): string[] {
+  if (!templateJson || typeof templateJson !== 'object' || Array.isArray(templateJson)) {
+    return [];
+  }
+  const tags = (templateJson as { tags?: unknown }).tags;
+  if (!Array.isArray(tags)) {
+    return [];
+  }
+  return tags.filter((tag): tag is string => typeof tag === 'string');
 }
 
 export async function softDeleteProgramTemplate(id: string, gymId: string): Promise<boolean> {
