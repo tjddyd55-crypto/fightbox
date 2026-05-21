@@ -56,8 +56,10 @@ npm run dev:api
 |------|------|
 | `VITE_VIDEO_UPLOAD_PROVIDER` | `mock` (기본) 또는 `api` |
 | `VITE_API_BASE_URL` | API 서비스 public URL (예: `https://<api-domain>`) |
+| `VITE_WORKOUT_BUILDER_STORAGE` | `local` (기본) 또는 `api` — 템플릿/업로드 영상 메타데이터 저장소 |
 
 API presign이 정상 확인된 후 `VITE_VIDEO_UPLOAD_PROVIDER=api`와 `VITE_API_BASE_URL`을 설정하세요.
+Workout builder DB CRUD가 준비되면 `VITE_WORKOUT_BUILDER_STORAGE=api`로 전환합니다. 기본값 `local`은 localStorage fallback을 유지합니다.
 
 ### API — api 서비스
 
@@ -80,12 +82,34 @@ API presign이 정상 확인된 후 `VITE_VIDEO_UPLOAD_PROVIDER=api`와 `VITE_AP
 | `R2_ENDPOINT` | S3 API endpoint (버킷명 미포함) |
 | `R2_PRESIGN_URL_STYLE` | `path` (기본) 또는 `virtual` — presign URL 스타일 비교 테스트용 |
 | `R2_PUBLIC_URL` / `R2_PUBLIC_CDN_BASE` | 선택 — Public/Custom URL (없으면 `playbackUrl`은 `""`) |
+| `DATABASE_URL` | Railway Postgres 연결 문자열 (workout builder CRUD용) |
 
 **엔드포인트**
 
 - `GET /health` — 서비스 상태
 - `POST /api/workout-videos/uploads/presign` — R2 presigned PUT URL 발급
 - `GET /api/workout-videos/uploads/diagnostics/r2-cors` — `ENABLE_R2_DIAGNOSTICS=true`일 때 R2 OPTIONS preflight 진단
+- `GET/POST/PATCH/DELETE /api/workout-builder/videos` — 업로드 영상 메타데이터 CRUD
+- `GET/POST/PATCH/DELETE /api/workout-builder/templates` — 프로그램 템플릿 CRUD
+
+**DB 마이그레이션**
+
+```bash
+npm run db:migrate:api
+```
+
+Railway api 서비스에서 Postgres 연결 후:
+
+```bash
+railway service link api
+railway run npm run db:migrate:api
+```
+
+또는 배포 후 one-off:
+
+```bash
+npm run db:migrate:prod -w @fightbox/api
+```
 
 루트 `npm run build` / `npm run start` 도 web 기준으로 동작합니다.
 
@@ -105,8 +129,8 @@ API presign이 정상 확인된 후 `VITE_VIDEO_UPLOAD_PROVIDER=api`와 `VITE_AP
 ### 데이터
 
 - 영상·초기 템플릿: 더미 데이터 (`mockWorkoutVideos`, `mockProgramTemplate`)
-- 템플릿 저장: `localStorage` (`fightbox.workoutProgramTemplates.v1`)
-- API 연동 전: `repositories/` 계층이 storage·더미 데이터를 감쌉니다
+- 템플릿/업로드 영상 메타데이터: `localStorage` (기본) 또는 API + Postgres (`VITE_WORKOUT_BUILDER_STORAGE=api`)
+- `repositories/` 계층이 localStorage fallback과 API sync를 처리합니다
 
 ### 기능 요약
 
@@ -127,8 +151,28 @@ API presign이 정상 확인된 후 `VITE_VIDEO_UPLOAD_PROVIDER=api`와 `VITE_AP
 |----------|------|
 | `VITE_VIDEO_UPLOAD_PROVIDER` | `mock` (기본) 또는 `api` |
 | `VITE_API_BASE_URL` | `api`일 때 API origin. 없으면 상대 경로 `/api/...` 사용 |
+| `VITE_WORKOUT_BUILDER_STORAGE` | `local` (기본) 또는 `api` |
 
 `.env.example`을 참고해 Railway app/api 서비스 또는 로컬 `.env.local`에 설정하세요.
+
+#### Workout builder storage API
+
+공통 타입: `packages/shared/src/workoutBuilderContracts.ts`
+
+- `GET /api/workout-builder/videos`
+- `POST /api/workout-builder/videos`
+- `PATCH /api/workout-builder/videos/:id`
+- `DELETE /api/workout-builder/videos/:id`
+- `GET /api/workout-builder/templates`
+- `GET /api/workout-builder/templates/:id`
+- `POST /api/workout-builder/templates`
+- `PATCH /api/workout-builder/templates/:id`
+- `DELETE /api/workout-builder/templates/:id`
+
+인증 전까지 gym/user scope header:
+
+- `x-gym-id` (기본 `demo-gym`)
+- `x-user-id` (기본 `demo-coach`)
 
 CDN/Public URL이 없으면 presign 응답의 `playbackUrl`은 빈 문자열(`""`)입니다. 실제 재생 URL은 추후 R2 Public Development URL 또는 Custom Domain 연결 후 `R2_PUBLIC_URL` / `R2_PUBLIC_CDN_BASE`를 설정하세요.
 
