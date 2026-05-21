@@ -1,5 +1,8 @@
 import type { WorkoutVideo } from '../types/workoutProgramBuilder.types';
 import { formatDuration } from '../utils/durationUtils';
+import { isUploadedVideo } from '../utils/videoManageUtils';
+import { getWorkoutVideoPlaybackUrl } from '../utils/videoPlaybackUtils';
+import { WorkoutVideoPlayer } from './WorkoutVideoPlayer';
 
 const DIFFICULTY_LABEL: Record<WorkoutVideo['difficulty'], string> = {
   beginner: '초급',
@@ -13,6 +16,8 @@ interface VideoLibraryPreviewProps {
 }
 
 export function VideoLibraryPreview({ video, onAdd }: VideoLibraryPreviewProps) {
+  const playbackUrl = getWorkoutVideoPlaybackUrl(video);
+
   return (
     <section className="wpb-library-preview" aria-label="라이브러리 미리보기">
       <header className="wpb-library-preview-header">
@@ -20,9 +25,18 @@ export function VideoLibraryPreview({ video, onAdd }: VideoLibraryPreviewProps) 
         <p>{video.title}</p>
       </header>
       <div className="wpb-library-preview-body">
-        <div className="wpb-library-preview-thumb" aria-hidden>
-          <span className="wpb-thumb-placeholder" />
-          <span className="wpb-thumb-icon">▶</span>
+        <div
+          className={`wpb-library-preview-thumb${playbackUrl ? ' wpb-preview-card--playable' : ''}`}
+          aria-hidden={!playbackUrl}
+        >
+          {playbackUrl ? (
+            <WorkoutVideoPlayer video={video} className="wpb-preview-video" />
+          ) : (
+            <>
+              <span className="wpb-thumb-placeholder" />
+              <span className="wpb-thumb-icon">▶</span>
+            </>
+          )}
         </div>
         <dl className="wpb-library-preview-meta">
           <div>
@@ -41,6 +55,12 @@ export function VideoLibraryPreview({ video, onAdd }: VideoLibraryPreviewProps) 
             <div className="wpb-library-preview-desc">
               <dt>설명</dt>
               <dd>{video.description}</dd>
+            </div>
+          )}
+          {!playbackUrl && isUploadedVideo(video) && (
+            <div className="wpb-library-preview-desc">
+              <dt>재생</dt>
+              <dd>재생 URL이 없습니다. Public URL 설정 후 새로 업로드해 주세요.</dd>
             </div>
           )}
         </dl>

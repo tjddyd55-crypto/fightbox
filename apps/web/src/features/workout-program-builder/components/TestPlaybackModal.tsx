@@ -1,9 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type { ProgramBlock, WorkoutVideo } from '../types/workoutProgramBuilder.types';
 import { formatDuration } from '../utils/durationUtils';
 import { getVideoById } from '../utils/programTimelineUtils';
 import { BLOCK_TYPE_LABEL, getBlockTypeIcon } from '../utils/blockDisplayUtils';
+import { getWorkoutVideoPlaybackUrl } from '../utils/videoPlaybackUtils';
 import { useTestPlayback } from '../hooks/useTestPlayback';
+import { WorkoutVideoPlayer } from './WorkoutVideoPlayer';
 
 interface TestPlaybackModalProps {
   blocks: ProgramBlock[];
@@ -17,12 +19,63 @@ function BlockStage({
   block,
   video,
   countdownDisplay,
+  isPlaying,
 }: {
   block: ProgramBlock;
   video?: WorkoutVideo;
   countdownDisplay: number | null;
+  isPlaying: boolean;
 }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const playbackUrl = getWorkoutVideoPlaybackUrl(video);
+
+  useEffect(() => {
+    const element = videoRef.current;
+    if (!element || !playbackUrl) {
+      return;
+    }
+
+    if (isPlaying) {
+      void element.play().catch(() => undefined);
+      return;
+    }
+
+    element.pause();
+  }, [isPlaying, playbackUrl]);
+
+  useEffect(() => {
+    const element = videoRef.current;
+    if (!element || !playbackUrl) {
+      return;
+    }
+
+    element.load();
+    if (isPlaying) {
+      void element.play().catch(() => undefined);
+    }
+  }, [block.id, playbackUrl, isPlaying]);
+
   if (block.type === 'video') {
+    if (playbackUrl) {
+      return (
+        <div
+          className="wpb-test-stage wpb-test-stage--video wpb-preview-card--playable"
+          aria-label="영상 블록"
+        >
+          <div className="wpb-test-stage-video-wrap">
+            <WorkoutVideoPlayer
+              video={video}
+              videoRef={videoRef}
+              className="wpb-video-player"
+              autoPlay
+              muted
+            />
+          </div>
+          <p>{video?.title ?? block.title}</p>
+        </div>
+      );
+    }
+
     return (
       <div className="wpb-test-stage wpb-test-stage--video" aria-label="영상 블록">
         <div className="wpb-test-stage-thumb">
@@ -183,6 +236,7 @@ export function TestPlaybackModal({
               block={currentBlock}
               video={currentVideo}
               countdownDisplay={countdownDisplay}
+              isPlaying={isPlaying}
             />
           )}
           {isComplete && <p className="wpb-test-hint">프로그램 재생이 완료되었습니다.</p>}

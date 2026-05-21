@@ -481,6 +481,11 @@
   overflow: hidden;
 }
 
+.wpb-library-preview-thumb .wpb-preview-video {
+  width: 100%;
+  height: 100%;
+}
+
 .wpb-library-preview-meta {
   margin: 0;
   flex: 1;
@@ -537,6 +542,19 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.wpb-thumb-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.wpb-thumb--playable {
+  cursor: pointer;
 }
 
 .wpb-thumb-icon {
@@ -894,6 +912,21 @@
   background: #15161a;
   position: relative;
   overflow: hidden;
+}
+
+.wpb-test-stage-video-wrap {
+  width: 100%;
+  max-width: 480px;
+  aspect-ratio: 16 / 9;
+  margin: 0 auto 10px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #15161a;
+}
+
+.wpb-test-stage-video-wrap .wpb-video-player {
+  width: 100%;
+  height: 100%;
 }
 
 .wpb-test-stage-icon {
@@ -1426,6 +1459,29 @@
 
 .wpb-preview-media--video {
   background: linear-gradient(160deg, #2c2d34 0%, #15161a 100%);
+}
+
+.wpb-preview-card--playable {
+  cursor: pointer;
+}
+
+.wpb-preview-video,
+.wpb-video-player {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  background: #15161a;
+  border-radius: inherit;
+}
+
+.wpb-preview-no-playback-hint {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: #a7aab3;
+  text-align: center;
+  line-height: 1.4;
+  max-width: 100%;
 }
 
 .wpb-preview-media--rest {

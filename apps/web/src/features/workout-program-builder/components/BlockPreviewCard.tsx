@@ -1,6 +1,9 @@
 import type { ProgramBlock, WorkoutVideo } from '../types/workoutProgramBuilder.types';
 import { formatDuration } from '../utils/durationUtils';
 import { getVideoById } from '../utils/programTimelineUtils';
+import { isUploadedVideo } from '../utils/videoManageUtils';
+import { getWorkoutVideoPlaybackUrl } from '../utils/videoPlaybackUtils';
+import { WorkoutVideoPlayer } from './WorkoutVideoPlayer';
 
 const DIFFICULTY_LABEL: Record<WorkoutVideo['difficulty'], string> = {
   beginner: '초급',
@@ -22,8 +25,22 @@ function PreviewMetaItem({ label, value }: { label: string; value: string }) {
   );
 }
 
-function PreviewMedia({ block }: { block: ProgramBlock; videos: WorkoutVideo[] }) {
+function PreviewMedia({ block, videos }: { block: ProgramBlock; videos: WorkoutVideo[] }) {
   if (block.type === 'video') {
+    const video = getVideoById(videos, block.videoId);
+    const playbackUrl = getWorkoutVideoPlaybackUrl(video);
+
+    if (playbackUrl) {
+      return (
+        <section
+          className="wpb-preview-media wpb-preview-media--video wpb-preview-card--playable"
+          aria-label="영상 미리보기"
+        >
+          <WorkoutVideoPlayer video={video} className="wpb-preview-video" />
+        </section>
+      );
+    }
+
     return (
       <section
         className="wpb-preview-media wpb-preview-media--video"
@@ -32,6 +49,11 @@ function PreviewMedia({ block }: { block: ProgramBlock; videos: WorkoutVideo[] }
         <span className="wpb-preview-play-icon" aria-hidden>
           ▶
         </span>
+        {video && isUploadedVideo(video) && (
+          <p className="wpb-preview-no-playback-hint">
+            재생 URL이 없습니다. Public URL 설정 후 새로 업로드해 주세요.
+          </p>
+        )}
       </section>
     );
   }

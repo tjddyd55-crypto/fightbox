@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { WorkoutVideo } from '../types/workoutProgramBuilder.types';
 import { formatDuration } from '../utils/durationUtils';
 import { isUploadedVideo } from '../utils/videoManageUtils';
+import { getWorkoutVideoPlaybackUrl } from '../utils/videoPlaybackUtils';
 
 const DIFFICULTY_LABEL: Record<WorkoutVideo['difficulty'], string> = {
   beginner: '초급',
@@ -35,6 +36,7 @@ export function VideoCard({
   const [menuOpen, setMenuOpen] = useState(false);
   const menuWrapRef = useRef<HTMLDivElement>(null);
   const canManage = isUploadedVideo(video);
+  const playbackUrl = getWorkoutVideoPlaybackUrl(video);
   const remoteThumbUrl =
     video.uploadMeta?.remoteThumbnailUrl ??
     (video.thumbnailUrl.startsWith('http') ? video.thumbnailUrl : null);
@@ -64,8 +66,18 @@ export function VideoCard({
       aria-pressed={isSelected}
       aria-label={`${video.title} 미리보기 선택`}
     >
-      <div className="wpb-thumb" aria-hidden>
-        {remoteThumbUrl ? (
+      <div className={`wpb-thumb${playbackUrl ? ' wpb-thumb--playable' : ''}`} aria-hidden>
+        {playbackUrl ? (
+          <video
+            className="wpb-thumb-video"
+            src={playbackUrl}
+            poster={remoteThumbUrl ?? undefined}
+            preload="metadata"
+            muted
+            playsInline
+            tabIndex={-1}
+          />
+        ) : remoteThumbUrl ? (
           <img src={remoteThumbUrl} alt="" className="wpb-thumb-image" />
         ) : (
           <span className="wpb-thumb-placeholder" />
