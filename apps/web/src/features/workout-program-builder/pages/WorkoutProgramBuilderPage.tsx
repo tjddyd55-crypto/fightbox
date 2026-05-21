@@ -1,6 +1,10 @@
 import { useCallback, useState } from 'react';
 import { BuilderHeader } from '../components/BuilderHeader';
-import { BuilderSidebar } from '../components/BuilderSidebar';
+import {
+  BuilderSidebar,
+  type BuilderSidebarActiveSection,
+  type BuilderSidebarSection,
+} from '../components/BuilderSidebar';
 import { BottomActionBar } from '../components/BottomActionBar';
 import { MobileBuilderTabs, type MobileBuilderTab } from '../components/MobileBuilderTabs';
 import { ProgramTimelinePanel } from '../components/ProgramTimelinePanel';
@@ -18,15 +22,48 @@ import { isCompactLayout } from '../utils/viewportUtils';
 import { validateProgramBlocks } from '../utils/programValidationUtils';
 import '../workoutProgramBuilder.css';
 
+const PANEL_IDS = {
+  timeline: 'wpb-mobile-panel-timeline',
+  videos: 'wpb-mobile-panel-videos',
+  settings: 'wpb-mobile-panel-settings',
+} as const;
+
+function focusBuilderPanel(panelId: string, preferSearchInput = false): void {
+  const panel = document.getElementById(panelId);
+  if (!panel) {
+    return;
+  }
+
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  if (preferSearchInput) {
+    const searchInput = panel.querySelector<HTMLInputElement>('input[type="search"]');
+    if (searchInput) {
+      searchInput.focus();
+      return;
+    }
+  }
+
+  const heading = panel.querySelector('h2');
+  if (heading instanceof HTMLElement) {
+    if (!heading.hasAttribute('tabindex')) {
+      heading.tabIndex = -1;
+    }
+    heading.focus({ preventScroll: true });
+  }
+}
+
 export function WorkoutProgramBuilderPage() {
   const state = useProgramBuilderState();
   const videoFilterState = useVideoLibraryFilters(state.videos);
   const [mobileTab, setMobileTab] = useState<MobileBuilderTab>('timeline');
+  const [activeSidebarSection, setActiveSidebarSection] =
+    useState<BuilderSidebarActiveSection>('builder');
   const [isTemplateLibraryOpen, setIsTemplateLibraryOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isVideoUploadOpen, setIsVideoUploadOpen] = useState(false);
   const [editingVideo, setEditingVideo] = useState<WorkoutVideo | null>(null);
-  const { setSelectedBlockId } = state;
+  const { setSelectedBlockId, selectedBlockId, showMessage } = state;
 
   const handleEditVideo = useCallback((video: WorkoutVideo) => {
     setEditingVideo(video);
@@ -47,11 +84,47 @@ export function WorkoutProgramBuilderPage() {
   const handleSelectBlock = useCallback(
     (id: string) => {
       setSelectedBlockId(id);
+      setActiveSidebarSection('settings');
       if (isCompactLayout()) {
         setMobileTab('settings');
       }
     },
     [setSelectedBlockId],
+  );
+
+  const handleSidebarNavigate = useCallback(
+    (section: BuilderSidebarSection) => {
+      if (section === 'templates') {
+        setIsTemplateLibraryOpen(true);
+        return;
+      }
+
+      if (section === 'settings' && !selectedBlockId) {
+        showMessage('설정할 블록을 먼저 선택해 주세요.');
+        return;
+      }
+
+      if (isCompactLayout()) {
+        if (section === 'builder') {
+          setMobileTab('timeline');
+        } else if (section === 'videos') {
+          setMobileTab('videos');
+        } else if (section === 'settings') {
+          setMobileTab('settings');
+        }
+      } else {
+        if (section === 'builder') {
+          focusBuilderPanel(PANEL_IDS.timeline);
+        } else if (section === 'videos') {
+          focusBuilderPanel(PANEL_IDS.videos, true);
+        } else {
+          focusBuilderPanel(PANEL_IDS.settings);
+        }
+      }
+
+      setActiveSidebarSection(section);
+    },
+    [selectedBlockId, showMessage],
   );
 
   const handleAddVideo = useCallback(
@@ -67,6 +140,7 @@ export function WorkoutProgramBuilderPage() {
       if (isCompactLayout()) {
         setMobileTab('timeline');
       }
+      setActiveSidebarSection('builder');
     },
     [state],
   );
@@ -76,7 +150,10 @@ export function WorkoutProgramBuilderPage() {
       <BuilderHeader template={state.template} totalDurationSec={state.totalDurationSec} />
       <MobileBuilderTabs activeTab={mobileTab} onTabChange={setMobileTab} />
       <section className="wpb-body">
-        <BuilderSidebar />
+        <BuilderSidebar
+          activeSection={activeSidebarSection}
+          onNavigate={handleSidebarNavigate}
+        />
         <section
           className={`wpb-main wpb-main--mobile-tab-${mobileTab}`}
           aria-label="프로그램 빌더 작업 영역"

@@ -146,7 +146,8 @@
   padding: 16px 10px;
 }
 
-.wpb-nav-item {
+.wpb-nav-item,
+.wpb-sidebar-link {
   display: flex;
   align-items: center;
   width: 100%;
@@ -155,23 +156,27 @@
   border-radius: 10px;
   background: transparent;
   color: #a7aab3;
+  font: inherit;
   font-size: 13px;
   cursor: pointer;
   text-align: left;
   transition: background 0.15s, color 0.15s;
 }
 
-.wpb-nav-item:hover {
+.wpb-nav-item:hover,
+.wpb-sidebar-link:hover {
   background: #1f2026;
   color: #ffffff;
 }
 
-.wpb-nav-item:focus-visible {
+.wpb-nav-item:focus-visible,
+.wpb-sidebar-link:focus-visible {
   outline: 2px solid #ffd60a;
   outline-offset: 2px;
 }
 
-.wpb-nav-item.active {
+.wpb-nav-item.active,
+.wpb-sidebar-link.active {
   background: rgba(255, 214, 10, 0.12);
   color: #ffd60a;
   font-weight: 600;
