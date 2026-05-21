@@ -8,7 +8,7 @@ import {
   type VideoUploadAdapter,
   type VideoUploadResult,
 } from '../types/videoUpload.types';
-import { getApiBaseUrl } from './videoUploadConfig';
+import { getApiBaseUrl, resolveR2UploadIncludeContentType } from './videoUploadConfig';
 
 export class VideoUploadApiError extends Error {
   readonly status?: number;
@@ -110,6 +110,7 @@ function putFileWithProgress(
   uploadUrl: string,
   file: File,
   contentType: string,
+  includeContentType: boolean,
   onProgress?: (percent: number) => void,
 ): Promise<void> {
   const safeTarget = buildSafeUploadTarget(uploadUrl);
@@ -117,7 +118,9 @@ function putFileWithProgress(
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('PUT', uploadUrl);
-    xhr.setRequestHeader('Content-Type', contentType);
+    if (includeContentType) {
+      xhr.setRequestHeader('Content-Type', contentType);
+    }
 
     xhr.upload.onprogress = (event) => {
       if (!event.lengthComputable || !onProgress) {
@@ -227,7 +230,14 @@ async function uploadVideoFile({
   onProgress,
 }: UploadVideoFileParams): Promise<VideoUploadResult> {
   const contentType = file.type || 'video/*';
-  await putFileWithProgress(presigned.uploadUrl, file, contentType, onProgress);
+  const includeContentType = resolveR2UploadIncludeContentType();
+  await putFileWithProgress(
+    presigned.uploadUrl,
+    file,
+    contentType,
+    includeContentType,
+    onProgress,
+  );
 
   return {
     storageKey: presigned.storageKey,

@@ -48,6 +48,11 @@ export function resolvePresignUrlStyle(): R2PresignUrlStyle {
   return DEFAULT_PRESIGN_URL_STYLE;
 }
 
+export function resolvePresignIncludeContentType(): boolean {
+  const raw = process.env.R2_PRESIGN_INCLUDE_CONTENT_TYPE?.trim().toLowerCase();
+  return raw === 'true';
+}
+
 export function getR2Config(): R2Config {
   const accessKeyId = trimEnv(process.env.R2_ACCESS_KEY_ID);
   const secretAccessKey = trimEnv(process.env.R2_SECRET_ACCESS_KEY);

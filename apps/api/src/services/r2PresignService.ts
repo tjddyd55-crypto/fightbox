@@ -1,7 +1,12 @@
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'node:crypto';
-import { getR2Config, resolvePresignUrlStyle, type R2PresignUrlStyle } from '../config/r2Config.js';
+import {
+  getR2Config,
+  resolvePresignIncludeContentType,
+  resolvePresignUrlStyle,
+  type R2PresignUrlStyle,
+} from '../config/r2Config.js';
 import { ApiError } from '../utils/apiError.js';
 
 const MAX_FILE_SIZE_BYTES = 1024 * 1024 * 1024;
@@ -170,6 +175,7 @@ export async function createPresignedVideoUpload(
 
   const config = getR2Config();
   const urlStyle = resolvePresignUrlStyle();
+  const includeContentType = resolvePresignIncludeContentType();
   const storageKey = buildStorageKey(input);
   const contentType = input.contentType.trim();
   const forcePathStyle = urlStyle === 'path';
@@ -189,7 +195,7 @@ export async function createPresignedVideoUpload(
   const command = new PutObjectCommand({
     Bucket: config.bucketName,
     Key: storageKey,
-    ContentType: contentType,
+    ...(includeContentType ? { ContentType: contentType } : {}),
   });
 
   let uploadUrl: string;

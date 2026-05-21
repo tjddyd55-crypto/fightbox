@@ -17,3 +17,8 @@ export function getApiBaseUrl(): string {
   }
   return base.replace(/\/$/, '');
 }
+
+export function resolveR2UploadIncludeContentType(): boolean {
+  const raw = import.meta.env.VITE_R2_UPLOAD_INCLUDE_CONTENT_TYPE?.trim().toLowerCase();
+  return raw === 'true';
+}
