@@ -20,7 +20,7 @@ import {
   getTemplate,
   removeTemplate,
   saveTemplate as persistTemplate,
-  submitTemplateForPublicReview,
+  submitTemplateForPublic,
 } from '../repositories/programTemplateRepository';
 import {
   createVideo,
@@ -196,7 +196,7 @@ export function useProgramBuilderState() {
   }, [blocks, videos]);
 
   const submitPublicShare = useCallback(
-    (payload: PublicShareSubmissionPayload) => {
+    async (payload: PublicShareSubmissionPayload) => {
       if (template.visibility === 'public_pending') {
         showMessage('이미 공용 라이브러리 승인 대기 중입니다.');
         return false;
@@ -211,7 +211,7 @@ export function useProgramBuilderState() {
       setTemplate(snapshot);
       setActiveTemplateId(snapshot.id);
 
-      const updated = submitTemplateForPublicReview(snapshot.id, payload);
+      const updated = await submitTemplateForPublic(snapshot.id, payload);
       if (!updated) {
         showMessage('공용 신청에 실패했습니다.');
         return false;

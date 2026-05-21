@@ -8,7 +8,7 @@ interface ShareSubmissionModalProps {
   isOpen: boolean;
   template: WorkoutProgramTemplate | null;
   onClose: () => void;
-  onSubmit: (payload: PublicShareSubmissionPayload) => void;
+  onSubmit: (payload: PublicShareSubmissionPayload) => void | Promise<void>;
 }
 
 export function ShareSubmissionModal({
@@ -44,7 +44,7 @@ export function ShareSubmissionModal({
       .split(',')
       .map((tag) => tag.trim())
       .filter(Boolean);
-    onSubmit({
+    void onSubmit({
       title: title.trim(),
       description: description.trim() || undefined,
       tags,

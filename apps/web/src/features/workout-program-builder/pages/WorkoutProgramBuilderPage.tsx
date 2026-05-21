@@ -230,9 +230,11 @@ export function WorkoutProgramBuilderPage() {
         isOpen={isShareModalOpen}
         template={state.template}
         onClose={() => setIsShareModalOpen(false)}
-        onSubmit={(payload) => {
-          state.submitPublicShare(payload);
-          setIsShareModalOpen(false);
+        onSubmit={async (payload) => {
+          const ok = await state.submitPublicShare(payload);
+          if (ok) {
+            setIsShareModalOpen(false);
+          }
         }}
       />
       <VideoUploadModal
@@ -275,6 +277,7 @@ export function WorkoutProgramBuilderPage() {
         onDelete={(id) => {
           state.deleteTemplate(id);
         }}
+        onNotify={state.showMessage}
       />
       {state.isTestPlaying && (
         <TestPlaybackModal

@@ -4,6 +4,8 @@ import {
   type CreateUploadedVideoRequest,
   type DeleteUploadedVideoResponse,
   type ProgramTemplateDto,
+  type RejectPublicTemplateRequest,
+  type SubmitPublicTemplateRequest,
   type UpdateProgramTemplateRequest,
   type UpdateUploadedVideoRequest,
   type UploadedVideoDto,
@@ -11,7 +13,7 @@ import {
   type WorkoutBuilderApiListResponse,
 } from '@fightbox/shared';
 import type {
-  TemplateVisibility,
+  TemplatePublicReviewStatus,
   WorkoutDifficulty,
   WorkoutProgramTemplate,
   WorkoutVideo,
@@ -23,6 +25,11 @@ import {
   DEFAULT_ACTOR_ID,
   DEFAULT_GYM_ID,
 } from './workoutBuilderStorageConfig';
+import {
+  mapTemplateVisibilityToStatus,
+  normalizeTemplateStatus,
+  normalizeTemplateVisibility,
+} from '../utils/templateVisibilityUtils';
 
 export class WorkoutBuilderApiError extends Error {
   readonly status: number;
@@ -109,14 +116,8 @@ function resolveHttpThumbnailUrl(value: string | null | undefined): string | nul
   return null;
 }
 
-function isTemplateVisibility(value: string): value is TemplateVisibility {
-  return (
-    value === 'private' ||
-    value === 'gym' ||
-    value === 'public_pending' ||
-    value === 'public_approved' ||
-    value === 'public_rejected'
-  );
+function isTemplatePublicReviewStatus(value: string): value is TemplatePublicReviewStatus {
+  return value === 'pending' || value === 'approved' || value === 'rejected';
 }
 
 export function uploadedVideoDtoToWorkoutVideo(dto: UploadedVideoDto): WorkoutVideo {
@@ -222,9 +223,12 @@ export function programTemplateDtoToWorkoutProgramTemplate(
   }
 
   const template = dto.templateJson as WorkoutProgramTemplate;
-  const visibility = isTemplateVisibility(dto.visibility)
-    ? dto.visibility
-    : template.visibility ?? 'private';
+  const visibility = normalizeTemplateVisibility(dto.visibility || template.visibility || 'private');
+  const status = normalizeTemplateStatus(dto.status || template.status || 'draft');
+  const publicReviewStatus =
+    dto.publicReviewStatus && isTemplatePublicReviewStatus(dto.publicReviewStatus)
+      ? dto.publicReviewStatus
+      : template.publicReviewStatus;
 
   return {
     ...template,
@@ -232,19 +236,17 @@ export function programTemplateDtoToWorkoutProgramTemplate(
     title: dto.title,
     description: dto.description || template.description,
     visibility,
+    status,
+    publicReviewStatus,
+    publicRejectionReason: dto.publicRejectionReason ?? template.publicRejectionReason,
+    publicReviewedAt: dto.publicReviewedAt ?? template.publicReviewedAt,
+    publicReviewedBy: dto.publicReviewedBy ?? template.publicReviewedBy,
     totalDurationSec: dto.totalDurationSec,
     createdAt: dto.createdAt,
     updatedAt: dto.updatedAt,
     blocks: Array.isArray(template.blocks) ? template.blocks : [],
     tags: Array.isArray(template.tags) ? template.tags : [],
   };
-}
-
-function mapTemplateVisibilityToStatus(visibility: TemplateVisibility): string {
-  if (visibility === 'public_pending') return 'pending_review';
-  if (visibility === 'public_approved') return 'published';
-  if (visibility === 'public_rejected') return 'rejected';
-  return 'draft';
 }
 
 export function workoutProgramTemplateToCreateRequest(
@@ -255,7 +257,7 @@ export function workoutProgramTemplateToCreateRequest(
     title: template.title,
     description: template.description,
     visibility: template.visibility,
-    status: mapTemplateVisibilityToStatus(template.visibility),
+    status: template.status ?? mapTemplateVisibilityToStatus(template.visibility),
     totalDurationSec: template.totalDurationSec,
     templateJson: template,
   };
@@ -268,7 +270,7 @@ export function workoutProgramTemplateToUpdateRequest(
     title: template.title,
     description: template.description,
     visibility: template.visibility,
-    status: mapTemplateVisibilityToStatus(template.visibility),
+    status: template.status ?? mapTemplateVisibilityToStatus(template.visibility),
     totalDurationSec: template.totalDurationSec,
     templateJson: template,
   };
@@ -356,6 +358,51 @@ export async function deleteProgramTemplateApi(id: string): Promise<void> {
   await requestJson(`${WORKOUT_BUILDER_API_PATHS.templates}/${encodeURIComponent(id)}`, {
     method: 'DELETE',
   });
+}
+
+export async function submitTemplateForPublicApi(
+  id: string,
+  request: SubmitPublicTemplateRequest = {},
+): Promise<ProgramTemplateDto> {
+  const response = await requestJson<WorkoutBuilderApiItemResponse<ProgramTemplateDto>>(
+    `${WORKOUT_BUILDER_API_PATHS.templates}/${encodeURIComponent(id)}/submit-public`,
+    {
+      method: 'POST',
+      body: JSON.stringify(request),
+    },
+  );
+  return response.data;
+}
+
+export async function fetchPublicTemplateSubmissionsApi(): Promise<ProgramTemplateDto[]> {
+  const response = await requestJson<WorkoutBuilderApiListResponse<ProgramTemplateDto>>(
+    WORKOUT_BUILDER_API_PATHS.adminPublicSubmissions,
+  );
+  return response.data;
+}
+
+export async function approvePublicTemplateApi(id: string): Promise<ProgramTemplateDto> {
+  const response = await requestJson<WorkoutBuilderApiItemResponse<ProgramTemplateDto>>(
+    `${WORKOUT_BUILDER_API_PATHS.adminPublicSubmissions}/${encodeURIComponent(id)}/approve`,
+    {
+      method: 'POST',
+    },
+  );
+  return response.data;
+}
+
+export async function rejectPublicTemplateApi(
+  id: string,
+  request: RejectPublicTemplateRequest,
+): Promise<ProgramTemplateDto> {
+  const response = await requestJson<WorkoutBuilderApiItemResponse<ProgramTemplateDto>>(
+    `${WORKOUT_BUILDER_API_PATHS.adminPublicSubmissions}/${encodeURIComponent(id)}/reject`,
+    {
+      method: 'POST',
+      body: JSON.stringify(request),
+    },
+  );
+  return response.data;
 }
 
 export async function upsertUploadedVideoApi(video: WorkoutVideo): Promise<UploadedVideoDto> {

@@ -8,9 +8,13 @@ import type {
 } from '../types/workoutProgramBuilder.types';
 import { mockWorkoutVideos } from '../data/mockWorkoutVideos';
 import {
+  approvePublicTemplateApi,
   deleteProgramTemplateApi,
   fetchProgramTemplates,
+  fetchPublicTemplateSubmissionsApi,
   programTemplateDtoToWorkoutProgramTemplate,
+  rejectPublicTemplateApi,
+  submitTemplateForPublicApi,
   upsertProgramTemplateApi,
   WorkoutBuilderApiError,
 } from '../services/workoutBuilderApiClient';
@@ -147,6 +151,13 @@ export function submitTemplateForPublicReview(
   id: string,
   payload: PublicShareSubmissionPayload,
 ): WorkoutProgramTemplate | null {
+  return submitTemplateForPublicLocal(id, payload);
+}
+
+function submitTemplateForPublicLocal(
+  id: string,
+  payload: PublicShareSubmissionPayload,
+): WorkoutProgramTemplate | null {
   const existing = getProgramTemplateById(id);
   if (!existing) return null;
 
@@ -159,11 +170,123 @@ export function submitTemplateForPublicReview(
     description: payload.description?.trim() || existing.description,
     tags: payload.tags.length > 0 ? payload.tags : existing.tags,
     visibility: 'public_pending',
+    publicReviewStatus: 'pending',
+    publicRejectionReason: undefined,
+    publicReviewedAt: undefined,
+    publicReviewedBy: undefined,
     updatedAt: now,
     totalDurationSec: getTimelineTotalDurationSeconds(blocks, videoMap),
   };
 
   if (!updateProgramTemplate(updated)) return null;
-  syncTemplateToApi(updated);
   return updated;
+}
+
+export async function submitTemplateForPublic(
+  id: string,
+  payload: PublicShareSubmissionPayload,
+): Promise<WorkoutProgramTemplate | null> {
+  if (!isApiWorkoutBuilderStorage()) {
+    return submitTemplateForPublicLocal(id, payload);
+  }
+
+  try {
+    const dto = await submitTemplateForPublicApi(id, {
+      title: payload.title.trim() || undefined,
+      description: payload.description,
+      tags: payload.tags,
+    });
+    return applySyncedTemplateToLocalCache(dto);
+  } catch (error) {
+    reportSyncError('공용 라이브러리 신청', error);
+    return null;
+  }
+}
+
+export async function listPublicTemplateSubmissions(): Promise<WorkoutProgramTemplate[]> {
+  if (!isApiWorkoutBuilderStorage()) {
+    return getSavedProgramTemplates().filter((template) => template.visibility === 'public_pending');
+  }
+
+  try {
+    const dtos = await fetchPublicTemplateSubmissionsApi();
+    return dtos
+      .map(programTemplateDtoToWorkoutProgramTemplate)
+      .filter((template): template is WorkoutProgramTemplate => template !== null);
+  } catch (error) {
+    reportSyncError('승인 대기 목록 불러오기', error);
+    return [];
+  }
+}
+
+function applyModerationResultToLocalCache(
+  dto: Awaited<ReturnType<typeof approvePublicTemplateApi>>,
+): WorkoutProgramTemplate | null {
+  const synced = programTemplateDtoToWorkoutProgramTemplate(dto);
+  if (!synced) {
+    return null;
+  }
+  saveProgramTemplate(synced);
+  return synced;
+}
+
+export async function approvePublicTemplate(
+  templateId: string,
+): Promise<WorkoutProgramTemplate | null> {
+  if (!isApiWorkoutBuilderStorage()) {
+    const existing = getProgramTemplateById(templateId);
+    if (!existing || existing.visibility !== 'public_pending') {
+      return null;
+    }
+    const updated: WorkoutProgramTemplate = {
+      ...existing,
+      visibility: 'public',
+      publicReviewStatus: 'approved',
+      publicRejectionReason: undefined,
+      publicReviewedAt: new Date().toISOString(),
+      publicReviewedBy: 'demo-admin',
+      updatedAt: new Date().toISOString(),
+    };
+    if (!updateProgramTemplate(updated)) return null;
+    return updated;
+  }
+
+  try {
+    const dto = await approvePublicTemplateApi(templateId);
+    return applyModerationResultToLocalCache(dto);
+  } catch (error) {
+    reportSyncError('공용 템플릿 승인', error);
+    return null;
+  }
+}
+
+export async function rejectPublicTemplate(
+  templateId: string,
+  reason: string,
+): Promise<WorkoutProgramTemplate | null> {
+  if (!isApiWorkoutBuilderStorage()) {
+    const existing = getProgramTemplateById(templateId);
+    if (!existing || existing.visibility !== 'public_pending') {
+      return null;
+    }
+    const updated: WorkoutProgramTemplate = {
+      ...existing,
+      visibility: 'public_rejected',
+      publicReviewStatus: 'rejected',
+      publicRejectionReason: reason.trim(),
+      publicReviewedAt: new Date().toISOString(),
+      publicReviewedBy: 'demo-admin',
+      updatedAt: new Date().toISOString(),
+    };
+    if (!updateProgramTemplate(updated)) return null;
+    return updated;
+  }
+
+  try {
+    const dto = await rejectPublicTemplateApi(templateId, { reason: reason.trim() });
+    return applyModerationResultToLocalCache(dto);
+  } catch (error) {
+    reportSyncError('공용 템플릿 반려', error);
+    return null;
+  }
 }
