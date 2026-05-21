@@ -112,6 +112,17 @@ export async function createProgramTemplate(
           created_by
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9)
+        ON CONFLICT (id) DO UPDATE SET
+          gym_id = EXCLUDED.gym_id,
+          title = EXCLUDED.title,
+          description = EXCLUDED.description,
+          visibility = EXCLUDED.visibility,
+          status = EXCLUDED.status,
+          total_duration_sec = EXCLUDED.total_duration_sec,
+          template_json = EXCLUDED.template_json,
+          created_by = EXCLUDED.created_by,
+          updated_at = now(),
+          deleted_at = NULL
         RETURNING *
       `,
       [
