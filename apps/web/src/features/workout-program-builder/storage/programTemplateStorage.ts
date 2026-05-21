@@ -68,6 +68,10 @@ export function deleteProgramTemplate(templateId: string): boolean {
   return writeAll(next);
 }
 
+export function replaceProgramTemplates(templates: WorkoutProgramTemplate[]): boolean {
+  return writeAll(templates);
+}
+
 export function duplicateProgramTemplate(
   templateId: string,
   cloneBlocks: (blocks: WorkoutProgramTemplate['blocks']) => WorkoutProgramTemplate['blocks'],

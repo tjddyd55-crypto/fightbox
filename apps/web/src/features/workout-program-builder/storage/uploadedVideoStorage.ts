@@ -73,3 +73,7 @@ export function deleteUploadedVideo(videoId: string): boolean {
   if (next.length === list.length) return false;
   return writeAll(next);
 }
+
+export function replaceUploadedVideos(videos: WorkoutVideo[]): boolean {
+  return writeAll(videos);
+}

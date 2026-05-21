@@ -4,7 +4,7 @@
  * Owns: active template (blocks + metadata), selectedBlockId, toasts, test-play modal flag.
  * Does not own: layout/viewport, filter UI state (VideoLibraryPanel local), persistence (STEP 2+ storage).
  */
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { mockProgramTemplate } from '../data/mockProgramTemplate';
 import type {
   CreateWorkoutVideoInput,
@@ -26,6 +26,7 @@ import {
   createVideo,
   deleteVideo,
   listVideos,
+  refreshVideosFromApi,
   updateVideoMetadata,
 } from '../repositories/videoRepository';
 import {
@@ -61,6 +62,12 @@ export function useProgramBuilderState() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isTestPlaying, setIsTestPlaying] = useState(false);
   const [videos, setVideos] = useState<WorkoutVideo[]>(() => listVideos());
+
+  useEffect(() => {
+    void refreshVideosFromApi().then((nextVideos) => {
+      setVideos(nextVideos);
+    });
+  }, []);
 
   const blocks = template.blocks;
   const videoMap = useMemo(() => buildWorkoutVideoMap(videos), [videos]);

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { WorkoutProgramTemplate } from '../types/workoutProgramBuilder.types';
 import { formatDuration } from '../utils/durationUtils';
-import { listTemplates } from '../repositories/programTemplateRepository';
+import { refreshTemplatesFromApi } from '../repositories/programTemplateRepository';
 import { isPublicReviewPending, VISIBILITY_LABEL } from '../utils/visibilityUtils';
 
 function formatUpdatedAt(iso: string): string {
@@ -37,9 +37,8 @@ export function TemplateLibraryModal({
   const [templates, setTemplates] = useState<WorkoutProgramTemplate[]>([]);
 
   useEffect(() => {
-    if (isOpen) {
-      setTemplates(listTemplates());
-    }
+    if (!isOpen) return;
+    void refreshTemplatesFromApi().then(setTemplates);
   }, [isOpen]);
 
   useEffect(() => {
