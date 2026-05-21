@@ -98,6 +98,16 @@ function isWorkoutDifficulty(value: string): value is WorkoutDifficulty {
   return value === 'beginner' || value === 'intermediate' || value === 'advanced';
 }
 
+function resolveHttpThumbnailUrl(value: string | null | undefined): string | null {
+  if (!value) {
+    return null;
+  }
+  if (value.startsWith('http://') || value.startsWith('https://')) {
+    return value;
+  }
+  return null;
+}
+
 function isTemplateVisibility(value: string): value is TemplateVisibility {
   return (
     value === 'private' ||
@@ -111,13 +121,14 @@ function isTemplateVisibility(value: string): value is TemplateVisibility {
 export function uploadedVideoDtoToWorkoutVideo(dto: UploadedVideoDto): WorkoutVideo {
   const difficulty = isWorkoutDifficulty(dto.difficulty) ? dto.difficulty : 'beginner';
   const provider = (dto.provider || 'r2') as VideoStorageProvider;
+  const remoteThumbnail = resolveHttpThumbnailUrl(dto.thumbnailUrl);
 
   return {
     id: dto.id,
     title: dto.title,
     description: dto.description || undefined,
     durationSec: dto.durationSec,
-    thumbnailUrl: dto.thumbnailUrl ?? UPLOADED_VIDEO_PLACEHOLDER_THUMBNAIL,
+    thumbnailUrl: remoteThumbnail ?? UPLOADED_VIDEO_PLACEHOLDER_THUMBNAIL,
     previewUrl: dto.playbackUrl || undefined,
     tags: dto.tags ?? [],
     difficulty,
@@ -133,7 +144,7 @@ export function uploadedVideoDtoToWorkoutVideo(dto: UploadedVideoDto): WorkoutVi
       uploadedAt: dto.createdAt,
       storageKey: dto.storageKey,
       playbackUrl: dto.playbackUrl || undefined,
-      remoteThumbnailUrl: dto.thumbnailUrl ?? undefined,
+      remoteThumbnailUrl: remoteThumbnail ?? undefined,
       provider,
     },
   };
@@ -163,8 +174,8 @@ export function workoutVideoToCreateRequest(video: WorkoutVideo): CreateUploaded
     storageKey: meta.storageKey,
     playbackUrl: meta.playbackUrl ?? video.previewUrl ?? '',
     thumbnailUrl:
-      meta.remoteThumbnailUrl ??
-      (video.thumbnailUrl.startsWith('http') ? video.thumbnailUrl : null),
+      resolveHttpThumbnailUrl(meta.remoteThumbnailUrl) ??
+      resolveHttpThumbnailUrl(video.thumbnailUrl),
     fileName,
     fileSize,
     contentType,
