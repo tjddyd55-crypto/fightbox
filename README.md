@@ -168,6 +168,25 @@ npm run db:migrate:prod -w @fightbox/api
 - `POST /api/workout-builder/templates`
 - `PATCH /api/workout-builder/templates/:id`
 - `DELETE /api/workout-builder/templates/:id`
+- `POST /api/workout-builder/templates/:id/submit-public` — 공용 라이브러리 신청 (`visibility: public_pending`)
+- `GET /api/workout-builder/admin/public-submissions` — 승인 대기 목록 (demo admin, **인증 없음**)
+- `POST /api/workout-builder/admin/public-submissions/:id/approve` — 승인 (`visibility: public`)
+- `POST /api/workout-builder/admin/public-submissions/:id/reject` — 반려 (`visibility: public_rejected`, body `{ "reason": "..." }`)
+
+템플릿 visibility: `private` · `gym_only` · `public_pending` · `public` · `public_rejected`  
+템플릿 status: `draft` · `active` · `archived`  
+레거시 값 `gym`, `public_approved`는 API/web에서 읽을 때 정규화합니다.
+
+#### 공용 라이브러리 신청/승인 워크플로
+
+1. 코치가 템플릿 저장 후 `POST .../submit-public` (또는 UI 「공용 신청」)
+2. DB `visibility = public_pending`, `public_review_status = pending`
+3. demo admin이 `GET .../admin/public-submissions`로 대기 목록 확인
+4. 승인 → `visibility = public`, `public_review_status = approved`
+5. 반려 → `visibility = public_rejected`, `public_rejection_reason` 저장
+
+인증/역할 분리는 아직 없습니다. admin endpoint는 추후 auth middleware로 보호할 예정입니다.  
+web UI는 템플릿 목록 모달의 「승인 대기」 탭에서 MVP 승인/반려를 제공합니다.
 
 인증 전까지 gym/user scope header:
 
