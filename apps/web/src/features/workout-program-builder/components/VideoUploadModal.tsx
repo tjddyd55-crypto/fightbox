@@ -3,6 +3,7 @@ import { VIDEO_BODY_PART_OPTIONS } from '../constants/builderConstants';
 import {
   getUploadStatusLabel,
   requestPresignedUpload,
+  uploadGeneratedThumbnail,
   uploadVideoFile,
 } from '../services/videoUploadService';
 import type {
@@ -18,6 +19,10 @@ import {
   validateVideoUploadForm,
   type VideoUploadFormValues,
 } from '../utils/videoUploadUtils';
+import {
+  generateVideoThumbnailFromFile,
+  type GeneratedVideoThumbnail,
+} from '../utils/videoThumbnailUtils';
 
 interface VideoUploadModalProps {
   isOpen: boolean;
@@ -49,6 +54,7 @@ export function VideoUploadModal({ isOpen, onClose, onSubmit }: VideoUploadModal
   const formId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewUrlRef = useRef<string | null>(null);
+  const thumbnailObjectUrlRef = useRef<string | null>(null);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -71,8 +77,10 @@ export function VideoUploadModal({ isOpen, onClose, onSubmit }: VideoUploadModal
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const isUploadBusy =
+    uploadStatus === 'generating-thumbnail' ||
     uploadStatus === 'preparing' ||
     uploadStatus === 'uploading' ||
+    uploadStatus === 'uploading-thumbnail' ||
     uploadStatus === 'processing';
 
   const revokePreviewUrl = useCallback(() => {
@@ -83,8 +91,16 @@ export function VideoUploadModal({ isOpen, onClose, onSubmit }: VideoUploadModal
     setPreviewUrl(null);
   }, []);
 
+  const revokeThumbnailObjectUrl = useCallback(() => {
+    if (thumbnailObjectUrlRef.current) {
+      URL.revokeObjectURL(thumbnailObjectUrlRef.current);
+      thumbnailObjectUrlRef.current = null;
+    }
+  }, []);
+
   const resetForm = useCallback(() => {
     revokePreviewUrl();
+    revokeThumbnailObjectUrl();
     setSelectedFile(null);
     setTitle(INITIAL_FORM.title);
     setDescription(INITIAL_FORM.description);
@@ -104,7 +120,7 @@ export function VideoUploadModal({ isOpen, onClose, onSubmit }: VideoUploadModal
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-  }, [revokePreviewUrl]);
+  }, [revokePreviewUrl, revokeThumbnailObjectUrl]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -116,6 +132,9 @@ export function VideoUploadModal({ isOpen, onClose, onSubmit }: VideoUploadModal
     return () => {
       if (previewUrlRef.current) {
         URL.revokeObjectURL(previewUrlRef.current);
+      }
+      if (thumbnailObjectUrlRef.current) {
+        URL.revokeObjectURL(thumbnailObjectUrlRef.current);
       }
     };
   }, []);
@@ -201,35 +220,69 @@ export function VideoUploadModal({ isOpen, onClose, onSubmit }: VideoUploadModal
 
     setUploadError(null);
     setFieldErrors({});
-    setUploadStatus('preparing');
+    setUploadStatus('generating-thumbnail');
     setUploadProgress(0);
 
+    let generatedThumbnail: GeneratedVideoThumbnail | null = null;
+
     try {
+      try {
+        generatedThumbnail = await generateVideoThumbnailFromFile(selectedFile);
+        thumbnailObjectUrlRef.current = generatedThumbnail.objectUrl;
+      } catch (error) {
+        console.warn('[workout-builder] thumbnail generation failed', error);
+      }
+
+      setUploadStatus('preparing');
       const presigned = await requestPresignedUpload({
         fileName: selectedFile.name,
         fileSize: selectedFile.size,
         contentType: selectedFile.type || 'video/*',
+        assetType: 'video',
       });
 
       setUploadStatus('uploading');
       const uploadResult = await uploadVideoFile({
         file: selectedFile,
         presigned,
-        onProgress: (percent) => setUploadProgress(percent),
+        onProgress: (percent) => setUploadProgress(Math.round(percent * 0.88)),
       });
 
+      let finalUploadResult = uploadResult;
+      if (generatedThumbnail) {
+        setUploadStatus('uploading-thumbnail');
+        try {
+          const thumbnailUrl = await uploadGeneratedThumbnail({
+            blob: generatedThumbnail.blob,
+            fileName: generatedThumbnail.fileName,
+            contentType: generatedThumbnail.contentType,
+            onProgress: (percent) => setUploadProgress(88 + Math.round(percent * 0.1)),
+          });
+          if (thumbnailUrl) {
+            finalUploadResult = { ...uploadResult, thumbnailUrl };
+          }
+        } catch (error) {
+          console.warn('[workout-builder] thumbnail upload failed', error);
+        } finally {
+          revokeThumbnailObjectUrl();
+        }
+      }
+
       setUploadStatus('processing');
+      setUploadProgress(99);
       await new Promise<void>((resolve) => {
         window.setTimeout(resolve, 400);
       });
 
       setUploadStatus('completed');
-      const ok = onSubmit({ ...input, uploadResult });
+      setUploadProgress(100);
+      const ok = onSubmit({ ...input, uploadResult: finalUploadResult });
       if (!ok) {
         setUploadStatus('failed');
         setUploadError('영상 등록에 실패했습니다. 다시 시도해 주세요.');
       }
     } catch (error) {
+      revokeThumbnailObjectUrl();
       setUploadStatus('failed');
       const detail =
         error instanceof Error && error.message.trim()

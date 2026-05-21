@@ -1,6 +1,7 @@
 import type {
   PresignedUploadRequest,
   PresignedUploadResponse,
+  UploadGeneratedThumbnailParams,
   UploadProviderKind,
   UploadVideoFileParams,
   VideoUploadAdapter,
@@ -34,12 +35,22 @@ export async function uploadVideoFile(
   return getActiveAdapter().uploadVideoFile(params);
 }
 
+export async function uploadGeneratedThumbnail(
+  params: UploadGeneratedThumbnailParams,
+): Promise<string | undefined> {
+  return getActiveAdapter().uploadGeneratedThumbnail(params);
+}
+
 export function getUploadStatusLabel(status: VideoUploadStatus, progress: number): string {
   switch (status) {
+    case 'generating-thumbnail':
+      return '썸네일 생성 중…';
     case 'preparing':
       return '업로드 준비 중…';
     case 'uploading':
       return `업로드 중 ${progress}%`;
+    case 'uploading-thumbnail':
+      return `썸네일 업로드 중 ${progress}%`;
     case 'processing':
       return '영상 처리 중…';
     case 'completed':

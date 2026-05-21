@@ -3,6 +3,7 @@ import {
   type PresignUploadApiRequest,
   type PresignUploadApiResponse,
   type PresignedUploadRequest,
+  type UploadGeneratedThumbnailParams,
   type UploadVideoFileParams,
   type VideoStorageProvider,
   type VideoUploadAdapter,
@@ -106,6 +107,91 @@ function inferStorageProvider(uploadUrl: string): VideoStorageProvider {
   return 'r2';
 }
 
+function putBlobWithProgress(
+  uploadUrl: string,
+  blob: Blob,
+  contentType: string,
+  includeContentType: boolean,
+  onProgress?: (percent: number) => void,
+): Promise<void> {
+  const safeTarget = buildSafeUploadTarget(uploadUrl);
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', uploadUrl);
+    if (includeContentType) {
+      xhr.setRequestHeader('Content-Type', contentType);
+    }
+
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable || !onProgress) {
+        return;
+      }
+      const percent = Math.min(100, Math.round((event.loaded / event.total) * 100));
+      onProgress(percent);
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        onProgress?.(100);
+        resolve();
+        return;
+      }
+
+      reject(
+        new VideoUploadApiError(
+          formatPutErrorMessage(xhr.status, xhr.statusText, safeTarget),
+          xhr.status,
+        ),
+      );
+    };
+
+    xhr.onerror = () => {
+      reject(
+        new VideoUploadApiError(
+          appendPutDebugSuffix(
+            'R2 썸네일 업로드 네트워크 실패(onerror).',
+            safeTarget,
+            xhr.status,
+            xhr.statusText,
+          ),
+          xhr.status || 0,
+        ),
+      );
+    };
+
+    xhr.onabort = () => {
+      reject(
+        new VideoUploadApiError(
+          appendPutDebugSuffix(
+            'R2 썸네일 업로드가 중단되었습니다(onabort).',
+            safeTarget,
+            xhr.status,
+            xhr.statusText,
+          ),
+          xhr.status || 0,
+        ),
+      );
+    };
+
+    xhr.ontimeout = () => {
+      reject(
+        new VideoUploadApiError(
+          appendPutDebugSuffix(
+            'R2 썸네일 업로드 시간이 초과되었습니다(ontimeout).',
+            safeTarget,
+            xhr.status,
+            xhr.statusText,
+          ),
+          xhr.status || 0,
+        ),
+      );
+    };
+
+    xhr.send(blob);
+  });
+}
+
 function putFileWithProgress(
   uploadUrl: string,
   file: File,
@@ -201,6 +287,7 @@ async function requestPresignedUpload(
     ...(input.checksum !== undefined ? { checksum: input.checksum } : {}),
     ...(input.gymId !== undefined ? { gymId: input.gymId } : {}),
     ...(input.uploaderId !== undefined ? { uploaderId: input.uploaderId } : {}),
+    ...(input.assetType !== undefined ? { assetType: input.assetType } : {}),
   };
 
   let response: Response;
@@ -222,6 +309,36 @@ async function requestPresignedUpload(
   }
 
   return (await response.json()) as PresignUploadApiResponse;
+}
+
+async function uploadGeneratedThumbnail({
+  blob,
+  fileName,
+  contentType,
+  onProgress,
+}: UploadGeneratedThumbnailParams): Promise<string | undefined> {
+  const presigned = await requestPresignedUpload({
+    fileName,
+    fileSize: blob.size,
+    contentType,
+    assetType: 'thumbnail',
+  });
+
+  const includeContentType = resolveR2UploadIncludeContentType();
+  await putBlobWithProgress(
+    presigned.uploadUrl,
+    blob,
+    contentType,
+    includeContentType,
+    onProgress,
+  );
+
+  const thumbnailUrl = presigned.thumbnailUrl ?? presigned.playbackUrl ?? '';
+  if (thumbnailUrl.startsWith('http://') || thumbnailUrl.startsWith('https://')) {
+    return thumbnailUrl;
+  }
+
+  return undefined;
 }
 
 async function uploadVideoFile({
@@ -255,4 +372,5 @@ export const apiVideoUploadAdapter: VideoUploadAdapter = {
   kind: 'api',
   requestPresignedUpload,
   uploadVideoFile,
+  uploadGeneratedThumbnail,
 };

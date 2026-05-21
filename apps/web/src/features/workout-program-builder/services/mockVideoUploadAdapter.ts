@@ -2,6 +2,7 @@ import { UPLOADED_VIDEO_PLACEHOLDER_THUMBNAIL } from '../constants/builderConsta
 import type {
   PresignedUploadRequest,
   PresignedUploadResponse,
+  UploadGeneratedThumbnailParams,
   UploadVideoFileParams,
   VideoUploadAdapter,
   VideoUploadResult,
@@ -64,8 +65,17 @@ async function uploadVideoFile({
   };
 }
 
+async function uploadGeneratedThumbnail({
+  fileName,
+}: UploadGeneratedThumbnailParams): Promise<string | undefined> {
+  await delay(250);
+  const safeName = sanitizeFileName(fileName);
+  return `${MOCK_STORAGE_BASE}/thumbnails/${Date.now()}_${safeName}`;
+}
+
 export const mockVideoUploadAdapter: VideoUploadAdapter = {
   kind: 'mock',
   requestPresignedUpload,
   uploadVideoFile,
+  uploadGeneratedThumbnail,
 };
