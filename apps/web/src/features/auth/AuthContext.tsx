@@ -22,8 +22,19 @@ function shouldUseApiLogin(): boolean {
   return isApiAuthEnabled() && Boolean(getApiBaseUrl());
 }
 
+function loadInitialSessionUser(): FightboxSessionUser | null {
+  if (shouldUseApiLogin() && !loadAuthToken()) {
+    const legacyUser = loadSession();
+    if (legacyUser) {
+      clearSession();
+    }
+    return null;
+  }
+  return loadSession();
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUserState] = useState<FightboxSessionUser | null>(() => loadSession());
+  const [user, setUserState] = useState<FightboxSessionUser | null>(() => loadInitialSessionUser());
   const [loading, setLoading] = useState(() => Boolean(loadAuthToken()) && shouldUseApiLogin());
 
   const setUser = useCallback((next: FightboxSessionUser | null, token?: string) => {
