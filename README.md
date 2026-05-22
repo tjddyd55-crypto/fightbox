@@ -98,6 +98,7 @@ Workout builder DB CRUD가 준비되면 `VITE_WORKOUT_BUILDER_STORAGE=api`로 �
 - `GET /api/gym/staff-permissions` — 체육관 직원 권한 목록 (`gym_admin` / `super_admin`)
 - `PATCH /api/gym/staff-permissions/:userId` — 직원 권한 수정
 - `GET /api/gym/staff-permissions/me` — 현재 사용자 직원 권한 조회 (`gym_staff` hydrate용)
+- `GET/POST/PATCH/DELETE /api/admin/gyms` — 체육관 테넌트 코드 관리 (`super_admin` + `manageGyms`)
 
 **DB 마이그레이션**
 
@@ -258,10 +259,10 @@ API 기본값 (헤더 없을 때): `demo-gym` / `demo-gym-admin` / `gym_admin`
 
 | 역할 | 주요 권한 |
 |------|-----------|
-| `super_admin` | 전체 + 공용 라이브러리 승인/반려 |
-| `gym_admin` | 체육관 영상/템플릿/공용 신청/직원 권한 설정(추후 UI) |
-| `gym_staff` | `x-staff-permissions` / env JSON에 따라 granular 허용 |
-| `video_creator` | 영상 업로드·관리, 템플릿 생성/수정/공용 신청 (삭제·승인 불가) |
+| `super_admin` | 전체 + 체육관 코드 관리 + 공용 라이브러리 승인/반려 |
+| `gym_admin` | 체육관(gym scope) 영상/템플릿/공용 신청/직원 권한 |
+| `gym_staff` | gym scope · `x-staff-permissions` / env JSON granular |
+| `video_creator` | creator scope · 영상 업로드·관리, 템플릿 생성/수정/공용 신청 (삭제·승인·체육관 관리 불가) |
 
 공용 승인/반려 admin endpoint는 **`super_admin`만** 허용합니다.
 
