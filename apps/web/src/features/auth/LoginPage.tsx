@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { AuthError } from './auth.types';
+import { AuthApiError } from './authApiClient';
 import { useAuth } from './AuthContext';
 import './auth.css';
 
@@ -12,12 +13,22 @@ const DEV_ACCOUNTS_HINT = [
 ] as const;
 
 export function LoginPage() {
-  const { isAuthenticated, login } = useAuth();
+  const { isAuthenticated, loading, login } = useAuth();
   const navigate = useNavigate();
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  if (loading) {
+    return (
+      <div className="auth-page">
+        <div className="auth-card">
+          <p className="auth-brand-subtitle">세션 확인 중…</p>
+        </div>
+      </div>
+    );
+  }
 
   if (isAuthenticated) {
     return <Navigate to="/workout-program-builder" replace />;
@@ -33,6 +44,8 @@ export function LoginPage() {
       navigate('/workout-program-builder', { replace: true });
     } catch (error) {
       if (error instanceof AuthError) {
+        setErrorMessage(error.message);
+      } else if (error instanceof AuthApiError) {
         setErrorMessage(error.message);
       } else {
         setErrorMessage('로그인에 실패했습니다. 다시 시도해 주세요.');
