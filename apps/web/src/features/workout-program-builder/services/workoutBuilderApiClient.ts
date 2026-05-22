@@ -21,10 +21,7 @@ import type {
 import type { VideoStorageProvider } from '../types/videoUpload.types';
 import { UPLOADED_VIDEO_PLACEHOLDER_THUMBNAIL } from '../constants/builderConstants';
 import { getApiBaseUrl } from './videoUploadConfig';
-import {
-  DEFAULT_ACTOR_ID,
-  DEFAULT_GYM_ID,
-} from './workoutBuilderStorageConfig';
+import { getFightboxContextHeaders } from './fightboxContextConfig';
 import {
   mapTemplateVisibilityToStatus,
   normalizeTemplateStatus,
@@ -77,8 +74,7 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
     headers: {
       'Content-Type': 'application/json',
-      'x-gym-id': DEFAULT_GYM_ID,
-      'x-user-id': DEFAULT_ACTOR_ID,
+      ...getFightboxContextHeaders(),
       ...(init?.headers ?? {}),
     },
   });

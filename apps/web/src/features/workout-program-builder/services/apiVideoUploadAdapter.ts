@@ -11,6 +11,7 @@ import {
   type VideoUploadResult,
 } from '../types/videoUpload.types';
 import { getApiBaseUrl, resolveR2UploadIncludeContentType } from './videoUploadConfig';
+import { getFightboxContextHeaders } from './fightboxContextConfig';
 
 export class VideoUploadApiError extends Error {
   readonly status?: number;
@@ -295,7 +296,10 @@ async function requestPresignedUpload(
   try {
     response = await fetch(buildPresignUrl(), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...getFightboxContextHeaders(),
+      },
       body: JSON.stringify(body),
     });
   } catch {
