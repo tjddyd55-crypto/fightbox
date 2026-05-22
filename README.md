@@ -54,6 +54,7 @@ npm run dev:api
 
 | 변수 | 설명 |
 |------|------|
+| `VITE_AUTH_PROVIDER` | `demo` (기본) 또는 `api` — JWT login API 우선 |
 | `VITE_VIDEO_UPLOAD_PROVIDER` | `mock` (기본) 또는 `api` |
 | `VITE_API_BASE_URL` | API 서비스 public URL (예: `https://<api-domain>`) |
 | `VITE_WORKOUT_BUILDER_STORAGE` | `local` (기본) 또는 `api` — 템플릿/업로드 영상 메타데이터 저장소 |
@@ -78,6 +79,8 @@ Workout builder DB CRUD가 준비되면 `VITE_WORKOUT_BUILDER_STORAGE=api`로 �
 |------|------|
 | `PORT` | Railway가 주입 (예: `3000`) |
 | `FRONTEND_ORIGIN` | web app origin (CORS, 예: `https://app-production-6692.up.railway.app`) |
+| `JWT_SECRET` | JWT 서명 시크릿 (API 서비스에만, 커밋 금지) |
+| `JWT_EXPIRES_IN_SEC` | 액세스 토큰 만료(초). 기본 `86400` (24h) |
 | `ENABLE_R2_DIAGNOSTICS` | `true`일 때만 R2 CORS 진단 endpoint 활성화 |
 | `R2_ACCOUNT_ID` | Cloudflare account ID |
 | `R2_ACCESS_KEY_ID` | R2 access key |
@@ -91,6 +94,8 @@ Workout builder DB CRUD가 준비되면 `VITE_WORKOUT_BUILDER_STORAGE=api`로 �
 **엔드포인트**
 
 - `GET /health` — 서비스 상태
+- `POST /api/auth/login` — DB users + bcrypt 로그인, JWT 발급
+- `GET /api/auth/me` — Bearer JWT로 현재 사용자(직원 권한 포함) 조회
 - `POST /api/workout-videos/uploads/presign` — R2 presigned PUT URL 발급
 - `GET /api/workout-videos/uploads/diagnostics/r2-cors` — `ENABLE_R2_DIAGNOSTICS=true`일 때 R2 OPTIONS preflight 진단
 - `GET/POST/PATCH/DELETE /api/workout-builder/videos` — 업로드 영상 메타데이터 CRUD
@@ -195,7 +200,32 @@ npm run db:migrate:prod -w @fightbox/api
 
 web UI는 템플릿 목록 모달의 「승인 대기」 탭에서 MVP 승인/반려를 제공합니다 (`super_admin`만 표시).
 
-#### 계정 스코프 (demo, Auth 전환 전)
+#### API 로그인 MVP (JWT)
+
+운영 전환 1차: web `VITE_AUTH_PROVIDER=api` + API `JWT_SECRET` 설정 시 DB `users` 테이블 기반 로그인을 사용합니다.
+
+| web | API |
+|-----|-----|
+| `VITE_AUTH_PROVIDER=api` | `JWT_SECRET`, `JWT_EXPIRES_IN_SEC=86400`, `DATABASE_URL` |
+| `VITE_API_BASE_URL` = API public URL | `FRONTEND_ORIGIN` = web origin |
+
+- `POST /api/auth/login` — body `{ "loginId", "password" }` → `{ token, user }`
+- `GET /api/auth/me` — `Authorization: Bearer <token>` → `{ user }` (gym_staff 권한 DB hydrate)
+- JWT payload는 ASCII 식별자만 (`sub`, `role`, `accountScope`, `gymId`, `creatorId`, `gymCode`, `creatorCode`)
+- web 세션: `localStorage` `fightbox.auth.session.v1` — `{ user, token }` (비밀번호 미저장)
+- API 요청: Bearer + 기존 `x-*` context 헤더 병행 (transitional). R2 presigned **PUT**에는 Authorization 미포함
+- `VITE_AUTH_PROVIDER=demo`(기본): 기존 `demoAccounts.ts` 클라이언트 로그인 fallback (로컬 개발용)
+
+데모 DB 계정 (migration `007_users.sql`, 비밀번호 `123456!!`):
+
+| loginId | role | userId |
+|---------|------|--------|
+| `superadmin` | super_admin | demo-super-admin |
+| `gymadmin` | gym_admin | demo-gym-admin |
+| `gymstaff` | gym_staff | demo-staff-001 |
+| `creator` | video_creator | demo-creator-001 |
+
+#### 계정 스코프 (demo / API login 공통)
 
 | 역할 | accountScope | 소속/식별 | 비고 |
 |------|--------------|-----------|------|
@@ -208,9 +238,11 @@ web UI는 템플릿 목록 모달의 「승인 대기」 탭에서 MVP 승인/�
 - **creator**: `creators` 테이블에 프로필만 준비 (정산·마켓플레이스 UI는 미구현). 추후 체육관에서 본인 영상이 사용될 때 수익 쉐어 대상
 - `video_creator` 세션에는 `gymId`를 넣지 않습니다. 기존 workout builder API 호환을 위해 API `requestContext` 내부에서만 `demo-gym` fallback이 적용될 수 있습니다.
 
-#### 개발/테스트용 데모 로그인 (임시)
+#### 개발/테스트용 데모 로그인
 
-**운영 환경에서 아래 비밀번호를 사용하지 마세요.** 실제 Auth(JWT/session + password hash + DB users)로 교체 전까지의 임시 로그인입니다.
+`VITE_AUTH_PROVIDER=demo`일 때만 클라이언트 `demoAccounts.ts`로 로그인합니다. `api` 모드에서는 위 JWT login API를 사용합니다.
+
+**운영 환경에서 아래 비밀번호를 그대로 두지 마세요.** API 모드에서는 DB `users.password_hash`(bcrypt)로 검증합니다.
 
 | 아이디 | 비밀번호 | 역할 | 헤더 스코프 표시 예 |
 |--------|----------|------|---------------------|
@@ -220,18 +252,18 @@ web UI는 템플릿 목록 모달의 「승인 대기」 탭에서 MVP 승인/�
 | `creator` | `123456!!` | 운동영상 크리에이터 | `CREATOR-DEMO` (체육관 코드 아님) |
 
 - 계정 정의: `packages/shared/src/demoAccounts.ts` (비밀번호는 DB에 저장하지 않음)
-- web 세션: `localStorage` key `fightbox.auth.session.v1` (비밀번호 미저장)
+- web 세션: `localStorage` key `fightbox.auth.session.v1` (`user` + optional `token`, 비밀번호 미저장)
 - 로그인 UI: `/login` → 성공 시 `/workout-program-builder`
 - 슈퍼관리자 빌더 헤더 **「체육관 관리」**: `GET/POST/PATCH/DELETE /api/admin/gyms` (demo DB `gyms` 테이블)
 
 API 요청 헤더 (로그인 세션 우선, 없으면 env fallback):
 
+- `Authorization: Bearer <token>` — API login 시 (R2 PUT 제외)
 - `x-gym-id`
 - `x-user-id`
 - `x-user-role` — `super_admin` · `gym_admin` · `gym_staff` · `video_creator`
 - `x-account-scope` — `platform` · `gym` · `creator`
-- `x-gym-code` · `x-gym-name` — gym scope
-- `x-creator-id` · `x-creator-code` · `x-creator-name` — creator scope
+- `x-gym-code` · `x-creator-id` · `x-creator-code` — gym/creator scope (display name은 세션/UI 전용)
 - `x-staff-permissions` (JSON) — `gym_staff` 전용 granular 권한
 
 API 기본값 (헤더 없을 때): `demo-gym` / `demo-gym-admin` / `gym_admin`
@@ -253,7 +285,7 @@ API 기본값 (헤더 없을 때): `demo-gym` / `demo-gym-admin` / `gym_admin`
 - `gym_staff` 로그인·페이지 로드 시 `GET /api/gym/staff-permissions/me`로 DB 권한을 세션에 반영 (localStorage `staffPermissions`)
 - 관리자가 권한을 바꾼 뒤 직원은 **새로고침 또는 재로그인** 시 반영 (mount 시 `/me` 재조회)
 - seed: `demo-gym` / `demo-staff-001` / `gymstaff` — migration `004_gym_staff_permissions.sql`
-- 추후 운영: DB `users` + `gym_staff_permissions` + JWT/session 연동 예정
+- API login + Bearer 시 `gym_staff` 권한은 서버가 DB에서 로드 (`/api/auth/me` 또는 request context)
 
 #### 역할/권한 MVP
 
