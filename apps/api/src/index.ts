@@ -17,6 +17,9 @@ const app = express();
 const port = Number(process.env.PORT) || 3000;
 const frontendOrigin = process.env.FRONTEND_ORIGIN?.trim();
 
+app.set('trust proxy', 1);
+app.disable('x-powered-by');
+
 app.use(
   cors({
     origin: frontendOrigin ? frontendOrigin : true,
