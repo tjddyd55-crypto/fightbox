@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { resolveR2DiagnosticsEnabled } from '../config/r2Config.js';
+import { requirePermission } from '../middleware/permissions.js';
 import { diagnoseR2Cors } from '../services/r2CorsDiagnosticService.js';
 import { createPresignedVideoUpload } from '../services/r2PresignService.js';
 import { ApiError, toErrorResponse } from '../utils/apiError.js';
@@ -20,7 +21,7 @@ router.get('/diagnostics/r2-cors', async (_req, res) => {
   }
 });
 
-router.post('/presign', async (req, res) => {
+router.post('/presign', requirePermission('uploadVideos'), async (req, res) => {
   try {
     const body = req.body;
     if (!body || typeof body !== 'object' || Array.isArray(body)) {

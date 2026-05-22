@@ -7,7 +7,8 @@ import type {
   UpdateProgramTemplateRequest,
   UpdateUploadedVideoRequest,
 } from '@fightbox/shared';
-import { DEFAULT_ACTOR_ID, DEFAULT_DEMO_ADMIN_ID, DEFAULT_GYM_ID } from '../constants/workoutBuilderConstants.js';
+import { DEFAULT_DEMO_ADMIN_ID } from '../constants/workoutBuilderConstants.js';
+import { requireAnyPermission, requirePermission } from '../middleware/permissions.js';
 import {
   approvePublicSubmission,
   createProgramTemplate,
@@ -29,14 +30,8 @@ import { ApiError, toErrorResponse } from '../utils/apiError.js';
 
 const router = Router();
 
-function resolveGymId(headerValue: string | undefined): string {
-  const gymId = headerValue?.trim();
-  return gymId || DEFAULT_GYM_ID;
-}
-
-function resolveActorId(headerValue: string | undefined): string {
-  const actorId = headerValue?.trim();
-  return actorId || DEFAULT_ACTOR_ID;
+function routeParam(value: string | string[]): string {
+  return Array.isArray(value) ? (value[0] ?? '') : value;
 }
 
 function assertObjectBody(body: unknown): Record<string, unknown> {
@@ -179,14 +174,9 @@ function parseRejectPublicTemplateBody(body: Record<string, unknown>): RejectPub
   };
 }
 
-function resolveDemoAdminId(headerValue: string | undefined): string {
-  const adminId = headerValue?.trim();
-  return adminId || DEFAULT_DEMO_ADMIN_ID;
-}
-
 router.get('/videos', async (req, res) => {
   try {
-    const gymId = resolveGymId(req.header('x-gym-id'));
+    const { gymId } = req.fightboxContext;
     const data = await listUploadedVideos(gymId);
     res.status(200).json({ data });
   } catch (error) {
@@ -195,28 +185,31 @@ router.get('/videos', async (req, res) => {
   }
 });
 
-router.post('/videos', async (req, res) => {
-  try {
-    const gymId = resolveGymId(req.header('x-gym-id'));
-    const actorId = resolveActorId(req.header('x-user-id'));
-    const body = parseCreateUploadedVideoBody(assertObjectBody(req.body));
-    const data = await createUploadedVideo({
-      ...body,
-      gymId,
-      createdBy: actorId,
-    });
-    res.status(201).json({ data });
-  } catch (error) {
-    const { status, body } = toErrorResponse(error);
-    res.status(status).json(body);
-  }
-});
+router.post(
+  '/videos',
+  requireAnyPermission(['uploadVideos', 'manageVideos']),
+  async (req, res) => {
+    try {
+      const { gymId, userId } = req.fightboxContext;
+      const body = parseCreateUploadedVideoBody(assertObjectBody(req.body));
+      const data = await createUploadedVideo({
+        ...body,
+        gymId,
+        createdBy: userId,
+      });
+      res.status(201).json({ data });
+    } catch (error) {
+      const { status, body } = toErrorResponse(error);
+      res.status(status).json(body);
+    }
+  },
+);
 
-router.patch('/videos/:id', async (req, res) => {
+router.patch('/videos/:id', requirePermission('manageVideos'), async (req, res) => {
   try {
-    const gymId = resolveGymId(req.header('x-gym-id'));
+    const { gymId } = req.fightboxContext;
     const body = parseUpdateUploadedVideoBody(assertObjectBody(req.body));
-    const data = await updateUploadedVideo(req.params.id, gymId, body);
+    const data = await updateUploadedVideo(routeParam(req.params.id), gymId, body);
     if (!data) {
       throw new ApiError(404, 'NOT_FOUND', 'Uploaded video not found');
     }
@@ -227,10 +220,10 @@ router.patch('/videos/:id', async (req, res) => {
   }
 });
 
-router.delete('/videos/:id', async (req, res) => {
+router.delete('/videos/:id', requirePermission('manageVideos'), async (req, res) => {
   try {
-    const gymId = resolveGymId(req.header('x-gym-id'));
-    const result = await deleteUploadedVideoWithMedia(req.params.id, gymId);
+    const { gymId } = req.fightboxContext;
+    const result = await deleteUploadedVideoWithMedia(routeParam(req.params.id), gymId);
     if (!result) {
       throw new ApiError(404, 'NOT_FOUND', 'Uploaded video not found');
     }
@@ -243,7 +236,7 @@ router.delete('/videos/:id', async (req, res) => {
 
 router.get('/templates', async (req, res) => {
   try {
-    const gymId = resolveGymId(req.header('x-gym-id'));
+    const { gymId } = req.fightboxContext;
     const data = await listProgramTemplates(gymId);
     res.status(200).json({ data });
   } catch (error) {
@@ -254,8 +247,8 @@ router.get('/templates', async (req, res) => {
 
 router.get('/templates/:id', async (req, res) => {
   try {
-    const gymId = resolveGymId(req.header('x-gym-id'));
-    const data = await getProgramTemplate(req.params.id, gymId);
+    const { gymId } = req.fightboxContext;
+    const data = await getProgramTemplate(routeParam(req.params.id), gymId);
     if (!data) {
       throw new ApiError(404, 'NOT_FOUND', 'Program template not found');
     }
@@ -266,15 +259,14 @@ router.get('/templates/:id', async (req, res) => {
   }
 });
 
-router.post('/templates', async (req, res) => {
+router.post('/templates', requirePermission('createTemplates'), async (req, res) => {
   try {
-    const gymId = resolveGymId(req.header('x-gym-id'));
-    const actorId = resolveActorId(req.header('x-user-id'));
+    const { gymId, userId } = req.fightboxContext;
     const body = parseCreateProgramTemplateBody(assertObjectBody(req.body));
     const data = await createProgramTemplate({
       ...body,
       gymId,
-      createdBy: actorId,
+      createdBy: userId,
     });
     res.status(201).json({ data });
   } catch (error) {
@@ -283,11 +275,11 @@ router.post('/templates', async (req, res) => {
   }
 });
 
-router.patch('/templates/:id', async (req, res) => {
+router.patch('/templates/:id', requirePermission('editTemplates'), async (req, res) => {
   try {
-    const gymId = resolveGymId(req.header('x-gym-id'));
+    const { gymId } = req.fightboxContext;
     const body = parseUpdateProgramTemplateBody(assertObjectBody(req.body));
-    const data = await updateProgramTemplate(req.params.id, gymId, body);
+    const data = await updateProgramTemplate(routeParam(req.params.id), gymId, body);
     if (!data) {
       throw new ApiError(404, 'NOT_FOUND', 'Program template not found');
     }
@@ -298,10 +290,10 @@ router.patch('/templates/:id', async (req, res) => {
   }
 });
 
-router.delete('/templates/:id', async (req, res) => {
+router.delete('/templates/:id', requirePermission('deleteTemplates'), async (req, res) => {
   try {
-    const gymId = resolveGymId(req.header('x-gym-id'));
-    const deleted = await softDeleteProgramTemplate(req.params.id, gymId);
+    const { gymId } = req.fightboxContext;
+    const deleted = await softDeleteProgramTemplate(routeParam(req.params.id), gymId);
     if (!deleted) {
       throw new ApiError(404, 'NOT_FOUND', 'Program template not found');
     }
@@ -312,62 +304,78 @@ router.delete('/templates/:id', async (req, res) => {
   }
 });
 
-// Demo admin moderation — no auth yet; protect with real roles later.
-router.post('/templates/:id/submit-public', async (req, res) => {
-  try {
-    const gymId = resolveGymId(req.header('x-gym-id'));
-    const body =
-      req.body && typeof req.body === 'object' && !Array.isArray(req.body)
-        ? parseSubmitPublicTemplateBody(req.body as Record<string, unknown>)
-        : {};
-    const data = await submitProgramTemplateForPublic(req.params.id, gymId, body);
-    if (!data) {
-      throw new ApiError(404, 'NOT_FOUND', 'Program template not found');
+router.post(
+  '/templates/:id/submit-public',
+  requirePermission('submitPublicTemplates'),
+  async (req, res) => {
+    try {
+      const { gymId } = req.fightboxContext;
+      const body =
+        req.body && typeof req.body === 'object' && !Array.isArray(req.body)
+          ? parseSubmitPublicTemplateBody(req.body as Record<string, unknown>)
+          : {};
+      const data = await submitProgramTemplateForPublic(routeParam(req.params.id), gymId, body);
+      if (!data) {
+        throw new ApiError(404, 'NOT_FOUND', 'Program template not found');
+      }
+      res.status(200).json({ data });
+    } catch (error) {
+      const { status, body } = toErrorResponse(error);
+      res.status(status).json(body);
     }
-    res.status(200).json({ data });
-  } catch (error) {
-    const { status, body } = toErrorResponse(error);
-    res.status(status).json(body);
-  }
-});
+  },
+);
 
-router.get('/admin/public-submissions', async (_req, res) => {
-  try {
-    const data = await listPublicPendingSubmissions();
-    res.status(200).json({ data });
-  } catch (error) {
-    const { status, body } = toErrorResponse(error);
-    res.status(status).json(body);
-  }
-});
-
-router.post('/admin/public-submissions/:id/approve', async (req, res) => {
-  try {
-    const reviewedBy = resolveDemoAdminId(req.header('x-user-id'));
-    const data = await approvePublicSubmission(req.params.id, reviewedBy);
-    if (!data) {
-      throw new ApiError(404, 'NOT_FOUND', 'Pending public submission not found');
+// super_admin only — replace header trust with JWT/session auth later.
+router.get(
+  '/admin/public-submissions',
+  requirePermission('reviewPublicTemplates'),
+  async (_req, res) => {
+    try {
+      const data = await listPublicPendingSubmissions();
+      res.status(200).json({ data });
+    } catch (error) {
+      const { status, body } = toErrorResponse(error);
+      res.status(status).json(body);
     }
-    res.status(200).json({ data });
-  } catch (error) {
-    const { status, body } = toErrorResponse(error);
-    res.status(status).json(body);
-  }
-});
+  },
+);
 
-router.post('/admin/public-submissions/:id/reject', async (req, res) => {
-  try {
-    const reviewedBy = resolveDemoAdminId(req.header('x-user-id'));
-    const { reason } = parseRejectPublicTemplateBody(assertObjectBody(req.body));
-    const data = await rejectPublicSubmission(req.params.id, reason, reviewedBy);
-    if (!data) {
-      throw new ApiError(404, 'NOT_FOUND', 'Pending public submission not found');
+router.post(
+  '/admin/public-submissions/:id/approve',
+  requirePermission('reviewPublicTemplates'),
+  async (req, res) => {
+    try {
+      const reviewedBy = req.fightboxContext.userId || DEFAULT_DEMO_ADMIN_ID;
+      const data = await approvePublicSubmission(routeParam(req.params.id), reviewedBy);
+      if (!data) {
+        throw new ApiError(404, 'NOT_FOUND', 'Pending public submission not found');
+      }
+      res.status(200).json({ data });
+    } catch (error) {
+      const { status, body } = toErrorResponse(error);
+      res.status(status).json(body);
     }
-    res.status(200).json({ data });
-  } catch (error) {
-    const { status, body } = toErrorResponse(error);
-    res.status(status).json(body);
-  }
-});
+  },
+);
+
+router.post(
+  '/admin/public-submissions/:id/reject',
+  requirePermission('reviewPublicTemplates'),
+  async (req, res) => {
+    try {
+      const reviewedBy = req.fightboxContext.userId || DEFAULT_DEMO_ADMIN_ID;
+      const { reason } = parseRejectPublicTemplateBody(assertObjectBody(req.body));
+      const data = await rejectPublicSubmission(routeParam(req.params.id), reason, reviewedBy);
+      if (!data) {
+        throw new ApiError(404, 'NOT_FOUND', 'Pending public submission not found');
+      }
+      res.status(200).json({ data });
+    } catch (error) {
+      const { status, body } = toErrorResponse(error);
+      res.status(status).json(body);
+    }
+  },
+);
 
 export default router;
