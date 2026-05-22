@@ -1,7 +1,9 @@
 import cors from 'cors';
 import express from 'express';
 import type { Request, Response } from 'express';
+import { authenticateRequest } from './middleware/authenticateRequest.js';
 import { requestContextMiddleware } from './middleware/requestContext.js';
+import authRoutes from './routes/authRoutes.js';
 import gymAdminRoutes from './routes/gymAdminRoutes.js';
 import gymStaffPermissionRoutes from './routes/gymStaffPermissionRoutes.js';
 import workoutBuilderRoutes from './routes/workoutBuilderRoutes.js';
@@ -17,6 +19,7 @@ app.use(
     origin: frontendOrigin ? frontendOrigin : true,
     allowedHeaders: [
       'Content-Type',
+      'Authorization',
       'x-gym-id',
       'x-user-id',
       'x-user-role',
@@ -34,10 +37,14 @@ app.get('/health', (_req, res) => {
   res.json({ ok: true, service: 'fightbox-api' });
 });
 
-app.use('/api/workout-videos/uploads', requestContextMiddleware, workoutVideoUploadRoutes);
-app.use('/api/workout-builder', requestContextMiddleware, workoutBuilderRoutes);
-app.use('/api/gym/staff-permissions', requestContextMiddleware, gymStaffPermissionRoutes);
-app.use('/api/admin/gyms', requestContextMiddleware, gymAdminRoutes);
+app.use('/api/auth', authRoutes);
+
+const protectedApi = [authenticateRequest, requestContextMiddleware] as const;
+
+app.use('/api/workout-videos/uploads', ...protectedApi, workoutVideoUploadRoutes);
+app.use('/api/workout-builder', ...protectedApi, workoutBuilderRoutes);
+app.use('/api/gym/staff-permissions', ...protectedApi, gymStaffPermissionRoutes);
+app.use('/api/admin/gyms', ...protectedApi, gymAdminRoutes);
 
 app.use((error: unknown, _req: Request, res: Response) => {
   const { status, body } = toErrorResponse(error);
