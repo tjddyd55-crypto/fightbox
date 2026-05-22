@@ -2,6 +2,7 @@ import {
   canCreateTemplates,
   canDeleteTemplates,
   canEditTemplates,
+  canManageStaffPermissions,
   canManageVideos,
   canReviewPublicTemplates,
   canSubmitPublicTemplates,
@@ -22,6 +23,7 @@ export interface FightboxClientPermissions {
   canDeleteTemplates: boolean;
   canSubmitPublicTemplates: boolean;
   canReviewPublicTemplates: boolean;
+  canManageStaffPermissions: boolean;
 }
 
 function buildPermissions(context: FightboxRequestContext): FightboxClientPermissions {
@@ -34,6 +36,7 @@ function buildPermissions(context: FightboxRequestContext): FightboxClientPermis
     canDeleteTemplates: canDeleteTemplates(context),
     canSubmitPublicTemplates: canSubmitPublicTemplates(context),
     canReviewPublicTemplates: canReviewPublicTemplates(context),
+    canManageStaffPermissions: canManageStaffPermissions(context),
   };
 }
 

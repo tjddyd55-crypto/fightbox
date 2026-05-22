@@ -95,6 +95,9 @@ Workout builder DB CRUD가 준비되면 `VITE_WORKOUT_BUILDER_STORAGE=api`로 �
 - `GET /api/workout-videos/uploads/diagnostics/r2-cors` — `ENABLE_R2_DIAGNOSTICS=true`일 때 R2 OPTIONS preflight 진단
 - `GET/POST/PATCH/DELETE /api/workout-builder/videos` — 업로드 영상 메타데이터 CRUD
 - `GET/POST/PATCH/DELETE /api/workout-builder/templates` — 프로그램 템플릿 CRUD
+- `GET /api/gym/staff-permissions` — 체육관 직원 권한 목록 (`gym_admin` / `super_admin`)
+- `PATCH /api/gym/staff-permissions/:userId` — 직원 권한 수정
+- `GET /api/gym/staff-permissions/me` — 현재 사용자 직원 권한 조회 (`gym_staff` hydrate용)
 
 **DB 마이그레이션**
 
@@ -214,6 +217,25 @@ API 요청 헤더 (로그인 세션 우선, 없으면 env fallback):
 - `x-staff-permissions` (JSON) — `gym_staff` 전용 granular 권한
 
 API 기본값 (헤더 없을 때): `demo-gym` / `demo-gym-admin` / `gym_admin`
+
+#### 직원 권한 관리 MVP
+
+`gym_staff_permissions` 테이블에 체육관 직원별 granular 권한을 저장합니다. **운영 Auth 전환 전** demo 계정과 연동된 1차 MVP입니다.
+
+| 역할 | 직원 권한 관리 UI/API |
+|------|----------------------|
+| `super_admin` | 가능 (요청 context `gymId` 기준) |
+| `gym_admin` | 가능 (본인 gym) |
+| `gym_staff` | 불가 (`GET /me`로 본인 권한만 조회) |
+| `video_creator` | 불가 |
+
+관리 가능 권한: `canUploadVideos` · `canManageVideos` · `canCreateTemplates` · `canEditTemplates` · `canDeleteTemplates` · `canSubmitPublicTemplates`
+
+- web 빌더 헤더 **「직원 권한」** 버튼 → 모달에서 체크박스 저장 (`PATCH`)
+- `gym_staff` 로그인·페이지 로드 시 `GET /api/gym/staff-permissions/me`로 DB 권한을 세션에 반영 (localStorage `staffPermissions`)
+- 관리자가 권한을 바꾼 뒤 직원은 **새로고침 또는 재로그인** 시 반영 (mount 시 `/me` 재조회)
+- seed: `demo-gym` / `demo-staff-001` / `gymstaff` — migration `004_gym_staff_permissions.sql`
+- 추후 운영: DB `users` + `gym_staff_permissions` + JWT/session 연동 예정
 
 #### 역할/권한 MVP
 

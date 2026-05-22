@@ -12,6 +12,7 @@ import { MobileBuilderTabs, type MobileBuilderTab } from '../components/MobileBu
 import { ProgramTimelinePanel } from '../components/ProgramTimelinePanel';
 import { SelectedBlockPanel } from '../components/SelectedBlockPanel';
 import { ShareSubmissionModal } from '../components/ShareSubmissionModal';
+import { StaffPermissionModal } from '../components/StaffPermissionModal';
 import { TemplateLibraryModal } from '../components/TemplateLibraryModal';
 import { TestPlaybackModal } from '../components/TestPlaybackModal';
 import { VideoEditModal } from '../components/VideoEditModal';
@@ -74,6 +75,7 @@ export function WorkoutProgramBuilderPage() {
   const [activeSidebarSection, setActiveSidebarSection] =
     useState<BuilderSidebarActiveSection>('builder');
   const [isTemplateLibraryOpen, setIsTemplateLibraryOpen] = useState(false);
+  const [isStaffPermissionOpen, setIsStaffPermissionOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isVideoUploadOpen, setIsVideoUploadOpen] = useState(false);
   const [editingVideo, setEditingVideo] = useState<WorkoutVideo | null>(null);
@@ -192,6 +194,8 @@ export function WorkoutProgramBuilderPage() {
         userLoginId={user.loginId}
         userRole={user.role}
         onLogout={handleLogout}
+        showStaffPermissionsButton={permissions.canManageStaffPermissions}
+        onOpenStaffPermissions={() => setIsStaffPermissionOpen(true)}
       />
       <MobileBuilderTabs activeTab={mobileTab} onTabChange={setMobileTab} />
       <section className="wpb-body">
@@ -325,6 +329,12 @@ export function WorkoutProgramBuilderPage() {
           setEditingVideo(null);
           return true;
         }}
+      />
+      <StaffPermissionModal
+        isOpen={isStaffPermissionOpen}
+        managerUser={user}
+        onClose={() => setIsStaffPermissionOpen(false)}
+        onNotify={state.showMessage}
       />
       <TemplateLibraryModal
         isOpen={isTemplateLibraryOpen}
