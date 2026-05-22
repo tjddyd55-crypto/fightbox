@@ -10,18 +10,21 @@ interface UserRow {
   display_name: string;
   role: string;
   account_scope: string;
+  status: string;
   gym_id: string | null;
   creator_id: string | null;
   gym_code: string | null;
   gym_name: string | null;
   creator_code: string | null;
   creator_name: string | null;
+  last_login_at: Date | null;
 }
 
 export interface UserAuthRecord {
   id: string;
   loginId: string;
   passwordHash: string;
+  isActive: boolean;
   user: AuthUserDto;
 }
 
@@ -33,6 +36,7 @@ const USER_SELECT = `
     u.display_name,
     u.role,
     u.account_scope,
+    u.status,
     u.gym_id,
     u.creator_id,
     g.gym_code,
@@ -88,8 +92,21 @@ function rowToRecord(row: UserRow): UserAuthRecord {
     id: row.id,
     loginId: row.login_id,
     passwordHash: row.password_hash,
+    isActive: row.status === 'active',
     user: rowToAuthUser(row),
   };
+}
+
+export async function updateLastLoginAt(userId: string): Promise<void> {
+  try {
+    const pool = getDatabasePool();
+    await pool.query(
+      `UPDATE users SET last_login_at = now(), updated_at = now() WHERE id = $1`,
+      [userId],
+    );
+  } catch (error) {
+    throw wrapDatabaseError(error);
+  }
 }
 
 export async function findUserByLoginId(loginId: string): Promise<UserAuthRecord | null> {
@@ -97,7 +114,7 @@ export async function findUserByLoginId(loginId: string): Promise<UserAuthRecord
     const pool = getDatabasePool();
     const result = await pool.query<UserRow>(
       `${USER_SELECT}
-       WHERE u.login_id = $1 AND u.status = 'active'
+       WHERE u.login_id = $1
        LIMIT 1`,
       [loginId.trim()],
     );

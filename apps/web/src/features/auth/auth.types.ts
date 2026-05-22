@@ -2,6 +2,11 @@ import type { FightboxSessionUser } from '@fightbox/shared';
 
 export type { FightboxSessionUser };
 
+export interface AuthSession {
+  token: string;
+  user: FightboxSessionUser;
+}
+
 export class AuthError extends Error {
   readonly code: string;
 

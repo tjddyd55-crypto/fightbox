@@ -1,7 +1,8 @@
 import cors from 'cors';
 import express from 'express';
-import type { NextFunction, Request, Response } from 'express';
-import { authenticateRequest } from './middleware/authenticateRequest.js';
+import type { Request, Response } from 'express';
+import { assertAuthConfiguredForStartup } from './config/authConfig.js';
+import { optionalAuth } from './middleware/authMiddleware.js';
 import { requestContextMiddleware } from './middleware/requestContext.js';
 import authRoutes from './routes/authRoutes.js';
 import gymAdminRoutes from './routes/gymAdminRoutes.js';
@@ -9,6 +10,8 @@ import gymStaffPermissionRoutes from './routes/gymStaffPermissionRoutes.js';
 import workoutBuilderRoutes from './routes/workoutBuilderRoutes.js';
 import workoutVideoUploadRoutes from './routes/workoutVideoUploadRoutes.js';
 import { toErrorResponse } from './utils/apiError.js';
+
+assertAuthConfiguredForStartup();
 
 const app = express();
 const port = Number(process.env.PORT) || 3000;
@@ -39,14 +42,14 @@ app.get('/health', (_req, res) => {
 
 app.use('/api/auth', authRoutes);
 
-const protectedApi = [authenticateRequest, requestContextMiddleware] as const;
+const protectedApi = [optionalAuth, requestContextMiddleware] as const;
 
 app.use('/api/workout-videos/uploads', ...protectedApi, workoutVideoUploadRoutes);
 app.use('/api/workout-builder', ...protectedApi, workoutBuilderRoutes);
 app.use('/api/gym/staff-permissions', ...protectedApi, gymStaffPermissionRoutes);
 app.use('/api/admin/gyms', ...protectedApi, gymAdminRoutes);
 
-app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
+app.use((error: unknown, _req: Request, res: Response) => {
   const { status, body } = toErrorResponse(error);
   res.status(status).json(body);
 });

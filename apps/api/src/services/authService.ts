@@ -1,10 +1,14 @@
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import jwt, { type SignOptions } from 'jsonwebtoken';
 import type { AuthUserDto, FightboxJwtPayload, LoginResponse } from '@fightbox/shared';
 import { isFightboxAccountScope, isFightboxUserRole } from '@fightbox/shared';
-import { getJwtExpiresInSec, getJwtSecret } from '../config/authConfig.js';
+import { getJwtExpiresIn, getJwtSecret } from '../config/authConfig.js';
 import { getGymStaffPermission } from '../repositories/gymStaffPermissionRepository.js';
-import { findUserById, findUserByLoginId } from '../repositories/userRepository.js';
+import {
+  findUserById,
+  findUserByLoginId,
+  updateLastLoginAt,
+} from '../repositories/userRepository.js';
 import { ApiError } from '../utils/apiError.js';
 
 function buildJwtPayload(user: AuthUserDto): FightboxJwtPayload {
@@ -31,9 +35,8 @@ function buildJwtPayload(user: AuthUserDto): FightboxJwtPayload {
 }
 
 function signAccessToken(payload: FightboxJwtPayload): string {
-  return jwt.sign(payload, getJwtSecret(), {
-    expiresIn: getJwtExpiresInSec(),
-  });
+  const expiresIn = getJwtExpiresIn() as SignOptions['expiresIn'];
+  return jwt.sign(payload, getJwtSecret(), { expiresIn });
 }
 
 async function attachStaffPermissions(user: AuthUserDto): Promise<AuthUserDto> {
@@ -61,6 +64,10 @@ export async function loginWithPassword(
     throw new ApiError(401, 'INVALID_CREDENTIALS', '아이디 또는 비밀번호가 올바르지 않습니다.');
   }
 
+  if (!record.isActive) {
+    throw new ApiError(401, 'ACCOUNT_DISABLED', '비활성화된 계정입니다.');
+  }
+
   const passwordMatches = await bcrypt.compare(password, record.passwordHash);
   if (!passwordMatches) {
     throw new ApiError(401, 'INVALID_CREDENTIALS', '아이디 또는 비밀번호가 올바르지 않습니다.');
@@ -68,6 +75,7 @@ export async function loginWithPassword(
 
   const user = await attachStaffPermissions(record.user);
   const token = signAccessToken(buildJwtPayload(user));
+  await updateLastLoginAt(record.id);
 
   return { token, user };
 }
