@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import type { Response } from 'express';
-import type { LoginRequest } from '@fightbox/shared';
+import type { AuthAuditEventType, LoginRequest } from '@fightbox/shared';
 import { optionalAuth, requireAuth } from '../middleware/authMiddleware.js';
+import { createAuthAuditLog } from '../repositories/authAuditLogRepository.js';
 import { getAuthenticatedUser, loginWithPassword } from '../services/authService.js';
 import {
   checkLoginRateLimit,
@@ -23,6 +24,10 @@ function extractLoginIdCandidate(body: unknown): string {
 
   const loginId = (body as Record<string, unknown>).loginId;
   return typeof loginId === 'string' ? loginId : '';
+}
+
+function normalizeAuditLoginId(loginId: string): string {
+  return loginId.trim().toLowerCase();
 }
 
 function sendRateLimited(res: Response, retryAfterSec: number): void {
@@ -58,12 +63,36 @@ function isLoginFailureError(error: unknown): error is ApiError {
   );
 }
 
+function recordAuditEvent(input: {
+  loginId: string;
+  userId?: string | null;
+  gymId?: string | null;
+  role?: string | null;
+  eventType: AuthAuditEventType;
+  success: boolean;
+  failureCode?: string | null;
+  ipAddress: string;
+  userAgent: string;
+}): void {
+  void createAuthAuditLog(input);
+}
+
 router.post('/login', async (req, res) => {
   const ip = extractClientIp(req);
+  const userAgent = req.get('user-agent')?.trim() ?? '';
   let loginIdForLimit = extractLoginIdCandidate(req.body);
+  const auditLoginId = normalizeAuditLoginId(loginIdForLimit || 'unknown-login');
 
   const rateCheck = checkLoginRateLimit(ip, loginIdForLimit);
   if (!rateCheck.allowed) {
+    recordAuditEvent({
+      loginId: auditLoginId,
+      eventType: 'login_rate_limited',
+      success: false,
+      failureCode: 'AUTH_RATE_LIMITED',
+      ipAddress: ip,
+      userAgent,
+    });
     sendRateLimited(res, rateCheck.retryAfterSec ?? 900);
     return;
   }
@@ -71,12 +100,32 @@ router.post('/login', async (req, res) => {
   try {
     const credentials = parseLoginBody(req.body);
     loginIdForLimit = credentials.loginId;
+    const normalizedLoginId = normalizeAuditLoginId(credentials.loginId);
     const result = await loginWithPassword(credentials.loginId, credentials.password);
     clearLoginFailures(ip, credentials.loginId);
+    recordAuditEvent({
+      loginId: normalizedLoginId,
+      userId: result.user.userId,
+      gymId: result.user.gymId ?? null,
+      role: result.user.role,
+      eventType: 'login_success',
+      success: true,
+      failureCode: null,
+      ipAddress: ip,
+      userAgent,
+    });
     res.status(200).json(result);
   } catch (error) {
     if (isLoginFailureError(error)) {
       recordLoginFailure(ip, loginIdForLimit);
+      recordAuditEvent({
+        loginId: normalizeAuditLoginId(loginIdForLimit || auditLoginId),
+        eventType: 'login_failed',
+        success: false,
+        failureCode: error.code,
+        ipAddress: ip,
+        userAgent,
+      });
     }
 
     const { status, body } = toErrorResponse(error);
