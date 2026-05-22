@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from 'express';
 import {
   CREATOR_SCOPE_GYM_FALLBACK,
   type FightboxAccountScope,
+  type FightboxJwtPayload,
   type FightboxRequestContext,
   inferAccountScopeFromRole,
   isFightboxAccountScope,
@@ -13,11 +14,22 @@ import {
   DEFAULT_GYM_ID,
   DEFAULT_USER_ROLE,
 } from '../constants/workoutBuilderConstants.js';
+import { getGymStaffPermission } from '../repositories/gymStaffPermissionRepository.js';
 import { ApiError } from '../utils/apiError.js';
 
 function readHeader(req: Request, name: string): string | undefined {
   const value = req.header(name)?.trim();
   return value || undefined;
+}
+
+function resolveGymIdFromJwt(payload: FightboxJwtPayload): string {
+  if (payload.gymId) {
+    return payload.gymId;
+  }
+  if (payload.accountScope === 'creator' || payload.role === 'video_creator') {
+    return CREATOR_SCOPE_GYM_FALLBACK;
+  }
+  return DEFAULT_GYM_ID;
 }
 
 function resolveGymId(
@@ -35,6 +47,37 @@ function resolveGymId(
   }
 
   return DEFAULT_GYM_ID;
+}
+
+async function buildContextFromJwt(payload: FightboxJwtPayload): Promise<FightboxRequestContext> {
+  if (!isFightboxUserRole(payload.role)) {
+    throw new ApiError(401, 'INVALID_TOKEN', `Invalid token role: ${payload.role}`);
+  }
+
+  const accountScope = payload.accountScope;
+  if (!isFightboxAccountScope(accountScope)) {
+    throw new ApiError(401, 'INVALID_TOKEN', `Invalid token account scope: ${accountScope}`);
+  }
+
+  const gymId = resolveGymIdFromJwt(payload);
+  const context: FightboxRequestContext = {
+    gymId,
+    userId: payload.sub,
+    role: payload.role,
+    accountScope,
+    ...(payload.gymCode ? { gymCode: payload.gymCode } : {}),
+    ...(payload.creatorId ? { creatorId: payload.creatorId } : {}),
+    ...(payload.creatorCode ? { creatorCode: payload.creatorCode } : {}),
+  };
+
+  if (payload.role === 'gym_staff') {
+    const row = await getGymStaffPermission(gymId, payload.sub);
+    if (row) {
+      context.staffPermissions = row.permissions;
+    }
+  }
+
+  return context;
 }
 
 function buildFightboxContext(req: Request): FightboxRequestContext {
@@ -60,7 +103,6 @@ function buildFightboxContext(req: Request): FightboxRequestContext {
 
   const gymId = resolveGymId(req, role, accountScope);
   const gymCode = readHeader(req, 'x-gym-code');
-  // Optional legacy display headers; web client does not send non-ASCII names.
   const gymName = readHeader(req, 'x-gym-name');
   const creatorId = readHeader(req, 'x-creator-id');
   const creatorCode = readHeader(req, 'x-creator-code');
@@ -93,13 +135,17 @@ function buildFightboxContext(req: Request): FightboxRequestContext {
   };
 }
 
-export function requestContextMiddleware(
+export async function requestContextMiddleware(
   req: Request,
   _res: Response,
   next: NextFunction,
-): void {
+): Promise<void> {
   try {
-    req.fightboxContext = buildFightboxContext(req);
+    if (req.jwtPayload) {
+      req.fightboxContext = await buildContextFromJwt(req.jwtPayload);
+    } else {
+      req.fightboxContext = buildFightboxContext(req);
+    }
     next();
   } catch (error) {
     next(error);
