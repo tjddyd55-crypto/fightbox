@@ -15,11 +15,15 @@ export {
   hasFightboxPermission,
   isFightboxUserRole,
   parseStaffPermissionsJson,
+  sessionUserToRequestContext,
   type FightboxPermission,
   type FightboxRequestContext,
+  type FightboxSessionUser,
   type FightboxStaffPermissions,
   type FightboxUserRole,
 } from './authContext.js';
+
+export { DEMO_ACCOUNTS, type DemoAccount } from './demoAccounts.js';
 
 export {
   WORKOUT_VIDEO_PRESIGN_PATH,

@@ -13,11 +13,29 @@ export interface FightboxStaffPermissions {
   canSubmitPublicTemplates: boolean;
 }
 
+export interface FightboxSessionUser {
+  loginId: string;
+  userId: string;
+  gymId: string;
+  role: FightboxUserRole;
+  displayName: string;
+  staffPermissions?: Partial<FightboxStaffPermissions>;
+}
+
 export interface FightboxRequestContext {
   gymId: string;
   userId: string;
   role: FightboxUserRole;
   staffPermissions?: Partial<FightboxStaffPermissions>;
+}
+
+export function sessionUserToRequestContext(user: FightboxSessionUser): FightboxRequestContext {
+  return {
+    gymId: user.gymId,
+    userId: user.userId,
+    role: user.role,
+    ...(user.staffPermissions ? { staffPermissions: user.staffPermissions } : {}),
+  };
 }
 
 export const FIGHTBOX_ROLE_LABELS: Record<FightboxUserRole, string> = {
