@@ -57,6 +57,10 @@ npm run dev:api
 | `VITE_VIDEO_UPLOAD_PROVIDER` | `mock` (기본) 또는 `api` |
 | `VITE_API_BASE_URL` | API 서비스 public URL (예: `https://<api-domain>`) |
 | `VITE_WORKOUT_BUILDER_STORAGE` | `local` (기본) 또는 `api` — 템플릿/업로드 영상 메타데이터 저장소 |
+| `VITE_FIGHTBOX_GYM_ID` | demo gym scope (기본 `demo-gym`) |
+| `VITE_FIGHTBOX_USER_ID` | demo user id (기본 `demo-coach`) |
+| `VITE_FIGHTBOX_USER_ROLE` | `gym_admin` (기본) · `super_admin` · `gym_staff` · `video_creator` |
+| `VITE_FIGHTBOX_STAFF_PERMISSIONS` | `gym_staff` granular JSON (선택) |
 
 API presign이 정상 확인된 후 `VITE_VIDEO_UPLOAD_PROVIDER=api`와 `VITE_API_BASE_URL`을 설정하세요.
 Workout builder DB CRUD가 준비되면 `VITE_WORKOUT_BUILDER_STORAGE=api`로 전환합니다. 기본값 `local`은 localStorage fallback을 유지합니다.
@@ -188,10 +192,42 @@ npm run db:migrate:prod -w @fightbox/api
 인증/역할 분리는 아직 없습니다. admin endpoint는 추후 auth middleware로 보호할 예정입니다.  
 web UI는 템플릿 목록 모달의 「승인 대기」 탭에서 MVP 승인/반려를 제공합니다.
 
-인증 전까지 gym/user scope header:
+인증 전까지 gym/user/role scope header (JWT/session auth 교체 예정):
 
 - `x-gym-id` (기본 `demo-gym`)
 - `x-user-id` (기본 `demo-coach`)
+- `x-user-role` (기본 `gym_admin`) — `super_admin` · `gym_admin` · `gym_staff` · `video_creator`
+- `x-staff-permissions` (선택, JSON) — `gym_staff` 전용 granular 권한
+
+web 환경변수 (Railway app 기본값):
+
+- `VITE_FIGHTBOX_GYM_ID=demo-gym`
+- `VITE_FIGHTBOX_USER_ID=demo-coach`
+- `VITE_FIGHTBOX_USER_ROLE=gym_admin`
+- `VITE_FIGHTBOX_STAFF_PERMISSIONS=` (예: `{"canUploadVideos":true,"canEditTemplates":true}`)
+
+#### 역할/권한 MVP
+
+| 역할 | 주요 권한 |
+|------|-----------|
+| `super_admin` | 전체 + 공용 라이브러리 승인/반려 |
+| `gym_admin` | 체육관 영상/템플릿/공용 신청/직원 권한 설정(추후 UI) |
+| `gym_staff` | `x-staff-permissions` / env JSON에 따라 granular 허용 |
+| `video_creator` | 영상 업로드·관리, 템플릿 생성/수정/공용 신청 (삭제·승인 불가) |
+
+공용 승인/반려 admin endpoint는 **`super_admin`만** 허용합니다.
+
+#### 체육관 직원 권한 (추후 DB)
+
+현재 MVP는 header/env JSON으로 시뮬레이션합니다. 추후 Postgres 테이블:
+
+`gym_staff_permissions`
+
+- `id`, `gym_id`, `user_id`
+- `can_upload_videos`, `can_manage_videos`, `can_create_templates`, `can_edit_templates`, `can_delete_templates`, `can_submit_public_templates`
+- `created_at`, `updated_at`
+
+권한 helper는 `packages/shared/src/authContext.ts`에 정의되어 API middleware와 web UI가 공유합니다.
 
 #### 업로드 영상 삭제 정책
 
