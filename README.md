@@ -54,7 +54,7 @@ npm run dev:api
 
 | 변수 | 설명 |
 |------|------|
-| `VITE_AUTH_PROVIDER` | `demo` (기본) 또는 `api` — JWT login API 우선 |
+| `VITE_AUTH_PROVIDER` | `api` (기본) 또는 `demo` — JWT login API / 클라이언트 demo fallback |
 | `VITE_VIDEO_UPLOAD_PROVIDER` | `mock` (기본) 또는 `api` |
 | `VITE_API_BASE_URL` | API 서비스 public URL (예: `https://<api-domain>`) |
 | `VITE_WORKOUT_BUILDER_STORAGE` | `local` (기본) 또는 `api` — 템플릿/업로드 영상 메타데이터 저장소 |
@@ -79,8 +79,10 @@ Workout builder DB CRUD가 준비되면 `VITE_WORKOUT_BUILDER_STORAGE=api`로 �
 |------|------|
 | `PORT` | Railway가 주입 (예: `3000`) |
 | `FRONTEND_ORIGIN` | web app origin (CORS, 예: `https://app-production-6692.up.railway.app`) |
-| `JWT_SECRET` | JWT 서명 시크릿 (API 서비스에만, 커밋 금지) |
-| `JWT_EXPIRES_IN_SEC` | 액세스 토큰 만료(초). 기본 `86400` (24h) |
+| `JWT_SECRET` | JWT 서명 시크릿 (API 서비스에만, 커밋 금지). production에서 미설정 시 기동 실패 |
+| `JWT_EXPIRES_IN` | 액세스 토큰 만료 (예: `12h`). 기본 `12h` |
+| `JWT_EXPIRES_IN_SEC` | (레거시) 초 단위 만료. `JWT_EXPIRES_IN` 미설정 시 `43200`(12h) |
+| `AUTH_PROVIDER` | `db` (기본) — Bearer JWT 우선. `header`는 헤더 fallback 전용 실험용 |
 | `ENABLE_R2_DIAGNOSTICS` | `true`일 때만 R2 CORS 진단 endpoint 활성화 |
 | `R2_ACCOUNT_ID` | Cloudflare account ID |
 | `R2_ACCESS_KEY_ID` | R2 access key |
@@ -206,7 +208,7 @@ web UI는 템플릿 목록 모달의 「승인 대기」 탭에서 MVP 승인/�
 
 | web | API |
 |-----|-----|
-| `VITE_AUTH_PROVIDER=api` | `JWT_SECRET`, `JWT_EXPIRES_IN_SEC=86400`, `DATABASE_URL` |
+| `VITE_AUTH_PROVIDER=api` | `JWT_SECRET`, `JWT_EXPIRES_IN=12h`, `AUTH_PROVIDER=db`, `DATABASE_URL` |
 | `VITE_API_BASE_URL` = API public URL | `FRONTEND_ORIGIN` = web origin |
 
 - `POST /api/auth/login` — body `{ "loginId", "password" }` → `{ token, user }`
@@ -214,9 +216,19 @@ web UI는 템플릿 목록 모달의 「승인 대기」 탭에서 MVP 승인/�
 - JWT payload는 ASCII 식별자만 (`sub`, `role`, `accountScope`, `gymId`, `creatorId`, `gymCode`, `creatorCode`)
 - web 세션: `localStorage` `fightbox.auth.session.v1` — `{ user, token }` (비밀번호 미저장)
 - API 요청: Bearer + 기존 `x-*` context 헤더 병행 (transitional). R2 presigned **PUT**에는 Authorization 미포함
-- `VITE_AUTH_PROVIDER=demo`(기본): 기존 `demoAccounts.ts` 클라이언트 로그인 fallback (로컬 개발용)
+- `VITE_AUTH_PROVIDER=demo`: 기존 `demoAccounts.ts` 클라이언트 로그인 fallback (로컬 개발용)
+- API `requestContext`: Bearer JWT가 있으면 **헤더 `x-user-role` 조작을 무시**하고 DB/JWT 사용자 컨텍스트 사용. JWT 없을 때만 `x-*` 헤더 fallback (curl·로컬 개발용 — production에서는 JWT 필수 권장)
+- refresh token / httpOnly cookie / login rate limit: **미구현** (운영 전 추가 필요)
 
-데모 DB 계정 (migration `007_users.sql`, 비밀번호 `123456!!`):
+**운영 전 보안 체크리스트**
+
+- `JWT_SECRET`을 강한 랜덤 값으로 설정하고 주기적으로 교체 검토
+- migration seed/demo 비밀번호(`123456!!`) 변경 — `users.password_hash` bcrypt 재생성
+- `AUTH_PROVIDER=db` + production에서 header fallback 비활성화 검토
+- HTTPS only + httpOnly cookie 세션 저장 검토
+- 로그인 시도 rate limiting 추가
+
+데모 DB 계정 (migration `007_users.sql` + `008_auth_users_hardening.sql`, 비밀번호 `123456!!` — **운영 전 교체**):
 
 | loginId | role | userId |
 |---------|------|--------|
