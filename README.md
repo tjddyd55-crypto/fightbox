@@ -233,7 +233,23 @@ web UI는 템플릿 목록 모달의 「승인 대기」 탭에서 MVP 승인/�
 - API 요청: Bearer + 기존 `x-*` context 헤더 병행 (transitional). R2 presigned **PUT**에는 Authorization 미포함
 - `VITE_AUTH_PROVIDER=demo`: 기존 `demoAccounts.ts` 클라이언트 로그인 fallback (로컬 개발용)
 - API `requestContext`: Bearer JWT가 있으면 **헤더 `x-user-role` 조작을 무시**하고 DB/JWT 사용자 컨텍스트 사용. JWT 없을 때만 `x-*` 헤더 fallback (curl·로컬 개발용 — production에서는 JWT 필수 권장)
-- refresh token / httpOnly cookie / login rate limit: **미구현** (운영 전 추가 필요)
+- refresh token / httpOnly cookie: **미구현** (운영 전 추가 필요)
+
+**로그인 rate limit (in-memory, 1차)**
+
+| 항목 | 값 |
+|------|-----|
+| 대상 | `POST /api/auth/login` |
+| key | `{clientIp}:{loginId}` — loginId는 trim + lowercase |
+| window | 15분 |
+| max failures | 5 (`INVALID_CREDENTIALS`, `ACCOUNT_DISABLED` 모두 카운트) |
+| 차단 | 5회 실패 기록 후 **다음 시도(6회째)** 부터 429 — 1~5회는 401 |
+| 성공 로그인 | 해당 key 실패 카운터 초기화 |
+| 응답 | `429` + `AUTH_RATE_LIMITED` + `Retry-After` (초) |
+
+- 구현: `apps/api/src/services/authRateLimiter.ts` — process 메모리 `Map` (Railway **단일 replica** 기준)
+- multi-replica / 수평 확장 시 Redis 또는 DB 기반 rate limit으로 교체 필요
+- Express `trust proxy: 1` — Railway 프록시 뒤 `req.ip` / `X-Forwarded-For` 반영
 
 **운영 전 보안 체크리스트**
 
@@ -241,7 +257,10 @@ web UI는 템플릿 목록 모달의 「승인 대기」 탭에서 MVP 승인/�
 - migration seed/demo 비밀번호(`123456!!`) 변경 — `users.password_hash` bcrypt 재생성
 - `AUTH_PROVIDER=db` + production에서 header fallback 비활성화 검토
 - HTTPS only + httpOnly cookie 세션 저장 검토
-- 로그인 시도 rate limiting 추가
+- 로그인 rate limit Redis/DB화 (multi-replica 배포 전)
+- login audit log
+- account lock / unlock UI
+- password reset flow
 
 데모 DB 계정 (migration `007_users.sql` + `008_auth_users_hardening.sql`, 비밀번호 `123456!!` — **운영 전 교체**):
 
