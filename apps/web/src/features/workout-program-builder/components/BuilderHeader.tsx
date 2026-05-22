@@ -10,6 +10,8 @@ interface BuilderHeaderProps {
   userLoginId: string;
   userRole: keyof typeof FIGHTBOX_ROLE_LABELS;
   onLogout: () => void;
+  onOpenStaffPermissions?: () => void;
+  showStaffPermissionsButton?: boolean;
 }
 
 export function BuilderHeader({
@@ -19,6 +21,8 @@ export function BuilderHeader({
   userLoginId,
   userRole,
   onLogout,
+  onOpenStaffPermissions,
+  showStaffPermissionsButton = false,
 }: BuilderHeaderProps) {
   const roleLabel = FIGHTBOX_ROLE_LABELS[userRole];
 
@@ -38,6 +42,15 @@ export function BuilderHeader({
         <span className="wpb-header-meta-role" title={userLoginId}>
           {roleLabel} · {userDisplayName}
         </span>
+        {showStaffPermissionsButton && onOpenStaffPermissions ? (
+          <button
+            type="button"
+            className="wpb-header-staff-perm-btn"
+            onClick={onOpenStaffPermissions}
+          >
+            직원 권한
+          </button>
+        ) : null}
         <button type="button" className="wpb-header-logout-btn" onClick={onLogout}>
           로그아웃
         </button>
