@@ -117,7 +117,8 @@ export type FightboxPermission =
   | 'reviewPublicTemplates'
   | 'manageStaffPermissions'
   | 'manageGyms'
-  | 'manageUsers';
+  | 'manageUsers'
+  | 'viewAuthAuditLogs';
 
 const VALID_ROLES: FightboxUserRole[] = [
   'super_admin',
@@ -241,6 +242,10 @@ export function canManageUsers(context: FightboxRequestContext): boolean {
   return context.role === 'super_admin' || context.role === 'gym_admin';
 }
 
+export function canViewAuthAuditLogs(context: FightboxRequestContext): boolean {
+  return context.role === 'super_admin';
+}
+
 export function canManageUserRole(
   managerRole: FightboxUserRole,
   targetRole: FightboxUserRole,
@@ -279,6 +284,8 @@ export function hasFightboxPermission(
       return canManageGyms(context);
     case 'manageUsers':
       return canManageUsers(context);
+    case 'viewAuthAuditLogs':
+      return canViewAuthAuditLogs(context);
     default:
       return false;
   }

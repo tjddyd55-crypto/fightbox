@@ -15,6 +15,7 @@ export {
   canReviewPublicTemplates,
   canSubmitPublicTemplates,
   canUploadVideos,
+  canViewAuthAuditLogs,
   hasAnyFightboxPermission,
   hasFightboxPermission,
   inferAccountScopeFromRole,
@@ -41,6 +42,13 @@ export {
   type LoginRequest,
   type LoginResponse,
 } from './authContracts.js';
+
+export {
+  AUTH_AUDIT_API_PATHS,
+  type AuthAuditEventType,
+  type AuthAuditLogDto,
+  type ListAuthAuditLogsResponse,
+} from './authAuditContracts.js';
 
 export {
   GYM_API_PATHS,
