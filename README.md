@@ -106,6 +106,7 @@ Workout builder DB CRUD가 준비되면 `VITE_WORKOUT_BUILDER_STORAGE=api`로 �
 - `PATCH /api/gym/staff-permissions/:userId` — 직원 권한 수정
 - `GET /api/gym/staff-permissions/me` — 현재 사용자 직원 권한 조회 (`gym_staff` hydrate용)
 - `GET/POST/PATCH/DELETE /api/admin/gyms` — 체육관 테넌트 코드 관리 (`super_admin` + `manageGyms`)
+- `GET/POST/PATCH/DELETE /api/admin/users` — 사용자 관리 (`super_admin` / `gym_admin` + `manageUsers`)
 
 **DB 마이그레이션**
 
@@ -280,9 +281,28 @@ API 요청 헤더 (로그인 세션 우선, 없으면 env fallback):
 
 API 기본값 (헤더 없을 때): `demo-gym` / `demo-gym-admin` / `gym_admin`
 
+#### 사용자 관리 MVP
+
+`users` 테이블 계정을 빌더 헤더 **「사용자 관리」** 모달과 `GET/POST/PATCH/DELETE /api/admin/users` API로 관리합니다.
+
+| 역할 | 사용자 관리 |
+|------|-------------|
+| `super_admin` | 전체 사용자 조회·생성·수정·비활성화 (모든 role) |
+| `gym_admin` | 본인 `gymId`의 `gym_staff` · `video_creator`만 |
+| `gym_staff` / `video_creator` | 불가 (403) |
+
+- 비밀번호는 **bcrypt** hash 저장, API 응답에 `passwordHash` 없음
+- **hard delete 없음** — `DELETE`는 `status = disabled` 처리
+- `gym_staff` 생성·수정 시 `gym_staff_permissions` row upsert (역할 변경 후 row는 DB에 남을 수 있음 — README 참고)
+- 본인 계정 비활성화 불가 (`CANNOT_DISABLE_SELF`)
+- 마지막 활성 `super_admin` 비활성화 불가 (`LAST_SUPER_ADMIN`)
+- **「직원 권한」** 모달과 기능이 겹칠 수 있음 — 추후 통합 예정
+
+**운영 전 보완:** 비밀번호 재설정 플로우 · 초대 이메일 · 감사 로그 · gym scope 세분화 · 검색/페이지네이션
+
 #### 직원 권한 관리 MVP
 
-`gym_staff_permissions` 테이블에 체육관 직원별 granular 권한을 저장합니다. **운영 Auth 전환 전** demo 계정과 연동된 1차 MVP입니다.
+`gym_staff_permissions` 테이블에 체육관 직원별 granular 권한을 저장합니다.
 
 | 역할 | 직원 권한 관리 UI/API |
 |------|----------------------|

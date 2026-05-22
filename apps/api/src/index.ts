@@ -6,6 +6,7 @@ import { optionalAuth } from './middleware/authMiddleware.js';
 import { requestContextMiddleware } from './middleware/requestContext.js';
 import authRoutes from './routes/authRoutes.js';
 import gymAdminRoutes from './routes/gymAdminRoutes.js';
+import userManagementRoutes from './routes/userManagementRoutes.js';
 import gymStaffPermissionRoutes from './routes/gymStaffPermissionRoutes.js';
 import workoutBuilderRoutes from './routes/workoutBuilderRoutes.js';
 import workoutVideoUploadRoutes from './routes/workoutVideoUploadRoutes.js';
@@ -48,6 +49,7 @@ app.use('/api/workout-videos/uploads', ...protectedApi, workoutVideoUploadRoutes
 app.use('/api/workout-builder', ...protectedApi, workoutBuilderRoutes);
 app.use('/api/gym/staff-permissions', ...protectedApi, gymStaffPermissionRoutes);
 app.use('/api/admin/gyms', ...protectedApi, gymAdminRoutes);
+app.use('/api/admin/users', ...protectedApi, userManagementRoutes);
 
 app.use((error: unknown, _req: Request, res: Response) => {
   const { status, body } = toErrorResponse(error);

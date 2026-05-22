@@ -14,6 +14,7 @@ import { SelectedBlockPanel } from '../components/SelectedBlockPanel';
 import { ShareSubmissionModal } from '../components/ShareSubmissionModal';
 import { GymManagementModal } from '../../admin/gyms/GymManagementModal';
 import { StaffPermissionModal } from '../components/StaffPermissionModal';
+import { UserManagementModal } from '../components/UserManagementModal';
 import { getBuilderHeaderScopeLabel } from '../services/fightboxContextConfig';
 import { TemplateLibraryModal } from '../components/TemplateLibraryModal';
 import { TestPlaybackModal } from '../components/TestPlaybackModal';
@@ -78,6 +79,7 @@ export function WorkoutProgramBuilderPage() {
     useState<BuilderSidebarActiveSection>('builder');
   const [isTemplateLibraryOpen, setIsTemplateLibraryOpen] = useState(false);
   const [isStaffPermissionOpen, setIsStaffPermissionOpen] = useState(false);
+  const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
   const [isGymManagementOpen, setIsGymManagementOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isVideoUploadOpen, setIsVideoUploadOpen] = useState(false);
@@ -198,6 +200,8 @@ export function WorkoutProgramBuilderPage() {
         userRole={user.role}
         scopeLabel={getBuilderHeaderScopeLabel(user)}
         onLogout={handleLogout}
+        showUserManagementButton={permissions.canManageUsers}
+        onOpenUserManagement={() => setIsUserManagementOpen(true)}
         showStaffPermissionsButton={permissions.canManageStaffPermissions}
         onOpenStaffPermissions={() => setIsStaffPermissionOpen(true)}
         showGymManagementButton={permissions.canManageGyms}
@@ -340,6 +344,12 @@ export function WorkoutProgramBuilderPage() {
         isOpen={isStaffPermissionOpen}
         managerUser={user}
         onClose={() => setIsStaffPermissionOpen(false)}
+        onNotify={state.showMessage}
+      />
+      <UserManagementModal
+        isOpen={isUserManagementOpen}
+        managerUser={user}
+        onClose={() => setIsUserManagementOpen(false)}
         onNotify={state.showMessage}
       />
       <GymManagementModal
