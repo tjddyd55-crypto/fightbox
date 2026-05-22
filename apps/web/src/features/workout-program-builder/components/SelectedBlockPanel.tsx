@@ -8,6 +8,7 @@ interface SelectedBlockPanelProps {
   videos: WorkoutVideo[];
   onUpdateBlock: ProgramBuilderState['updateBlock'];
   onUpdateVideoSettings: ProgramBuilderState['updateVideoBlockSettings'];
+  canEditTemplates?: boolean;
 }
 
 export function SelectedBlockPanel({
@@ -15,6 +16,7 @@ export function SelectedBlockPanel({
   videos,
   onUpdateBlock,
   onUpdateVideoSettings,
+  canEditTemplates = true,
 }: SelectedBlockPanelProps) {
   return (
     <section
@@ -32,7 +34,9 @@ export function SelectedBlockPanel({
             : '타임라인에서 블록을 선택하세요'}
         </p>
       </header>
-      <section className="wpb-panel-scroll wpb-panel-scroll--right">
+      <section
+        className={`wpb-panel-scroll wpb-panel-scroll--right${canEditTemplates ? '' : ' wpb-panel-readonly'}`}
+      >
         <BlockPreviewCard block={selectedBlock} videos={videos} />
         <BlockSettingsForm
           block={selectedBlock}

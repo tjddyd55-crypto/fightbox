@@ -22,6 +22,7 @@ interface TimelineBlockRowProps {
   onMoveDown: ProgramBuilderState['moveBlock'];
   onRemove: ProgramBuilderState['removeBlock'];
   onDuplicate: ProgramBuilderState['duplicateBlock'];
+  canEdit?: boolean;
 }
 
 export function TimelineBlockRow({
@@ -35,11 +36,12 @@ export function TimelineBlockRow({
   onMoveDown,
   onRemove,
   onDuplicate,
+  canEdit = true,
 }: TimelineBlockRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuWrapRef = useRef<HTMLDivElement>(null);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: block.id });
+    useSortable({ id: block.id, disabled: !canEdit });
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -82,8 +84,8 @@ export function TimelineBlockRow({
       <button
         type="button"
         className="wpb-drag-handle"
-        {...attributes}
-        {...listeners}
+        {...(canEdit ? { ...attributes, ...listeners } : {})}
+        disabled={!canEdit}
         aria-label={`${block.order}번 블록 순서 변경`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -115,7 +117,7 @@ export function TimelineBlockRow({
         <button
           type="button"
           className="wpb-icon-btn wpb-mobile-order-btn"
-          disabled={!canMoveUp}
+          disabled={!canMoveUp || !canEdit}
           aria-label={`${block.title} 위로 이동`}
           onClick={() => onMoveUp(block.id, 'up')}
         >
@@ -124,7 +126,7 @@ export function TimelineBlockRow({
         <button
           type="button"
           className="wpb-icon-btn wpb-mobile-order-btn"
-          disabled={!canMoveDown}
+          disabled={!canMoveDown || !canEdit}
           aria-label={`${block.title} 아래로 이동`}
           onClick={() => onMoveDown(block.id, 'down')}
         >
@@ -132,6 +134,7 @@ export function TimelineBlockRow({
         </button>
       </div>
 
+      {canEdit && (
       <div ref={menuWrapRef} className="wpb-timeline-menu-wrap">
         <button
           type="button"
@@ -152,7 +155,7 @@ export function TimelineBlockRow({
               <button
                 type="button"
                 role="menuitem"
-                disabled={!canMoveUp}
+                disabled={!canMoveUp || !canEdit}
                 onClick={() => {
                   onMoveUp(block.id, 'up');
                   setMenuOpen(false);
@@ -165,7 +168,7 @@ export function TimelineBlockRow({
               <button
                 type="button"
                 role="menuitem"
-                disabled={!canMoveDown}
+                disabled={!canMoveDown || !canEdit}
                 onClick={() => {
                   onMoveDown(block.id, 'down');
                   setMenuOpen(false);
@@ -202,6 +205,7 @@ export function TimelineBlockRow({
           </ul>
         )}
       </div>
+      )}
     </article>
   );
 }

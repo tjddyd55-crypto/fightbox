@@ -20,7 +20,13 @@ import { useProgramBuilderState } from '../hooks/useProgramBuilderState';
 import { useVideoLibraryFilters } from '../hooks/useVideoLibraryFilters';
 import { isCompactLayout } from '../utils/viewportUtils';
 import { validateProgramBlocks } from '../utils/programValidationUtils';
+import {
+  canSaveTemplatePermission,
+  getFightboxClientPermissions,
+} from '../services/fightboxPermissions';
 import '../workoutProgramBuilder.css';
+
+const permissions = getFightboxClientPermissions();
 
 const PANEL_IDS = {
   timeline: 'wpb-mobile-panel-timeline',
@@ -65,12 +71,12 @@ export function WorkoutProgramBuilderPage() {
   const [editingVideo, setEditingVideo] = useState<WorkoutVideo | null>(null);
   const { setSelectedBlockId, selectedBlockId, showMessage } = state;
 
-  const handleEditVideo = useCallback((video: WorkoutVideo) => {
-    setEditingVideo(video);
-  }, []);
-
   const handleDeleteVideo = useCallback(
     (video: WorkoutVideo) => {
+      if (!permissions.canManageVideos) {
+        showMessage('영상 관리 권한이 없습니다.');
+        return;
+      }
       const confirmed = window.confirm(`「${video.title}」 영상을 삭제할까요?`);
       if (!confirmed) return;
       if (!state.deleteRegisteredVideo(video.id)) return;
@@ -78,7 +84,23 @@ export function WorkoutProgramBuilderPage() {
         videoFilterState.setSelectedVideoId(null);
       }
     },
-    [state, videoFilterState],
+    [state, videoFilterState, showMessage],
+  );
+
+  const handleEditVideo = useCallback(
+    (video: WorkoutVideo) => {
+      if (!permissions.canManageVideos) {
+        showMessage('영상 관리 권한이 없습니다.');
+        return;
+      }
+      setEditingVideo(video);
+    },
+    [showMessage],
+  );
+
+  const canSaveTemplate = canSaveTemplatePermission(
+    permissions,
+    Boolean(state.activeTemplateId),
   );
 
   const handleSelectBlock = useCallback(
@@ -147,7 +169,11 @@ export function WorkoutProgramBuilderPage() {
 
   return (
     <main className="wpb-root">
-      <BuilderHeader template={state.template} totalDurationSec={state.totalDurationSec} />
+      <BuilderHeader
+        template={state.template}
+        totalDurationSec={state.totalDurationSec}
+        roleLabel={permissions.roleLabel}
+      />
       <MobileBuilderTabs activeTab={mobileTab} onTabChange={setMobileTab} />
       <section className="wpb-body">
         <BuilderSidebar
@@ -165,6 +191,9 @@ export function WorkoutProgramBuilderPage() {
             onOpenUpload={() => setIsVideoUploadOpen(true)}
             onEditVideo={handleEditVideo}
             onDeleteVideo={handleDeleteVideo}
+            canUploadVideos={permissions.canUploadVideos}
+            canManageVideos={permissions.canManageVideos}
+            onPermissionDenied={showMessage}
           />
           <ProgramTimelinePanel
             blocks={state.blocks}
@@ -179,12 +208,14 @@ export function WorkoutProgramBuilderPage() {
             onAddCountdown={state.addCountdownBlock}
             onAddVoice={state.addVoiceBlock}
             onDuplicateBlock={state.duplicateBlock}
+            canEditTemplates={permissions.canEditTemplates}
           />
           <SelectedBlockPanel
             selectedBlock={state.selectedBlock}
             videos={state.videos}
             onUpdateBlock={state.updateBlock}
             onUpdateVideoSettings={state.updateVideoBlockSettings}
+            canEditTemplates={permissions.canEditTemplates}
           />
         </section>
       </section>
@@ -198,10 +229,24 @@ export function WorkoutProgramBuilderPage() {
           )
         }
         onOpenTemplateLibrary={() => setIsTemplateLibraryOpen(true)}
-        onSaveTemplate={() => state.saveTemplate()}
-        onCopySave={() => state.copyCurrentTemplate()}
+        onSaveTemplate={() => {
+          if (!canSaveTemplate) {
+            showMessage('템플릿 저장 권한이 없습니다.');
+            return;
+          }
+          state.saveTemplate();
+        }}
+        onCopySave={() => {
+          if (!permissions.canCreateTemplates) {
+            showMessage('템플릿 생성 권한이 없습니다.');
+            return;
+          }
+          state.copyCurrentTemplate();
+        }}
+        canSaveTemplate={canSaveTemplate}
+        canCopySave={permissions.canCreateTemplates}
         onPublicShare={
-          state.template.visibility === 'public_pending'
+          state.template.visibility === 'public_pending' || !permissions.canSubmitPublicTemplates
             ? undefined
             : () => setIsShareModalOpen(true)
         }
@@ -275,9 +320,15 @@ export function WorkoutProgramBuilderPage() {
           setIsTemplateLibraryOpen(false);
         }}
         onDelete={(id) => {
+          if (!permissions.canDeleteTemplates) {
+            state.showMessage('템플릿 삭제 권한이 없습니다.');
+            return;
+          }
           state.deleteTemplate(id);
         }}
         onNotify={state.showMessage}
+        showReviewTab={permissions.canReviewPublicTemplates}
+        canDeleteTemplates={permissions.canDeleteTemplates}
       />
       {state.isTestPlaying && (
         <TestPlaybackModal

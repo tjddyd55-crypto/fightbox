@@ -52,6 +52,7 @@ import {
   setWorkoutBuilderSyncErrorHandler,
   logWorkoutBuilderStorageConfig,
 } from '../services/workoutBuilderStorageConfig';
+import { logFightboxClientContext } from '../services/fightboxContextConfig';
 
 export function useProgramBuilderState() {
   const [template, setTemplate] = useState<WorkoutProgramTemplate>(() => ({
@@ -88,6 +89,7 @@ export function useProgramBuilderState() {
 
   useEffect(() => {
     logWorkoutBuilderStorageConfig();
+    logFightboxClientContext();
     setWorkoutBuilderSyncErrorHandler(showMessage);
     void refreshVideosFromApi().then((nextVideos) => {
       setVideos(nextVideos);

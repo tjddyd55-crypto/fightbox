@@ -8,6 +8,8 @@ interface BottomActionBarProps {
   onCopySave: () => void;
   onTestPlay: () => void;
   onPublicShare?: () => void;
+  canSaveTemplate?: boolean;
+  canCopySave?: boolean;
 }
 
 export function BottomActionBar({
@@ -18,6 +20,8 @@ export function BottomActionBar({
   onCopySave,
   onTestPlay,
   onPublicShare,
+  canSaveTemplate = true,
+  canCopySave = true,
 }: BottomActionBarProps) {
   return (
     <footer className="wpb-bottom-bar">
@@ -32,10 +36,22 @@ export function BottomActionBar({
         <button type="button" className="wpb-btn wpb-btn-ghost" onClick={onOpenTemplateLibrary}>
           템플릿 목록
         </button>
-        <button type="button" className="wpb-btn wpb-btn-ghost" onClick={onSaveTemplate}>
+        <button
+          type="button"
+          className="wpb-btn wpb-btn-ghost"
+          onClick={onSaveTemplate}
+          disabled={!canSaveTemplate}
+          title={!canSaveTemplate ? '템플릿 저장 권한이 없습니다' : undefined}
+        >
           템플릿 저장
         </button>
-        <button type="button" className="wpb-btn wpb-btn-ghost" onClick={onCopySave}>
+        <button
+          type="button"
+          className="wpb-btn wpb-btn-ghost"
+          onClick={onCopySave}
+          disabled={!canCopySave}
+          title={!canCopySave ? '템플릿 생성 권한이 없습니다' : undefined}
+        >
           복사 저장
         </button>
         {onPublicShare && (

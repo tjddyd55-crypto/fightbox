@@ -5,9 +5,10 @@ import { formatDuration } from '../utils/durationUtils';
 interface BuilderHeaderProps {
   template: WorkoutProgramTemplate;
   totalDurationSec: number;
+  roleLabel: string;
 }
 
-export function BuilderHeader({ template, totalDurationSec }: BuilderHeaderProps) {
+export function BuilderHeader({ template, totalDurationSec, roleLabel }: BuilderHeaderProps) {
   return (
     <header className="wpb-header">
       <div className="wpb-header-start">
@@ -21,7 +22,7 @@ export function BuilderHeader({ template, totalDurationSec }: BuilderHeaderProps
         <span className="wpb-header-meta-credits" title="보유 크레딧 (더미)">
           {mockCreditWallet.balance} {mockCreditWallet.currencyLabel}
         </span>
-        <span className="wpb-header-meta-admin">관리자 · 코치</span>
+        <span className="wpb-header-meta-role">{roleLabel}</span>
       </div>
     </header>
   );

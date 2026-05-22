@@ -13,6 +13,9 @@ interface VideoLibraryPanelProps {
   onOpenUpload: () => void;
   onEditVideo?: (video: WorkoutVideo) => void;
   onDeleteVideo?: (video: WorkoutVideo) => void;
+  canUploadVideos?: boolean;
+  canManageVideos?: boolean;
+  onPermissionDenied?: (message: string) => void;
 }
 
 export function VideoLibraryPanel({
@@ -22,6 +25,9 @@ export function VideoLibraryPanel({
   onOpenUpload,
   onEditVideo,
   onDeleteVideo,
+  canUploadVideos = true,
+  canManageVideos = true,
+  onPermissionDenied,
 }: VideoLibraryPanelProps) {
   const {
     filters,
@@ -65,7 +71,15 @@ export function VideoLibraryPanel({
           <button
             type="button"
             className="wpb-btn wpb-btn-outline wpb-video-upload-btn"
-            onClick={onOpenUpload}
+            disabled={!canUploadVideos}
+            title={!canUploadVideos ? '영상 등록 권한이 없습니다' : undefined}
+            onClick={() => {
+              if (!canUploadVideos) {
+                onPermissionDenied?.('영상 등록 권한이 없습니다.');
+                return;
+              }
+              onOpenUpload();
+            }}
           >
             영상 등록
           </button>
@@ -122,8 +136,8 @@ export function VideoLibraryPanel({
                 isSelected={video.id === selectedVideoId}
                 onSelect={setSelectedVideoId}
                 onAdd={onAddVideo}
-                onEdit={onEditVideo}
-                onDelete={onDeleteVideo}
+                onEdit={canManageVideos ? onEditVideo : undefined}
+                onDelete={canManageVideos ? onDeleteVideo : undefined}
               />
             ))}
           </div>

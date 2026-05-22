@@ -1985,6 +1985,20 @@
   font-weight: 600;
 }
 
+.wpb-header-meta-admin,
+.wpb-header-meta-role {
+  color: #a7aab3;
+  font-size: 13px;
+}
+
+.wpb-panel-readonly input,
+.wpb-panel-readonly button,
+.wpb-panel-readonly select,
+.wpb-panel-readonly textarea {
+  pointer-events: none;
+  opacity: 0.65;
+}
+
 .wpb-template-library-tabs {
   display: flex;
   gap: 8px;

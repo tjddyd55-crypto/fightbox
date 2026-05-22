@@ -30,6 +30,7 @@ interface ProgramTimelinePanelProps {
   onAddCountdown: ProgramBuilderState['addCountdownBlock'];
   onAddVoice: ProgramBuilderState['addVoiceBlock'];
   onDuplicateBlock: ProgramBuilderState['duplicateBlock'];
+  canEditTemplates?: boolean;
 }
 
 export function ProgramTimelinePanel({
@@ -45,6 +46,7 @@ export function ProgramTimelinePanel({
   onAddCountdown,
   onAddVoice,
   onDuplicateBlock,
+  canEditTemplates = true,
 }: ProgramTimelinePanelProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -71,17 +73,28 @@ export function ProgramTimelinePanel({
       </header>
       <section className="wpb-panel-controls wpb-timeline-toolbar-wrap">
         <section className="wpb-timeline-toolbar" aria-label="블록 추가">
-          <button type="button" className="wpb-btn wpb-btn-ghost wpb-btn-sm" onClick={() => onAddRest()}>
+          <button
+            type="button"
+            className="wpb-btn wpb-btn-ghost wpb-btn-sm"
+            disabled={!canEditTemplates}
+            onClick={() => onAddRest()}
+          >
             휴식 추가
           </button>
           <button
             type="button"
             className="wpb-btn wpb-btn-ghost wpb-btn-sm"
+            disabled={!canEditTemplates}
             onClick={() => onAddCountdown()}
           >
             카운트다운 추가
           </button>
-          <button type="button" className="wpb-btn wpb-btn-ghost wpb-btn-sm" onClick={() => onAddVoice()}>
+          <button
+            type="button"
+            className="wpb-btn wpb-btn-ghost wpb-btn-sm"
+            disabled={!canEditTemplates}
+            onClick={() => onAddVoice()}
+          >
             음성 안내 추가
           </button>
         </section>
@@ -114,6 +127,7 @@ export function ProgramTimelinePanel({
                   onMoveDown={onMoveBlock}
                   onRemove={onRemoveBlock}
                   onDuplicate={onDuplicateBlock}
+                  canEdit={canEditTemplates}
                 />
               ))}
             </SortableContext>

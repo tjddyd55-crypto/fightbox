@@ -32,6 +32,8 @@ interface TemplateLibraryModalProps {
   onCopy: (templateId: string) => void;
   onDelete: (templateId: string) => void;
   onNotify?: (message: string) => void;
+  showReviewTab?: boolean;
+  canDeleteTemplates?: boolean;
 }
 
 export function TemplateLibraryModal({
@@ -42,6 +44,8 @@ export function TemplateLibraryModal({
   onCopy,
   onDelete,
   onNotify,
+  showReviewTab = false,
+  canDeleteTemplates = true,
 }: TemplateLibraryModalProps) {
   const [activeTab, setActiveTab] = useState<LibraryTab>('saved');
   const [templates, setTemplates] = useState<WorkoutProgramTemplate[]>([]);
@@ -151,15 +155,17 @@ export function TemplateLibraryModal({
           >
             내 템플릿
           </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'pending-review'}
-            className={`wpb-btn wpb-btn-ghost wpb-btn-sm${activeTab === 'pending-review' ? ' is-active' : ''}`}
-            onClick={() => setActiveTab('pending-review')}
-          >
-            승인 대기 ({pendingSubmissions.length})
-          </button>
+          {showReviewTab && (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'pending-review'}
+              className={`wpb-btn wpb-btn-ghost wpb-btn-sm${activeTab === 'pending-review' ? ' is-active' : ''}`}
+              onClick={() => setActiveTab('pending-review')}
+            >
+              승인 대기 ({pendingSubmissions.length})
+            </button>
+          )}
         </div>
 
         {activeTab === 'saved' ? (
@@ -218,7 +224,15 @@ export function TemplateLibraryModal({
                     <button
                       type="button"
                       className="wpb-btn wpb-btn-ghost wpb-btn-sm wpb-btn-danger-text"
-                      onClick={() => onDelete(template.id)}
+                      disabled={!canDeleteTemplates}
+                      title={!canDeleteTemplates ? '템플릿 삭제 권한이 없습니다' : undefined}
+                      onClick={() => {
+                        if (!canDeleteTemplates) {
+                          notify('템플릿 삭제 권한이 없습니다.');
+                          return;
+                        }
+                        onDelete(template.id);
+                      }}
                     >
                       삭제
                     </button>
