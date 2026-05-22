@@ -9,6 +9,7 @@ import {
   isFightboxUserRole,
   parseStaffPermissionsJson,
 } from '@fightbox/shared';
+import { getAuthConfig } from '../config/authConfig.js';
 import {
   DEFAULT_ACTOR_ID,
   DEFAULT_GYM_ID,
@@ -144,6 +145,12 @@ export async function requestContextMiddleware(
     if (req.jwtPayload) {
       req.fightboxContext = await buildContextFromJwt(req.jwtPayload);
     } else {
+      // Header-based context is dev/demo fallback only. AUTH_PROVIDER=db prefers Bearer JWT.
+      if (getAuthConfig().authProvider === 'db' && process.env.NODE_ENV === 'production') {
+        console.warn(
+          '[fightbox] request without Bearer JWT used header context fallback — restrict in production',
+        );
+      }
       req.fightboxContext = buildFightboxContext(req);
     }
     next();
