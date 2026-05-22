@@ -1,6 +1,17 @@
-import type { FightboxSessionUser } from '@fightbox/shared';
+import {
+  inferAccountScopeFromRole,
+  isFightboxAccountScope,
+  isFightboxUserRole,
+  type FightboxAccountScope,
+  type FightboxSessionUser,
+} from '@fightbox/shared';
 
 const SESSION_STORAGE_KEY = 'fightbox.auth.session.v1';
+
+function readOptionalString(record: Record<string, unknown>, key: string): string | undefined {
+  const value = record[key];
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
 
 export function saveSession(user: FightboxSessionUser): void {
   localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(user));
@@ -22,20 +33,49 @@ export function loadSession(): FightboxSessionUser | null {
     if (
       typeof record.loginId !== 'string' ||
       typeof record.userId !== 'string' ||
-      typeof record.gymId !== 'string' ||
       typeof record.role !== 'string' ||
-      typeof record.displayName !== 'string'
+      typeof record.displayName !== 'string' ||
+      !isFightboxUserRole(record.role)
     ) {
+      return null;
+    }
+
+    const role = record.role;
+    const accountScopeRaw = readOptionalString(record, 'accountScope');
+    let accountScope: FightboxAccountScope | undefined;
+    if (accountScopeRaw) {
+      if (!isFightboxAccountScope(accountScopeRaw)) {
+        return null;
+      }
+      accountScope = accountScopeRaw;
+    } else {
+      accountScope = inferAccountScopeFromRole(role);
+    }
+
+    const gymId = readOptionalString(record, 'gymId');
+    if (accountScope === 'gym' && !gymId) {
       return null;
     }
 
     const user: FightboxSessionUser = {
       loginId: record.loginId,
       userId: record.userId,
-      gymId: record.gymId,
-      role: record.role as FightboxSessionUser['role'],
+      role,
       displayName: record.displayName,
+      accountScope,
+      ...(gymId ? { gymId } : {}),
+      gymCode: readOptionalString(record, 'gymCode'),
+      gymName: readOptionalString(record, 'gymName'),
+      creatorId: readOptionalString(record, 'creatorId'),
+      creatorCode: readOptionalString(record, 'creatorCode'),
+      creatorName: readOptionalString(record, 'creatorName'),
     };
+
+    if (accountScope === 'creator') {
+      if (!user.creatorId || !user.creatorCode || !user.creatorName) {
+        return null;
+      }
+    }
 
     if (record.staffPermissions && typeof record.staffPermissions === 'object') {
       user.staffPermissions = record.staffPermissions as FightboxSessionUser['staffPermissions'];

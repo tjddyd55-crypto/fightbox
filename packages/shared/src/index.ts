@@ -1,11 +1,13 @@
 export const FIGHTBOX_SHARED_VERSION = '0.1.0';
 
 export {
+  CREATOR_SCOPE_GYM_FALLBACK,
   DEFAULT_STAFF_PERMISSIONS,
   FIGHTBOX_ROLE_LABELS,
   canCreateTemplates,
   canDeleteTemplates,
   canEditTemplates,
+  canManageGyms,
   canManageStaffPermissions,
   canManageVideos,
   canReviewPublicTemplates,
@@ -13,9 +15,12 @@ export {
   canUploadVideos,
   hasAnyFightboxPermission,
   hasFightboxPermission,
+  inferAccountScopeFromRole,
+  isFightboxAccountScope,
   isFightboxUserRole,
   parseStaffPermissionsJson,
   sessionUserToRequestContext,
+  type FightboxAccountScope,
   type FightboxPermission,
   type FightboxRequestContext,
   type FightboxSessionUser,
