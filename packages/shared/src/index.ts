@@ -31,6 +31,16 @@ export {
 export { DEMO_ACCOUNTS, type DemoAccount } from './demoAccounts.js';
 
 export {
+  AUTH_API_PATHS,
+  authUserDtoToSessionUser,
+  type AuthMeResponse,
+  type AuthUserDto,
+  type FightboxJwtPayload,
+  type LoginRequest,
+  type LoginResponse,
+} from './authContracts.js';
+
+export {
   GYM_API_PATHS,
   type CreateGymRequest,
   type GymDto,
