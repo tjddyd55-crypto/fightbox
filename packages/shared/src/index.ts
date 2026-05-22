@@ -8,6 +8,8 @@ export {
   canDeleteTemplates,
   canEditTemplates,
   canManageGyms,
+  canManageUserRole,
+  canManageUsers,
   canManageStaffPermissions,
   canManageVideos,
   canReviewPublicTemplates,
@@ -68,6 +70,17 @@ export {
   type PresignedVideoUploadResponse,
   type R2PresignUrlStyle,
 } from './videoUploadContract.js';
+
+export {
+  USER_MANAGEMENT_API_PATHS,
+  type CreateManagedUserRequest,
+  type ListManagedUsersQuery,
+  type ManagedUserDto,
+  type ManagedUserItemResponse,
+  type ManagedUserListResponse,
+  type ManagedUserStatus,
+  type UpdateManagedUserRequest,
+} from './userManagementContracts.js';
 
 export {
   WORKOUT_BUILDER_API_PATHS,
