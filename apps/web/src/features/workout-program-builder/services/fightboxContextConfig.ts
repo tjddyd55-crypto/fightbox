@@ -67,32 +67,30 @@ export function getFightboxClientContext(): FightboxRequestContext {
   return getFightboxClientContextFromSession() ?? getEnvFallbackContext();
 }
 
+/** API request headers must be ASCII-safe; display names stay in session/UI only. */
 export function buildFightboxContextHeaders(
   context: FightboxRequestContext,
 ): Record<string, string> {
+  const accountScope =
+    context.accountScope ?? inferAccountScopeFromRole(context.role);
+
   const headers: Record<string, string> = {
-    'x-gym-id': context.gymId,
     'x-user-id': context.userId,
     'x-user-role': context.role,
+    'x-account-scope': accountScope,
   };
 
-  if (context.accountScope) {
-    headers['x-account-scope'] = context.accountScope;
+  if (context.gymId) {
+    headers['x-gym-id'] = context.gymId;
   }
   if (context.gymCode) {
     headers['x-gym-code'] = context.gymCode;
-  }
-  if (context.gymName) {
-    headers['x-gym-name'] = context.gymName;
   }
   if (context.creatorId) {
     headers['x-creator-id'] = context.creatorId;
   }
   if (context.creatorCode) {
     headers['x-creator-code'] = context.creatorCode;
-  }
-  if (context.creatorName) {
-    headers['x-creator-name'] = context.creatorName;
   }
 
   if (context.role === 'gym_staff') {

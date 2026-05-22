@@ -23,10 +23,8 @@ app.use(
       'x-staff-permissions',
       'x-account-scope',
       'x-gym-code',
-      'x-gym-name',
       'x-creator-id',
       'x-creator-code',
-      'x-creator-name',
     ],
   }),
 );

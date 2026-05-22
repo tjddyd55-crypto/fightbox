@@ -60,6 +60,7 @@ function buildFightboxContext(req: Request): FightboxRequestContext {
 
   const gymId = resolveGymId(req, role, accountScope);
   const gymCode = readHeader(req, 'x-gym-code');
+  // Optional legacy display headers; web client does not send non-ASCII names.
   const gymName = readHeader(req, 'x-gym-name');
   const creatorId = readHeader(req, 'x-creator-id');
   const creatorCode = readHeader(req, 'x-creator-code');
