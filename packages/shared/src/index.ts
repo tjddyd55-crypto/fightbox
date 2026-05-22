@@ -1,6 +1,27 @@
 export const FIGHTBOX_SHARED_VERSION = '0.1.0';
 
 export {
+  DEFAULT_STAFF_PERMISSIONS,
+  FIGHTBOX_ROLE_LABELS,
+  canCreateTemplates,
+  canDeleteTemplates,
+  canEditTemplates,
+  canManageStaffPermissions,
+  canManageVideos,
+  canReviewPublicTemplates,
+  canSubmitPublicTemplates,
+  canUploadVideos,
+  hasAnyFightboxPermission,
+  hasFightboxPermission,
+  isFightboxUserRole,
+  parseStaffPermissionsJson,
+  type FightboxPermission,
+  type FightboxRequestContext,
+  type FightboxStaffPermissions,
+  type FightboxUserRole,
+} from './authContext.js';
+
+export {
   WORKOUT_VIDEO_PRESIGN_PATH,
   type PresignAssetType,
   type PresignedVideoUploadDebug,
