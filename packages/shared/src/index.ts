@@ -31,6 +31,16 @@ export {
 export { DEMO_ACCOUNTS, type DemoAccount } from './demoAccounts.js';
 
 export {
+  GYM_API_PATHS,
+  type CreateGymRequest,
+  type GymDto,
+  type GymItemResponse,
+  type GymListResponse,
+  type GymStatus,
+  type UpdateGymRequest,
+} from './gymContracts.js';
+
+export {
   STAFF_PERMISSION_API_PATHS,
   STAFF_PERMISSION_FIELD_KEYS,
   type GymStaffPermissionDto,
