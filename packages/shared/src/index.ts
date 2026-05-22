@@ -26,6 +26,16 @@ export {
 export { DEMO_ACCOUNTS, type DemoAccount } from './demoAccounts.js';
 
 export {
+  STAFF_PERMISSION_API_PATHS,
+  STAFF_PERMISSION_FIELD_KEYS,
+  type GymStaffPermissionDto,
+  type GymStaffPermissionItemResponse,
+  type GymStaffPermissionListResponse,
+  type MyStaffPermissionsResponse,
+  type UpdateGymStaffPermissionsRequest,
+} from './staffPermissionContracts.js';
+
+export {
   WORKOUT_VIDEO_PRESIGN_PATH,
   type PresignAssetType,
   type PresignedVideoUploadDebug,
