@@ -13,6 +13,8 @@ interface BuilderHeaderProps {
   onLogout: () => void;
   onOpenStaffPermissions?: () => void;
   showStaffPermissionsButton?: boolean;
+  onOpenUserManagement?: () => void;
+  showUserManagementButton?: boolean;
   onOpenGymManagement?: () => void;
   showGymManagementButton?: boolean;
 }
@@ -27,6 +29,8 @@ export function BuilderHeader({
   onLogout,
   onOpenStaffPermissions,
   showStaffPermissionsButton = false,
+  onOpenUserManagement,
+  showUserManagementButton = false,
   onOpenGymManagement,
   showGymManagementButton = false,
 }: BuilderHeaderProps) {
@@ -55,6 +59,15 @@ export function BuilderHeader({
             onClick={onOpenGymManagement}
           >
             체육관 관리
+          </button>
+        ) : null}
+        {showUserManagementButton && onOpenUserManagement ? (
+          <button
+            type="button"
+            className="wpb-header-staff-perm-btn"
+            onClick={onOpenUserManagement}
+          >
+            사용자 관리
           </button>
         ) : null}
         {showStaffPermissionsButton && onOpenStaffPermissions ? (
