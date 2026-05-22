@@ -9,9 +9,12 @@ interface BuilderHeaderProps {
   userDisplayName: string;
   userLoginId: string;
   userRole: keyof typeof FIGHTBOX_ROLE_LABELS;
+  scopeLabel: string;
   onLogout: () => void;
   onOpenStaffPermissions?: () => void;
   showStaffPermissionsButton?: boolean;
+  onOpenGymManagement?: () => void;
+  showGymManagementButton?: boolean;
 }
 
 export function BuilderHeader({
@@ -20,9 +23,12 @@ export function BuilderHeader({
   userDisplayName,
   userLoginId,
   userRole,
+  scopeLabel,
   onLogout,
   onOpenStaffPermissions,
   showStaffPermissionsButton = false,
+  onOpenGymManagement,
+  showGymManagementButton = false,
 }: BuilderHeaderProps) {
   const roleLabel = FIGHTBOX_ROLE_LABELS[userRole];
 
@@ -39,9 +45,18 @@ export function BuilderHeader({
         <span className="wpb-header-meta-credits" title="보유 크레딧 (더미)">
           {mockCreditWallet.balance} {mockCreditWallet.currencyLabel}
         </span>
-        <span className="wpb-header-meta-role" title={userLoginId}>
-          {roleLabel} · {userDisplayName}
+        <span className="wpb-header-meta-role" title={`${userDisplayName} (${userLoginId})`}>
+          {roleLabel} · {userLoginId} · {scopeLabel}
         </span>
+        {showGymManagementButton && onOpenGymManagement ? (
+          <button
+            type="button"
+            className="wpb-header-staff-perm-btn"
+            onClick={onOpenGymManagement}
+          >
+            체육관 관리
+          </button>
+        ) : null}
         {showStaffPermissionsButton && onOpenStaffPermissions ? (
           <button
             type="button"

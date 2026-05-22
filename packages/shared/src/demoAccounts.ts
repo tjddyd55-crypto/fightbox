@@ -30,6 +30,7 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
       gymId: 'demo-gym',
       role: 'super_admin',
       displayName: '슈퍼관리자',
+      accountScope: 'platform',
     },
   },
   {
@@ -41,6 +42,9 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
       gymId: 'demo-gym',
       role: 'gym_admin',
       displayName: '체육관관리자',
+      accountScope: 'gym',
+      gymCode: 'DEMO-GYM',
+      gymName: '데모 체육관',
     },
   },
   {
@@ -52,6 +56,9 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
       gymId: 'demo-gym',
       role: 'gym_staff',
       displayName: '체육관직원',
+      accountScope: 'gym',
+      gymCode: 'DEMO-GYM',
+      gymName: '데모 체육관',
       staffPermissions: GYM_STAFF_PERMISSIONS,
     },
   },
@@ -61,9 +68,12 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
     user: {
       loginId: 'creator',
       userId: 'demo-video-creator',
-      gymId: 'demo-gym',
       role: 'video_creator',
       displayName: '운동영상 크리에이터',
+      accountScope: 'creator',
+      creatorId: 'demo-creator-001',
+      creatorCode: 'CREATOR-DEMO',
+      creatorName: '데모 영상 크리에이터',
     },
   },
 ];

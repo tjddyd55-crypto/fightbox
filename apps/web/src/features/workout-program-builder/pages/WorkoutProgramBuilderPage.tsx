@@ -12,7 +12,9 @@ import { MobileBuilderTabs, type MobileBuilderTab } from '../components/MobileBu
 import { ProgramTimelinePanel } from '../components/ProgramTimelinePanel';
 import { SelectedBlockPanel } from '../components/SelectedBlockPanel';
 import { ShareSubmissionModal } from '../components/ShareSubmissionModal';
+import { GymManagementModal } from '../../admin/gyms/GymManagementModal';
 import { StaffPermissionModal } from '../components/StaffPermissionModal';
+import { getBuilderHeaderScopeLabel } from '../services/fightboxContextConfig';
 import { TemplateLibraryModal } from '../components/TemplateLibraryModal';
 import { TestPlaybackModal } from '../components/TestPlaybackModal';
 import { VideoEditModal } from '../components/VideoEditModal';
@@ -76,6 +78,7 @@ export function WorkoutProgramBuilderPage() {
     useState<BuilderSidebarActiveSection>('builder');
   const [isTemplateLibraryOpen, setIsTemplateLibraryOpen] = useState(false);
   const [isStaffPermissionOpen, setIsStaffPermissionOpen] = useState(false);
+  const [isGymManagementOpen, setIsGymManagementOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isVideoUploadOpen, setIsVideoUploadOpen] = useState(false);
   const [editingVideo, setEditingVideo] = useState<WorkoutVideo | null>(null);
@@ -193,9 +196,12 @@ export function WorkoutProgramBuilderPage() {
         userDisplayName={user.displayName}
         userLoginId={user.loginId}
         userRole={user.role}
+        scopeLabel={getBuilderHeaderScopeLabel(user)}
         onLogout={handleLogout}
         showStaffPermissionsButton={permissions.canManageStaffPermissions}
         onOpenStaffPermissions={() => setIsStaffPermissionOpen(true)}
+        showGymManagementButton={permissions.canManageGyms}
+        onOpenGymManagement={() => setIsGymManagementOpen(true)}
       />
       <MobileBuilderTabs activeTab={mobileTab} onTabChange={setMobileTab} />
       <section className="wpb-body">
@@ -334,6 +340,12 @@ export function WorkoutProgramBuilderPage() {
         isOpen={isStaffPermissionOpen}
         managerUser={user}
         onClose={() => setIsStaffPermissionOpen(false)}
+        onNotify={state.showMessage}
+      />
+      <GymManagementModal
+        isOpen={isGymManagementOpen}
+        managerUser={user}
+        onClose={() => setIsGymManagementOpen(false)}
         onNotify={state.showMessage}
       />
       <TemplateLibraryModal

@@ -4,6 +4,8 @@ export type FightboxUserRole =
   | 'gym_staff'
   | 'video_creator';
 
+export type FightboxAccountScope = 'platform' | 'gym' | 'creator';
+
 export interface FightboxStaffPermissions {
   canUploadVideos: boolean;
   canManageVideos: boolean;
@@ -16,9 +18,15 @@ export interface FightboxStaffPermissions {
 export interface FightboxSessionUser {
   loginId: string;
   userId: string;
-  gymId: string;
   role: FightboxUserRole;
   displayName: string;
+  accountScope?: FightboxAccountScope;
+  gymId?: string;
+  gymCode?: string;
+  gymName?: string;
+  creatorId?: string;
+  creatorCode?: string;
+  creatorName?: string;
   staffPermissions?: Partial<FightboxStaffPermissions>;
 }
 
@@ -26,14 +34,59 @@ export interface FightboxRequestContext {
   gymId: string;
   userId: string;
   role: FightboxUserRole;
+  accountScope?: FightboxAccountScope;
+  gymCode?: string;
+  gymName?: string;
+  creatorId?: string;
+  creatorCode?: string;
+  creatorName?: string;
   staffPermissions?: Partial<FightboxStaffPermissions>;
 }
 
+/** Workout builder APIs still scope by gymId until ownerType/ownerId migration. */
+export const CREATOR_SCOPE_GYM_FALLBACK = 'demo-gym';
+
+export function inferAccountScopeFromRole(role: FightboxUserRole): FightboxAccountScope {
+  switch (role) {
+    case 'super_admin':
+      return 'platform';
+    case 'gym_admin':
+    case 'gym_staff':
+      return 'gym';
+    case 'video_creator':
+      return 'creator';
+    default:
+      return 'gym';
+  }
+}
+
+function resolveGymIdForRequest(user: FightboxSessionUser): string {
+  const trimmed = user.gymId?.trim();
+  if (trimmed) {
+    return trimmed;
+  }
+
+  const scope = user.accountScope ?? inferAccountScopeFromRole(user.role);
+  if (scope === 'creator' || user.role === 'video_creator') {
+    return CREATOR_SCOPE_GYM_FALLBACK;
+  }
+
+  return CREATOR_SCOPE_GYM_FALLBACK;
+}
+
 export function sessionUserToRequestContext(user: FightboxSessionUser): FightboxRequestContext {
+  const accountScope = user.accountScope ?? inferAccountScopeFromRole(user.role);
+
   return {
-    gymId: user.gymId,
+    gymId: resolveGymIdForRequest(user),
     userId: user.userId,
     role: user.role,
+    accountScope,
+    ...(user.gymCode ? { gymCode: user.gymCode } : {}),
+    ...(user.gymName ? { gymName: user.gymName } : {}),
+    ...(user.creatorId ? { creatorId: user.creatorId } : {}),
+    ...(user.creatorCode ? { creatorCode: user.creatorCode } : {}),
+    ...(user.creatorName ? { creatorName: user.creatorName } : {}),
     ...(user.staffPermissions ? { staffPermissions: user.staffPermissions } : {}),
   };
 }
@@ -62,7 +115,8 @@ export type FightboxPermission =
   | 'deleteTemplates'
   | 'submitPublicTemplates'
   | 'reviewPublicTemplates'
-  | 'manageStaffPermissions';
+  | 'manageStaffPermissions'
+  | 'manageGyms';
 
 const VALID_ROLES: FightboxUserRole[] = [
   'super_admin',
@@ -71,8 +125,14 @@ const VALID_ROLES: FightboxUserRole[] = [
   'video_creator',
 ];
 
+const VALID_ACCOUNT_SCOPES: FightboxAccountScope[] = ['platform', 'gym', 'creator'];
+
 export function isFightboxUserRole(value: string): value is FightboxUserRole {
   return VALID_ROLES.includes(value as FightboxUserRole);
+}
+
+export function isFightboxAccountScope(value: string): value is FightboxAccountScope {
+  return VALID_ACCOUNT_SCOPES.includes(value as FightboxAccountScope);
 }
 
 function resolveStaffPermissions(context: FightboxRequestContext): FightboxStaffPermissions {
@@ -172,6 +232,10 @@ export function canManageStaffPermissions(context: FightboxRequestContext): bool
   return context.role === 'super_admin' || context.role === 'gym_admin';
 }
 
+export function canManageGyms(context: FightboxRequestContext): boolean {
+  return context.role === 'super_admin';
+}
+
 export function hasFightboxPermission(
   context: FightboxRequestContext,
   permission: FightboxPermission,
@@ -193,6 +257,8 @@ export function hasFightboxPermission(
       return canReviewPublicTemplates(context);
     case 'manageStaffPermissions':
       return canManageStaffPermissions(context);
+    case 'manageGyms':
+      return canManageGyms(context);
     default:
       return false;
   }

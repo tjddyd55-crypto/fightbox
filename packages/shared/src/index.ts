@@ -1,11 +1,13 @@
 export const FIGHTBOX_SHARED_VERSION = '0.1.0';
 
 export {
+  CREATOR_SCOPE_GYM_FALLBACK,
   DEFAULT_STAFF_PERMISSIONS,
   FIGHTBOX_ROLE_LABELS,
   canCreateTemplates,
   canDeleteTemplates,
   canEditTemplates,
+  canManageGyms,
   canManageStaffPermissions,
   canManageVideos,
   canReviewPublicTemplates,
@@ -13,9 +15,12 @@ export {
   canUploadVideos,
   hasAnyFightboxPermission,
   hasFightboxPermission,
+  inferAccountScopeFromRole,
+  isFightboxAccountScope,
   isFightboxUserRole,
   parseStaffPermissionsJson,
   sessionUserToRequestContext,
+  type FightboxAccountScope,
   type FightboxPermission,
   type FightboxRequestContext,
   type FightboxSessionUser,
@@ -24,6 +29,16 @@ export {
 } from './authContext.js';
 
 export { DEMO_ACCOUNTS, type DemoAccount } from './demoAccounts.js';
+
+export {
+  GYM_API_PATHS,
+  type CreateGymRequest,
+  type GymDto,
+  type GymItemResponse,
+  type GymListResponse,
+  type GymStatus,
+  type UpdateGymRequest,
+} from './gymContracts.js';
 
 export {
   STAFF_PERMISSION_API_PATHS,

@@ -1,6 +1,5 @@
 import {
   STAFF_PERMISSION_API_PATHS,
-  sessionUserToRequestContext,
   type FightboxSessionUser,
   type FightboxStaffPermissions,
   type GymStaffPermissionDto,
@@ -9,6 +8,7 @@ import {
   type MyStaffPermissionsResponse,
   type UpdateGymStaffPermissionsRequest,
 } from '@fightbox/shared';
+import { getFightboxContextHeadersForUser } from '../workout-program-builder/services/fightboxContextConfig';
 import { getApiBaseUrl } from '../workout-program-builder/services/videoUploadConfig';
 
 export class StaffPermissionApiError extends Error {
@@ -36,19 +36,10 @@ function buildUrl(path: string): string {
 }
 
 function getHeadersForUser(user: FightboxSessionUser): Record<string, string> {
-  const context = sessionUserToRequestContext(user);
-  const headers: Record<string, string> = {
+  return {
     'Content-Type': 'application/json',
-    'x-gym-id': context.gymId,
-    'x-user-id': context.userId,
-    'x-user-role': context.role,
+    ...getFightboxContextHeadersForUser(user),
   };
-
-  if (context.role === 'gym_staff' && context.staffPermissions) {
-    headers['x-staff-permissions'] = JSON.stringify(context.staffPermissions);
-  }
-
-  return headers;
 }
 
 async function parseApiError(response: Response): Promise<StaffPermissionApiError> {
