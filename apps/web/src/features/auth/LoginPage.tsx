@@ -98,7 +98,11 @@ export function LoginPage() {
         </form>
 
         <aside className="auth-dev-hint" aria-label="개발용 테스트 계정 안내">
-          <h2>개발용 테스트 계정</h2>
+          <h2>개발·테스트 계정 (API JWT 로그인)</h2>
+          <p className="auth-dev-warning">
+            DB 사용자 + bcrypt 비밀번호 검증 후 JWT를 발급합니다. 운영 환경에서는 아래 비밀번호를
+            사용하지 마세요.
+          </p>
           <ul>
             {DEV_ACCOUNTS_HINT.map((account) => (
               <li key={account.loginId}>
@@ -107,7 +111,7 @@ export function LoginPage() {
             ))}
           </ul>
           <p className="auth-dev-warning">
-            개발/테스트 전용입니다. 운영 환경에서 이 비밀번호를 사용하지 마세요.
+            로컬 데모 fallback은 <code>VITE_AUTH_PROVIDER=demo</code> 일 때만 사용됩니다.
           </p>
         </aside>
       </div>
