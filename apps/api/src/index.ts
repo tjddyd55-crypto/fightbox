@@ -1,6 +1,6 @@
 import cors from 'cors';
 import express from 'express';
-import type { Request, Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import { authenticateRequest } from './middleware/authenticateRequest.js';
 import { requestContextMiddleware } from './middleware/requestContext.js';
 import authRoutes from './routes/authRoutes.js';
@@ -46,7 +46,7 @@ app.use('/api/workout-builder', ...protectedApi, workoutBuilderRoutes);
 app.use('/api/gym/staff-permissions', ...protectedApi, gymStaffPermissionRoutes);
 app.use('/api/admin/gyms', ...protectedApi, gymAdminRoutes);
 
-app.use((error: unknown, _req: Request, res: Response) => {
+app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
   const { status, body } = toErrorResponse(error);
   res.status(status).json(body);
 });
