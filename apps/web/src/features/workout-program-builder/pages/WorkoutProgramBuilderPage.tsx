@@ -15,6 +15,7 @@ import { ShareSubmissionModal } from '../components/ShareSubmissionModal';
 import { GymManagementModal } from '../../admin/gyms/GymManagementModal';
 import { StaffPermissionModal } from '../components/StaffPermissionModal';
 import { UserManagementModal } from '../components/UserManagementModal';
+import { AuthAuditLogModal } from '../components/AuthAuditLogModal';
 import { getBuilderHeaderScopeLabel } from '../services/fightboxContextConfig';
 import { TemplateLibraryModal } from '../components/TemplateLibraryModal';
 import { TestPlaybackModal } from '../components/TestPlaybackModal';
@@ -80,6 +81,7 @@ export function WorkoutProgramBuilderPage() {
   const [isTemplateLibraryOpen, setIsTemplateLibraryOpen] = useState(false);
   const [isStaffPermissionOpen, setIsStaffPermissionOpen] = useState(false);
   const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
+  const [isAuthAuditLogOpen, setIsAuthAuditLogOpen] = useState(false);
   const [isGymManagementOpen, setIsGymManagementOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isVideoUploadOpen, setIsVideoUploadOpen] = useState(false);
@@ -206,6 +208,8 @@ export function WorkoutProgramBuilderPage() {
         onOpenStaffPermissions={() => setIsStaffPermissionOpen(true)}
         showGymManagementButton={permissions.canManageGyms}
         onOpenGymManagement={() => setIsGymManagementOpen(true)}
+        showAuthAuditLogsButton={permissions.canViewAuthAuditLogs}
+        onOpenAuthAuditLogs={() => setIsAuthAuditLogOpen(true)}
       />
       <MobileBuilderTabs activeTab={mobileTab} onTabChange={setMobileTab} />
       <section className="wpb-body">
@@ -351,6 +355,11 @@ export function WorkoutProgramBuilderPage() {
         managerUser={user}
         onClose={() => setIsUserManagementOpen(false)}
         onNotify={state.showMessage}
+      />
+      <AuthAuditLogModal
+        isOpen={isAuthAuditLogOpen}
+        managerUser={user}
+        onClose={() => setIsAuthAuditLogOpen(false)}
       />
       <GymManagementModal
         isOpen={isGymManagementOpen}

@@ -2179,6 +2179,45 @@
   flex-wrap: wrap;
 }
 
+.wpb-auth-audit-modal {
+  max-width: min(960px, 96vw);
+}
+
+.wpb-auth-audit-toolbar {
+  padding: 0 20px 12px;
+}
+
+.wpb-auth-audit-table-wrap {
+  overflow-x: auto;
+  padding: 0 20px 20px;
+}
+
+.wpb-auth-audit-table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.wpb-auth-audit-table th,
+.wpb-auth-audit-table td {
+  border-bottom: 1px solid #2c2d34;
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.wpb-auth-audit-table th {
+  color: #a7aab3;
+  font-weight: 600;
+}
+
+.wpb-auth-audit-table td:last-child {
+  white-space: normal;
+  max-width: 220px;
+}
+
 .wpb-staff-permission-check {
   display: flex;
   align-items: center;

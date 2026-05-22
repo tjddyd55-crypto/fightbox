@@ -17,6 +17,8 @@ interface BuilderHeaderProps {
   showUserManagementButton?: boolean;
   onOpenGymManagement?: () => void;
   showGymManagementButton?: boolean;
+  onOpenAuthAuditLogs?: () => void;
+  showAuthAuditLogsButton?: boolean;
 }
 
 export function BuilderHeader({
@@ -33,6 +35,8 @@ export function BuilderHeader({
   showUserManagementButton = false,
   onOpenGymManagement,
   showGymManagementButton = false,
+  onOpenAuthAuditLogs,
+  showAuthAuditLogsButton = false,
 }: BuilderHeaderProps) {
   const roleLabel = FIGHTBOX_ROLE_LABELS[userRole];
 
@@ -59,6 +63,15 @@ export function BuilderHeader({
             onClick={onOpenGymManagement}
           >
             체육관 관리
+          </button>
+        ) : null}
+        {showAuthAuditLogsButton && onOpenAuthAuditLogs ? (
+          <button
+            type="button"
+            className="wpb-header-staff-perm-btn"
+            onClick={onOpenAuthAuditLogs}
+          >
+            감사 로그
           </button>
         ) : null}
         {showUserManagementButton && onOpenUserManagement ? (

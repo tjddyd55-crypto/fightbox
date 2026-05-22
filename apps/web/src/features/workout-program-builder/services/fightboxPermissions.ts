@@ -9,6 +9,7 @@ import {
   canReviewPublicTemplates,
   canSubmitPublicTemplates,
   canUploadVideos,
+  canViewAuthAuditLogs,
   FIGHTBOX_ROLE_LABELS,
   sessionUserToRequestContext,
   type FightboxRequestContext,
@@ -28,6 +29,7 @@ export interface FightboxClientPermissions {
   canManageStaffPermissions: boolean;
   canManageGyms: boolean;
   canManageUsers: boolean;
+  canViewAuthAuditLogs: boolean;
 }
 
 function buildPermissions(context: FightboxRequestContext): FightboxClientPermissions {
@@ -43,6 +45,7 @@ function buildPermissions(context: FightboxRequestContext): FightboxClientPermis
     canManageStaffPermissions: canManageStaffPermissions(context),
     canManageGyms: canManageGyms(context),
     canManageUsers: canManageUsers(context),
+    canViewAuthAuditLogs: canViewAuthAuditLogs(context),
   };
 }
 
