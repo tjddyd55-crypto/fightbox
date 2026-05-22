@@ -8,7 +8,8 @@ import {
   type FightboxSessionUser,
   type FightboxUserRole,
 } from '@fightbox/shared';
-import { loadSession } from '../../auth/authSessionStorage';
+import { loadSession, loadAuthToken } from '../../auth/authSessionStorage';
+import { getBearerAuthHeader } from '../../auth/authApiClient';
 
 const DEFAULT_GYM_ID = 'demo-gym';
 const DEFAULT_USER_ID = 'demo-gym-admin';
@@ -101,11 +102,17 @@ export function buildFightboxContextHeaders(
 }
 
 export function getFightboxContextHeaders(): Record<string, string> {
-  return buildFightboxContextHeaders(getFightboxClientContext());
+  return {
+    ...buildFightboxContextHeaders(getFightboxClientContext()),
+    ...getBearerAuthHeader(loadAuthToken()),
+  };
 }
 
 export function getFightboxContextHeadersForUser(user: FightboxSessionUser): Record<string, string> {
-  return buildFightboxContextHeaders(sessionUserToRequestContext(user));
+  return {
+    ...buildFightboxContextHeaders(sessionUserToRequestContext(user)),
+    ...getBearerAuthHeader(loadAuthToken()),
+  };
 }
 
 export function getFightboxRoleLabel(context?: FightboxRequestContext): string {
