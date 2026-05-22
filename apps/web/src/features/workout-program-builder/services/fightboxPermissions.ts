@@ -7,7 +7,10 @@ import {
   canSubmitPublicTemplates,
   canUploadVideos,
   FIGHTBOX_ROLE_LABELS,
+  sessionUserToRequestContext,
+  type FightboxRequestContext,
 } from '@fightbox/shared';
+import type { FightboxSessionUser } from '@fightbox/shared';
 import { getFightboxClientContext } from './fightboxContextConfig';
 
 export interface FightboxClientPermissions {
@@ -21,9 +24,7 @@ export interface FightboxClientPermissions {
   canReviewPublicTemplates: boolean;
 }
 
-export function getFightboxClientPermissions(): FightboxClientPermissions {
-  const context = getFightboxClientContext();
-
+function buildPermissions(context: FightboxRequestContext): FightboxClientPermissions {
   return {
     roleLabel: FIGHTBOX_ROLE_LABELS[context.role],
     canUploadVideos: canUploadVideos(context),
@@ -34,6 +35,18 @@ export function getFightboxClientPermissions(): FightboxClientPermissions {
     canSubmitPublicTemplates: canSubmitPublicTemplates(context),
     canReviewPublicTemplates: canReviewPublicTemplates(context),
   };
+}
+
+export function getFightboxClientPermissions(
+  context: FightboxRequestContext = getFightboxClientContext(),
+): FightboxClientPermissions {
+  return buildPermissions(context);
+}
+
+export function getFightboxClientPermissionsForUser(
+  user: FightboxSessionUser,
+): FightboxClientPermissions {
+  return buildPermissions(sessionUserToRequestContext(user));
 }
 
 export function canSaveTemplatePermission(

@@ -1991,6 +1991,26 @@
   font-size: 13px;
 }
 
+.wpb-header-logout-btn {
+  padding: 6px 12px;
+  border: 1px solid #2c2d34;
+  border-radius: 8px;
+  background: #1f2026;
+  color: #a7aab3;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.wpb-header-logout-btn:hover {
+  color: #ffffff;
+  border-color: #4a4d57;
+}
+
+.wpb-header-logout-btn:focus-visible {
+  outline: 2px solid #ffd60a;
+  outline-offset: 2px;
+}
+
 .wpb-panel-readonly input,
 .wpb-panel-readonly button,
 .wpb-panel-readonly select,

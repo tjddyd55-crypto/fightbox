@@ -1,3 +1,4 @@
+import { FIGHTBOX_ROLE_LABELS } from '@fightbox/shared';
 import { mockCreditWallet } from '../data/mockCreditWallet';
 import type { WorkoutProgramTemplate } from '../types/workoutProgramBuilder.types';
 import { formatDuration } from '../utils/durationUtils';
@@ -5,10 +6,22 @@ import { formatDuration } from '../utils/durationUtils';
 interface BuilderHeaderProps {
   template: WorkoutProgramTemplate;
   totalDurationSec: number;
-  roleLabel: string;
+  userDisplayName: string;
+  userLoginId: string;
+  userRole: keyof typeof FIGHTBOX_ROLE_LABELS;
+  onLogout: () => void;
 }
 
-export function BuilderHeader({ template, totalDurationSec, roleLabel }: BuilderHeaderProps) {
+export function BuilderHeader({
+  template,
+  totalDurationSec,
+  userDisplayName,
+  userLoginId,
+  userRole,
+  onLogout,
+}: BuilderHeaderProps) {
+  const roleLabel = FIGHTBOX_ROLE_LABELS[userRole];
+
   return (
     <header className="wpb-header">
       <div className="wpb-header-start">
@@ -22,7 +35,12 @@ export function BuilderHeader({ template, totalDurationSec, roleLabel }: Builder
         <span className="wpb-header-meta-credits" title="보유 크레딧 (더미)">
           {mockCreditWallet.balance} {mockCreditWallet.currencyLabel}
         </span>
-        <span className="wpb-header-meta-role">{roleLabel}</span>
+        <span className="wpb-header-meta-role" title={userLoginId}>
+          {roleLabel} · {userDisplayName}
+        </span>
+        <button type="button" className="wpb-header-logout-btn" onClick={onLogout}>
+          로그아웃
+        </button>
       </div>
     </header>
   );

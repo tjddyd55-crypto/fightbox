@@ -1,4 +1,6 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../auth/AuthContext';
 import { BuilderHeader } from '../components/BuilderHeader';
 import {
   BuilderSidebar,
@@ -22,11 +24,11 @@ import { isCompactLayout } from '../utils/viewportUtils';
 import { validateProgramBlocks } from '../utils/programValidationUtils';
 import {
   canSaveTemplatePermission,
-  getFightboxClientPermissions,
+  getFightboxClientPermissionsForUser,
 } from '../services/fightboxPermissions';
 import '../workoutProgramBuilder.css';
 
-const permissions = getFightboxClientPermissions();
+const PERMISSION_DENIED_MESSAGE = '권한이 없습니다.';
 
 const PANEL_IDS = {
   timeline: 'wpb-mobile-panel-timeline',
@@ -60,6 +62,12 @@ function focusBuilderPanel(panelId: string, preferSearchInput = false): void {
 }
 
 export function WorkoutProgramBuilderPage() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const permissions = useMemo(
+    () => (user ? getFightboxClientPermissionsForUser(user) : null),
+    [user],
+  );
   const state = useProgramBuilderState();
   const videoFilterState = useVideoLibraryFilters(state.videos);
   const [mobileTab, setMobileTab] = useState<MobileBuilderTab>('timeline');
@@ -71,10 +79,15 @@ export function WorkoutProgramBuilderPage() {
   const [editingVideo, setEditingVideo] = useState<WorkoutVideo | null>(null);
   const { setSelectedBlockId, selectedBlockId, showMessage } = state;
 
+  const handleLogout = useCallback(() => {
+    logout();
+    navigate('/login', { replace: true });
+  }, [logout, navigate]);
+
   const handleDeleteVideo = useCallback(
     (video: WorkoutVideo) => {
-      if (!permissions.canManageVideos) {
-        showMessage('영상 관리 권한이 없습니다.');
+      if (!permissions?.canManageVideos) {
+        showMessage(PERMISSION_DENIED_MESSAGE);
         return;
       }
       const confirmed = window.confirm(`「${video.title}」 영상을 삭제할까요?`);
@@ -84,24 +97,23 @@ export function WorkoutProgramBuilderPage() {
         videoFilterState.setSelectedVideoId(null);
       }
     },
-    [state, videoFilterState, showMessage],
+    [state, videoFilterState, showMessage, permissions],
   );
 
   const handleEditVideo = useCallback(
     (video: WorkoutVideo) => {
-      if (!permissions.canManageVideos) {
-        showMessage('영상 관리 권한이 없습니다.');
+      if (!permissions?.canManageVideos) {
+        showMessage(PERMISSION_DENIED_MESSAGE);
         return;
       }
       setEditingVideo(video);
     },
-    [showMessage],
+    [showMessage, permissions],
   );
 
-  const canSaveTemplate = canSaveTemplatePermission(
-    permissions,
-    Boolean(state.activeTemplateId),
-  );
+  const canSaveTemplate = permissions
+    ? canSaveTemplatePermission(permissions, Boolean(state.activeTemplateId))
+    : false;
 
   const handleSelectBlock = useCallback(
     (id: string) => {
@@ -167,12 +179,19 @@ export function WorkoutProgramBuilderPage() {
     [state],
   );
 
+  if (!user || !permissions) {
+    return null;
+  }
+
   return (
     <main className="wpb-root">
       <BuilderHeader
         template={state.template}
         totalDurationSec={state.totalDurationSec}
-        roleLabel={permissions.roleLabel}
+        userDisplayName={user.displayName}
+        userLoginId={user.loginId}
+        userRole={user.role}
+        onLogout={handleLogout}
       />
       <MobileBuilderTabs activeTab={mobileTab} onTabChange={setMobileTab} />
       <section className="wpb-body">
@@ -193,7 +212,7 @@ export function WorkoutProgramBuilderPage() {
             onDeleteVideo={handleDeleteVideo}
             canUploadVideos={permissions.canUploadVideos}
             canManageVideos={permissions.canManageVideos}
-            onPermissionDenied={showMessage}
+            onPermissionDenied={() => showMessage(PERMISSION_DENIED_MESSAGE)}
           />
           <ProgramTimelinePanel
             blocks={state.blocks}
@@ -231,14 +250,14 @@ export function WorkoutProgramBuilderPage() {
         onOpenTemplateLibrary={() => setIsTemplateLibraryOpen(true)}
         onSaveTemplate={() => {
           if (!canSaveTemplate) {
-            showMessage('템플릿 저장 권한이 없습니다.');
+            showMessage(PERMISSION_DENIED_MESSAGE);
             return;
           }
           state.saveTemplate();
         }}
         onCopySave={() => {
           if (!permissions.canCreateTemplates) {
-            showMessage('템플릿 생성 권한이 없습니다.');
+            showMessage(PERMISSION_DENIED_MESSAGE);
             return;
           }
           state.copyCurrentTemplate();
@@ -321,7 +340,7 @@ export function WorkoutProgramBuilderPage() {
         }}
         onDelete={(id) => {
           if (!permissions.canDeleteTemplates) {
-            state.showMessage('템플릿 삭제 권한이 없습니다.');
+            state.showMessage(PERMISSION_DENIED_MESSAGE);
             return;
           }
           state.deleteTemplate(id);

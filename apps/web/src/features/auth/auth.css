@@ -1,0 +1,133 @@
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  background: #0b0b0e;
+  color: #ffffff;
+  font-family:
+    'Pretendard',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  background: #15161a;
+  border: 1px solid #2c2d34;
+  border-radius: 12px;
+  padding: 32px 28px;
+}
+
+.auth-brand {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.auth-brand-title {
+  margin: 0 0 6px;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: #ffd60a;
+}
+
+.auth-brand-subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: #a7aab3;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.auth-field label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: #a7aab3;
+}
+
+.auth-field input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #2c2d34;
+  border-radius: 8px;
+  background: #1f2026;
+  color: #ffffff;
+}
+
+.auth-field input:focus-visible {
+  outline: 2px solid #ffd60a;
+  outline-offset: 1px;
+}
+
+.auth-submit {
+  margin-top: 4px;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #ffd60a;
+  color: #0b0b0e;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auth-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.auth-error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(255, 69, 58, 0.12);
+  border: 1px solid rgba(255, 69, 58, 0.35);
+  color: #ff6b6b;
+  font-size: 13px;
+}
+
+.auth-dev-hint {
+  margin-top: 24px;
+  padding: 14px 12px;
+  border-radius: 8px;
+  background: #1f2026;
+  border: 1px dashed #2c2d34;
+  font-size: 12px;
+  color: #a7aab3;
+}
+
+.auth-dev-hint h2 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: #ffffff;
+}
+
+.auth-dev-hint ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.auth-dev-hint li {
+  margin-bottom: 4px;
+}
+
+.auth-dev-warning {
+  margin: 10px 0 0;
+  color: #ffd60a;
+  font-size: 11px;
+}
+
+@media (max-width: 480px) {
+  .auth-card {
+    padding: 24px 18px;
+  }
+}

@@ -2,12 +2,15 @@ import {
   FIGHTBOX_ROLE_LABELS,
   isFightboxUserRole,
   parseStaffPermissionsJson,
+  sessionUserToRequestContext,
   type FightboxRequestContext,
+  type FightboxSessionUser,
   type FightboxUserRole,
 } from '@fightbox/shared';
+import { loadSession } from '../../auth/authSessionStorage';
 
 const DEFAULT_GYM_ID = 'demo-gym';
-const DEFAULT_USER_ID = 'demo-coach';
+const DEFAULT_USER_ID = 'demo-gym-admin';
 const DEFAULT_USER_ROLE: FightboxUserRole = 'gym_admin';
 
 function parseRole(raw: string | undefined): FightboxUserRole {
@@ -33,7 +36,7 @@ function parseStaffPermissionsFromEnv(
   }
 }
 
-export function getFightboxClientContext(): FightboxRequestContext {
+function getEnvFallbackContext(): FightboxRequestContext {
   const gymId = import.meta.env.VITE_FIGHTBOX_GYM_ID?.trim() || DEFAULT_GYM_ID;
   const userId = import.meta.env.VITE_FIGHTBOX_USER_ID?.trim() || DEFAULT_USER_ID;
   const role = parseRole(import.meta.env.VITE_FIGHTBOX_USER_ROLE);
@@ -49,6 +52,18 @@ export function getFightboxClientContext(): FightboxRequestContext {
   };
 }
 
+export function getFightboxClientContextFromSession(): FightboxRequestContext | null {
+  const user = loadSession();
+  if (!user) {
+    return null;
+  }
+  return sessionUserToRequestContext(user);
+}
+
+export function getFightboxClientContext(): FightboxRequestContext {
+  return getFightboxClientContextFromSession() ?? getEnvFallbackContext();
+}
+
 export function getFightboxContextHeaders(): Record<string, string> {
   const context = getFightboxClientContext();
   const headers: Record<string, string> = {
@@ -57,15 +72,31 @@ export function getFightboxContextHeaders(): Record<string, string> {
     'x-user-role': context.role,
   };
 
-  if (context.role === 'gym_staff' && context.staffPermissions) {
-    headers['x-staff-permissions'] = JSON.stringify(context.staffPermissions);
+  if (context.role === 'gym_staff') {
+    headers['x-staff-permissions'] = JSON.stringify(context.staffPermissions ?? {});
   }
 
   return headers;
 }
 
-export function getFightboxRoleLabel(): string {
-  return FIGHTBOX_ROLE_LABELS[getFightboxClientContext().role];
+export function getFightboxRoleLabel(context?: FightboxRequestContext): string {
+  const resolved = context ?? getFightboxClientContext();
+  return FIGHTBOX_ROLE_LABELS[resolved.role];
+}
+
+export function getFightboxUserDisplayFromSession(): Pick<
+  FightboxSessionUser,
+  'loginId' | 'displayName' | 'role'
+> | null {
+  const user = loadSession();
+  if (!user) {
+    return null;
+  }
+  return {
+    loginId: user.loginId,
+    displayName: user.displayName,
+    role: user.role,
+  };
 }
 
 export function logFightboxClientContext(): void {

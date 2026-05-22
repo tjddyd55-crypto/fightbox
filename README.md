@@ -18,7 +18,7 @@ npm install
 npm run dev:web
 ```
 
-브라우저에서 `http://localhost:5173/workout-program-builder` 로 접속합니다.
+브라우저에서 `http://localhost:5173/login` 으로 접속한 뒤 개발용 계정으로 로그인합니다. 로그인 후 `/workout-program-builder` 로 이동합니다.
 
 API health 확인:
 
@@ -57,10 +57,10 @@ npm run dev:api
 | `VITE_VIDEO_UPLOAD_PROVIDER` | `mock` (기본) 또는 `api` |
 | `VITE_API_BASE_URL` | API 서비스 public URL (예: `https://<api-domain>`) |
 | `VITE_WORKOUT_BUILDER_STORAGE` | `local` (기본) 또는 `api` — 템플릿/업로드 영상 메타데이터 저장소 |
-| `VITE_FIGHTBOX_GYM_ID` | demo gym scope (기본 `demo-gym`) |
-| `VITE_FIGHTBOX_USER_ID` | demo user id (기본 `demo-coach`) |
-| `VITE_FIGHTBOX_USER_ROLE` | `gym_admin` (기본) · `super_admin` · `gym_staff` · `video_creator` |
-| `VITE_FIGHTBOX_STAFF_PERMISSIONS` | `gym_staff` granular JSON (선택) |
+| `VITE_FIGHTBOX_GYM_ID` | (선택) 로그인 세션 없을 때만 fallback gym scope |
+| `VITE_FIGHTBOX_USER_ID` | (선택) 로그인 세션 없을 때만 fallback user id |
+| `VITE_FIGHTBOX_USER_ROLE` | (선택) 로그인 세션 없을 때만 fallback role |
+| `VITE_FIGHTBOX_STAFF_PERMISSIONS` | (선택) `gym_staff` fallback granular JSON |
 
 API presign이 정상 확인된 후 `VITE_VIDEO_UPLOAD_PROVIDER=api`와 `VITE_API_BASE_URL`을 설정하세요.
 Workout builder DB CRUD가 준비되면 `VITE_WORKOUT_BUILDER_STORAGE=api`로 전환합니다. 기본값 `local`은 localStorage fallback을 유지합니다.
@@ -189,22 +189,31 @@ npm run db:migrate:prod -w @fightbox/api
 4. 승인 → `visibility = public`, `public_review_status = approved`
 5. 반려 → `visibility = public_rejected`, `public_rejection_reason` 저장
 
-인증/역할 분리는 아직 없습니다. admin endpoint는 추후 auth middleware로 보호할 예정입니다.  
-web UI는 템플릿 목록 모달의 「승인 대기」 탭에서 MVP 승인/반려를 제공합니다.
+web UI는 템플릿 목록 모달의 「승인 대기」 탭에서 MVP 승인/반려를 제공합니다 (`super_admin`만 표시).
 
-인증 전까지 gym/user/role scope header (JWT/session auth 교체 예정):
+#### 개발/테스트용 데모 로그인 (임시)
 
-- `x-gym-id` (기본 `demo-gym`)
-- `x-user-id` (기본 `demo-coach`)
-- `x-user-role` (기본 `gym_admin`) — `super_admin` · `gym_admin` · `gym_staff` · `video_creator`
-- `x-staff-permissions` (선택, JSON) — `gym_staff` 전용 granular 권한
+**운영 환경에서 아래 비밀번호를 사용하지 마세요.** 실제 Auth(JWT/session + password hash + DB users)로 교체 전까지의 임시 로그인입니다.
 
-web 환경변수 (Railway app 기본값):
+| 아이디 | 비밀번호 | 역할 |
+|--------|----------|------|
+| `superadmin` | `123456!!` | 슈퍼관리자 |
+| `gymadmin` | `123456!!` | 체육관관리자 |
+| `gymstaff` | `123456!!` | 체육관직원 |
+| `creator` | `123456!!` | 운동영상 크리에이터 |
 
-- `VITE_FIGHTBOX_GYM_ID=demo-gym`
-- `VITE_FIGHTBOX_USER_ID=demo-coach`
-- `VITE_FIGHTBOX_USER_ROLE=gym_admin`
-- `VITE_FIGHTBOX_STAFF_PERMISSIONS=` (예: `{"canUploadVideos":true,"canEditTemplates":true}`)
+- 계정 정의: `packages/shared/src/demoAccounts.ts` (비밀번호는 DB에 저장하지 않음)
+- web 세션: `localStorage` key `fightbox.auth.session.v1` (비밀번호 미저장)
+- 로그인 UI: `/login` → 성공 시 `/workout-program-builder`
+
+API 요청 헤더 (로그인 세션 우선, 없으면 env fallback):
+
+- `x-gym-id`
+- `x-user-id`
+- `x-user-role` — `super_admin` · `gym_admin` · `gym_staff` · `video_creator`
+- `x-staff-permissions` (JSON) — `gym_staff` 전용 granular 권한
+
+API 기본값 (헤더 없을 때): `demo-gym` / `demo-gym-admin` / `gym_admin`
 
 #### 역할/권한 MVP
 
@@ -219,7 +228,9 @@ web 환경변수 (Railway app 기본값):
 
 #### 체육관 직원 권한 (추후 DB)
 
-현재 MVP는 header/env JSON으로 시뮬레이션합니다. 추후 Postgres 테이블:
+현재 MVP는 로그인 세션의 `staffPermissions`와 API `x-staff-permissions` 헤더로 시뮬레이션합니다. 직원 권한 설정 UI는 아직 없으며, `gymadmin` 계정의 추후 설정 화면과 아래 테이블로 이전할 예정입니다.
+
+추후 Postgres 테이블:
 
 `gym_staff_permissions`
 
