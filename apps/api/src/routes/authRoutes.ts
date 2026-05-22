@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import type { LoginRequest } from '@fightbox/shared';
-import { authenticateRequest, requireBearerAuth } from '../middleware/authenticateRequest.js';
+import { optionalAuth, requireAuth } from '../middleware/authMiddleware.js';
 import { getAuthenticatedUser, loginWithPassword } from '../services/authService.js';
 import { ApiError, toErrorResponse } from '../utils/apiError.js';
 
@@ -33,7 +33,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-router.get('/me', authenticateRequest, requireBearerAuth, async (req, res) => {
+router.get('/me', optionalAuth, requireAuth, async (req, res) => {
   try {
     const user = await getAuthenticatedUser(req.jwtPayload!.sub);
     res.status(200).json({ user });
