@@ -194,26 +194,43 @@ npm run db:migrate:prod -w @fightbox/api
 
 web UI는 템플릿 목록 모달의 「승인 대기」 탭에서 MVP 승인/반려를 제공합니다 (`super_admin`만 표시).
 
+#### 계정 스코프 (demo, Auth 전환 전)
+
+| 역할 | accountScope | 소속/식별 | 비고 |
+|------|--------------|-----------|------|
+| `super_admin` | `platform` | 전체 관리자 | 체육관·크리에이터 테넌트 생성/관리 |
+| `gym_admin` | `gym` | `gymId` + `gymCode` | 체육관 테넌트 운영 |
+| `gym_staff` | `gym` | `gymId` + `gymCode` | granular 직원 권한 |
+| `video_creator` | `creator` | `creatorId` + `creatorCode` | **체육관 소속 아님** — 영상 제작/업로드 전문 계정 |
+
+- **gymCode**: 슈퍼관리자가 `gyms` 테이블에 등록하는 체육관 테넌트 코드 (예: `DEMO-GYM`)
+- **creator**: `creators` 테이블에 프로필만 준비 (정산·마켓플레이스 UI는 미구현). 추후 체육관에서 본인 영상이 사용될 때 수익 쉐어 대상
+- `video_creator` 세션에는 `gymId`를 넣지 않습니다. 기존 workout builder API 호환을 위해 API `requestContext` 내부에서만 `demo-gym` fallback이 적용될 수 있습니다.
+
 #### 개발/테스트용 데모 로그인 (임시)
 
 **운영 환경에서 아래 비밀번호를 사용하지 마세요.** 실제 Auth(JWT/session + password hash + DB users)로 교체 전까지의 임시 로그인입니다.
 
-| 아이디 | 비밀번호 | 역할 |
-|--------|----------|------|
-| `superadmin` | `123456!!` | 슈퍼관리자 |
-| `gymadmin` | `123456!!` | 체육관관리자 |
-| `gymstaff` | `123456!!` | 체육관직원 |
-| `creator` | `123456!!` | 운동영상 크리에이터 |
+| 아이디 | 비밀번호 | 역할 | 헤더 스코프 표시 예 |
+|--------|----------|------|---------------------|
+| `superadmin` | `123456!!` | 슈퍼관리자 | 전체 관리자 |
+| `gymadmin` | `123456!!` | 체육관관리자 | `DEMO-GYM` |
+| `gymstaff` | `123456!!` | 체육관직원 | `DEMO-GYM` |
+| `creator` | `123456!!` | 운동영상 크리에이터 | `CREATOR-DEMO` (체육관 코드 아님) |
 
 - 계정 정의: `packages/shared/src/demoAccounts.ts` (비밀번호는 DB에 저장하지 않음)
 - web 세션: `localStorage` key `fightbox.auth.session.v1` (비밀번호 미저장)
 - 로그인 UI: `/login` → 성공 시 `/workout-program-builder`
+- 슈퍼관리자 빌더 헤더 **「체육관 관리」**: `GET/POST/PATCH/DELETE /api/admin/gyms` (demo DB `gyms` 테이블)
 
 API 요청 헤더 (로그인 세션 우선, 없으면 env fallback):
 
 - `x-gym-id`
 - `x-user-id`
 - `x-user-role` — `super_admin` · `gym_admin` · `gym_staff` · `video_creator`
+- `x-account-scope` — `platform` · `gym` · `creator`
+- `x-gym-code` · `x-gym-name` — gym scope
+- `x-creator-id` · `x-creator-code` · `x-creator-name` — creator scope
 - `x-staff-permissions` (JSON) — `gym_staff` 전용 granular 권한
 
 API 기본값 (헤더 없을 때): `demo-gym` / `demo-gym-admin` / `gym_admin`
