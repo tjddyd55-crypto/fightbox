@@ -81,14 +81,20 @@ export function verifyAccessToken(token: string): FightboxJwtPayload {
 
     const payload = decoded as Record<string, unknown>;
     const sub = typeof payload.sub === 'string' ? payload.sub.trim() : '';
-    const role = payload.role;
-    const accountScope = payload.accountScope;
+    const roleRaw = payload.role;
+    const accountScopeRaw = payload.accountScope;
 
-    if (!sub || !isFightboxUserRole(role) || !isFightboxAccountScope(accountScope)) {
+    if (
+      !sub ||
+      typeof roleRaw !== 'string' ||
+      typeof accountScopeRaw !== 'string' ||
+      !isFightboxUserRole(roleRaw) ||
+      !isFightboxAccountScope(accountScopeRaw)
+    ) {
       throw new ApiError(401, 'INVALID_TOKEN', 'Invalid access token claims');
     }
 
-    const result: FightboxJwtPayload = { sub, role, accountScope };
+    const result: FightboxJwtPayload = { sub, role: roleRaw, accountScope: accountScopeRaw };
 
     if (typeof payload.gymId === 'string' && payload.gymId.trim()) {
       result.gymId = payload.gymId.trim();
