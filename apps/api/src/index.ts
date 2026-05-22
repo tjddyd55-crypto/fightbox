@@ -2,6 +2,7 @@ import cors from 'cors';
 import express from 'express';
 import type { Request, Response } from 'express';
 import { requestContextMiddleware } from './middleware/requestContext.js';
+import gymAdminRoutes from './routes/gymAdminRoutes.js';
 import gymStaffPermissionRoutes from './routes/gymStaffPermissionRoutes.js';
 import workoutBuilderRoutes from './routes/workoutBuilderRoutes.js';
 import workoutVideoUploadRoutes from './routes/workoutVideoUploadRoutes.js';
@@ -38,6 +39,7 @@ app.get('/health', (_req, res) => {
 app.use('/api/workout-videos/uploads', requestContextMiddleware, workoutVideoUploadRoutes);
 app.use('/api/workout-builder', requestContextMiddleware, workoutBuilderRoutes);
 app.use('/api/gym/staff-permissions', requestContextMiddleware, gymStaffPermissionRoutes);
+app.use('/api/admin/gyms', requestContextMiddleware, gymAdminRoutes);
 
 app.use((error: unknown, _req: Request, res: Response) => {
   const { status, body } = toErrorResponse(error);
