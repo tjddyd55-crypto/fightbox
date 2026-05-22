@@ -107,6 +107,7 @@ Workout builder DB CRUD가 준비되면 `VITE_WORKOUT_BUILDER_STORAGE=api`로 �
 - `GET /api/gym/staff-permissions/me` — 현재 사용자 직원 권한 조회 (`gym_staff` hydrate용)
 - `GET/POST/PATCH/DELETE /api/admin/gyms` — 체육관 테넌트 코드 관리 (`super_admin` + `manageGyms`)
 - `GET/POST/PATCH/DELETE /api/admin/users` — 사용자 관리 (`super_admin` / `gym_admin` + `manageUsers`)
+- `GET /api/admin/auth-audit-logs` — 로그인 감사 로그 조회 (`super_admin` + `viewAuthAuditLogs`)
 
 **DB 마이그레이션**
 
@@ -251,6 +252,20 @@ web UI는 템플릿 목록 모달의 「승인 대기」 탭에서 MVP 승인/�
 - multi-replica / 수평 확장 시 Redis 또는 DB 기반 rate limit으로 교체 필요
 - Express `trust proxy: 1` — Railway 프록시 뒤 `req.ip` / `X-Forwarded-For` 반영
 
+**로그인 감사 로그 (DB, 1차)**
+
+| 항목 | 값 |
+|------|-----|
+| 테이블 | `auth_audit_logs` (migration `009_auth_audit_logs.sql`) |
+| 기록 이벤트 | `login_success`, `login_failed`, `login_rate_limited` |
+| 저장하지 않음 | password, JWT token |
+| 저장 필드 | loginId, userId, gymId, role, eventType, success, failureCode, ipAddress, userAgent, createdAt |
+| 조회 | `GET /api/admin/auth-audit-logs` — **super_admin** only |
+| UI | 빌더 헤더 「감사 로그」 모달 (super_admin) |
+
+- audit insert 실패는 로그인 응답을 막지 않음 (`console.warn` only)
+- 운영 TODO: retention policy, export, suspicious login alert, IP geo lookup, Redis/DB rate limit 연계
+
 **운영 전 보안 체크리스트**
 
 - `JWT_SECRET`을 강한 랜덤 값으로 설정하고 주기적으로 교체 검토
@@ -258,7 +273,7 @@ web UI는 템플릿 목록 모달의 「승인 대기」 탭에서 MVP 승인/�
 - `AUTH_PROVIDER=db` + production에서 header fallback 비활성화 검토
 - HTTPS only + httpOnly cookie 세션 저장 검토
 - 로그인 rate limit Redis/DB화 (multi-replica 배포 전)
-- login audit log
+- audit retention / export / alert
 - account lock / unlock UI
 - password reset flow
 
