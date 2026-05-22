@@ -17,6 +17,10 @@ export interface ErrorResponseBody {
   };
 }
 
+function isProductionNodeEnv(): boolean {
+  return process.env.NODE_ENV === 'production';
+}
+
 export function toErrorResponse(error: unknown): { status: number; body: ErrorResponseBody } {
   if (error instanceof ApiError) {
     return {
@@ -35,8 +39,8 @@ export function toErrorResponse(error: unknown): { status: number; body: ErrorRe
       status: 500,
       body: {
         error: {
-          code: 'INTERNAL_ERROR',
-          message: error.message,
+          code: 'INTERNAL_SERVER_ERROR',
+          message: isProductionNodeEnv() ? 'Internal server error' : error.message,
         },
       },
     };
@@ -46,8 +50,8 @@ export function toErrorResponse(error: unknown): { status: number; body: ErrorRe
     status: 500,
     body: {
       error: {
-        code: 'INTERNAL_ERROR',
-        message: 'Unexpected server error',
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Internal server error',
       },
     },
   };

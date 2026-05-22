@@ -127,6 +127,20 @@ railway run npm run db:migrate:api
 npm run db:migrate:prod -w @fightbox/api
 ```
 
+`postgres.railway.internal` DNS 오류 시 Railway Postgres 서비스의 **public** 연결 URL을 로컬 `DATABASE_URL`에만 임시 지정한 뒤 `npm run db:migrate:api`를 실행하세요. DB URL·비밀번호는 커밋·로그·PR 본문에 넣지 마세요.
+
+### main merge 후 배포·migration 체크리스트
+
+1. **Railway 배포 확인** — `api` / `app` 서비스 redeploy **SUCCESS**
+2. **migration 포함 PR인지 확인** — `apps/api/src/db/migrations/*.sql` 변경이 있으면 **반드시** `npm run db:migrate:api` 실행
+3. **migration 적용 확인** — `schema_migrations`에 새 파일 id 기록, 기존 `users` / `gym_staff_permissions` 데이터 유지
+4. **공통 smoke** — `GET /health` 200
+5. **인증 migration 후** — `POST /api/auth/login`, `GET /api/auth/me` (Bearer)
+6. **사용자 관리 migration 후** — `GET /api/admin/users` (super_admin / gym_admin Bearer)
+7. **직원 권한 migration 후** — `GET /api/gym/staff-permissions`, `GET /api/gym/staff-permissions/me` (`gym_staff`)
+
+migration 자동 실행은 아직 CI/Railway hook에 연결되어 있지 않습니다. 배포 후 수동 실행을 기본 절차로 둡니다.
+
 루트 `npm run build` / `npm run start` 도 web 기준으로 동작합니다.
 
 ## 주요 라우트

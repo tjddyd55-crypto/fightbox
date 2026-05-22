@@ -1,8 +1,8 @@
 import cors from 'cors';
 import express from 'express';
-import type { Request, Response } from 'express';
 import { assertAuthConfiguredForStartup } from './config/authConfig.js';
 import { optionalAuth } from './middleware/authMiddleware.js';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { requestContextMiddleware } from './middleware/requestContext.js';
 import authRoutes from './routes/authRoutes.js';
 import gymAdminRoutes from './routes/gymAdminRoutes.js';
@@ -10,7 +10,6 @@ import userManagementRoutes from './routes/userManagementRoutes.js';
 import gymStaffPermissionRoutes from './routes/gymStaffPermissionRoutes.js';
 import workoutBuilderRoutes from './routes/workoutBuilderRoutes.js';
 import workoutVideoUploadRoutes from './routes/workoutVideoUploadRoutes.js';
-import { toErrorResponse } from './utils/apiError.js';
 
 assertAuthConfiguredForStartup();
 
@@ -51,10 +50,8 @@ app.use('/api/gym/staff-permissions', ...protectedApi, gymStaffPermissionRoutes)
 app.use('/api/admin/gyms', ...protectedApi, gymAdminRoutes);
 app.use('/api/admin/users', ...protectedApi, userManagementRoutes);
 
-app.use((error: unknown, _req: Request, res: Response) => {
-  const { status, body } = toErrorResponse(error);
-  res.status(status).json(body);
-});
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 app.listen(port, '0.0.0.0', () => {
   console.log(`fightbox-api listening on ${port}`);
