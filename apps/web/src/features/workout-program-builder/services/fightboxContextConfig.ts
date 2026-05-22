@@ -1,5 +1,6 @@
 import {
   FIGHTBOX_ROLE_LABELS,
+  inferAccountScopeFromRole,
   isFightboxUserRole,
   parseStaffPermissionsJson,
   sessionUserToRequestContext,
@@ -43,11 +44,13 @@ function getEnvFallbackContext(): FightboxRequestContext {
   const staffPermissions = parseStaffPermissionsFromEnv(
     import.meta.env.VITE_FIGHTBOX_STAFF_PERMISSIONS,
   );
+  const accountScope = inferAccountScopeFromRole(role);
 
   return {
     gymId,
     userId,
     role,
+    accountScope,
     ...(staffPermissions ? { staffPermissions } : {}),
   };
 }
@@ -64,13 +67,33 @@ export function getFightboxClientContext(): FightboxRequestContext {
   return getFightboxClientContextFromSession() ?? getEnvFallbackContext();
 }
 
-export function getFightboxContextHeaders(): Record<string, string> {
-  const context = getFightboxClientContext();
+export function buildFightboxContextHeaders(
+  context: FightboxRequestContext,
+): Record<string, string> {
   const headers: Record<string, string> = {
     'x-gym-id': context.gymId,
     'x-user-id': context.userId,
     'x-user-role': context.role,
   };
+
+  if (context.accountScope) {
+    headers['x-account-scope'] = context.accountScope;
+  }
+  if (context.gymCode) {
+    headers['x-gym-code'] = context.gymCode;
+  }
+  if (context.gymName) {
+    headers['x-gym-name'] = context.gymName;
+  }
+  if (context.creatorId) {
+    headers['x-creator-id'] = context.creatorId;
+  }
+  if (context.creatorCode) {
+    headers['x-creator-code'] = context.creatorCode;
+  }
+  if (context.creatorName) {
+    headers['x-creator-name'] = context.creatorName;
+  }
 
   if (context.role === 'gym_staff') {
     headers['x-staff-permissions'] = JSON.stringify(context.staffPermissions ?? {});
@@ -79,9 +102,32 @@ export function getFightboxContextHeaders(): Record<string, string> {
   return headers;
 }
 
+export function getFightboxContextHeaders(): Record<string, string> {
+  return buildFightboxContextHeaders(getFightboxClientContext());
+}
+
+export function getFightboxContextHeadersForUser(user: FightboxSessionUser): Record<string, string> {
+  return buildFightboxContextHeaders(sessionUserToRequestContext(user));
+}
+
 export function getFightboxRoleLabel(context?: FightboxRequestContext): string {
   const resolved = context ?? getFightboxClientContext();
   return FIGHTBOX_ROLE_LABELS[resolved.role];
+}
+
+export function getBuilderHeaderScopeLabel(user: FightboxSessionUser): string {
+  const scope = user.accountScope ?? inferAccountScopeFromRole(user.role);
+
+  switch (scope) {
+    case 'platform':
+      return '전체 관리자';
+    case 'gym':
+      return user.gymCode ?? user.gymId ?? '—';
+    case 'creator':
+      return user.creatorCode ?? user.creatorId ?? '—';
+    default:
+      return '—';
+  }
 }
 
 export function getFightboxUserDisplayFromSession(): Pick<
@@ -101,5 +147,8 @@ export function getFightboxUserDisplayFromSession(): Pick<
 
 export function logFightboxClientContext(): void {
   const context = getFightboxClientContext();
-  console.info(`[fightbox] role ${context.role} gym ${context.gymId} user ${context.userId}`);
+  const scope = context.accountScope ?? inferAccountScopeFromRole(context.role);
+  console.info(
+    `[fightbox] scope ${scope} role ${context.role} gym ${context.gymId} user ${context.userId}`,
+  );
 }
