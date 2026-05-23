@@ -10,6 +10,7 @@ interface DashboardLayoutProps {
   title: string;
   sidebarItems: DashboardNavItem[];
   onLogout: () => void;
+  showCreditBalance?: boolean;
   children: ReactNode;
 }
 
@@ -19,11 +20,18 @@ export function DashboardLayout({
   title,
   sidebarItems,
   onLogout,
+  showCreditBalance = false,
   children,
 }: DashboardLayoutProps) {
   return (
     <div className="dash-root">
-      <DashboardHeader user={user} scopeLabel={scopeLabel} title={title} onLogout={onLogout} />
+      <DashboardHeader
+        user={user}
+        scopeLabel={scopeLabel}
+        title={title}
+        onLogout={onLogout}
+        showCreditBalance={showCreditBalance}
+      />
       <div className="dash-body">
         <DashboardSidebar items={sidebarItems} onLogout={onLogout} />
         <main className="dash-main">{children}</main>

@@ -1,6 +1,5 @@
-import { FIGHTBOX_ROLE_LABELS } from '@fightbox/shared';
-import { mockCreditWallet } from '../data/mockCreditWallet';
-import { shouldUseWorkoutBuilderMockCatalog } from '../services/workoutBuilderFeatureFlags';
+import { FIGHTBOX_ROLE_LABELS, type FightboxSessionUser } from '@fightbox/shared';
+import { CreditBalanceBadge } from '../../billing/components/CreditBalanceBadge';
 import type { WorkoutProgramTemplate } from '../types/workoutProgramBuilder.types';
 import { formatDuration } from '../utils/durationUtils';
 
@@ -20,6 +19,8 @@ interface BuilderHeaderProps {
   showGymManagementButton?: boolean;
   onOpenAuthAuditLogs?: () => void;
   showAuthAuditLogsButton?: boolean;
+  showCreditBalance?: boolean;
+  creditBalanceUser?: FightboxSessionUser;
 }
 
 export function BuilderHeader({
@@ -38,6 +39,8 @@ export function BuilderHeader({
   showGymManagementButton = false,
   onOpenAuthAuditLogs,
   showAuthAuditLogsButton = false,
+  showCreditBalance = false,
+  creditBalanceUser,
 }: BuilderHeaderProps) {
   const roleLabel = FIGHTBOX_ROLE_LABELS[userRole];
   const desktopRoleMeta = `${roleLabel} · ${userLoginId} · ${scopeLabel}`;
@@ -79,11 +82,12 @@ export function BuilderHeader({
           <span className="wpb-save-badge">● 자동 저장됨</span>
           <span className="wpb-header-meta-template">{template.title}</span>
           <span className="wpb-header-meta-duration">총 {formatDuration(totalDurationSec)}</span>
-          {shouldUseWorkoutBuilderMockCatalog() && (
-            <span className="wpb-header-meta-credits" title="보유 크레딧 (더미)">
-              {mockCreditWallet.balance} {mockCreditWallet.currencyLabel}
-            </span>
-          )}
+          {showCreditBalance && creditBalanceUser ? (
+            <CreditBalanceBadge
+              user={creditBalanceUser}
+              className="wpb-header-meta-credits"
+            />
+          ) : null}
           <span className="wpb-header-meta-role" title={`${userDisplayName} (${userLoginId})`}>
             {desktopRoleMeta}
           </span>

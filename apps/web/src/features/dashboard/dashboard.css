@@ -69,6 +69,13 @@
   color: #7a7d87;
 }
 
+.dash-header-credits {
+  color: #ffd60a;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .dash-header-logout {
   padding: 6px 12px;
   border: 1px solid #3a3b44;

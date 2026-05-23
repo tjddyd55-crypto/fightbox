@@ -239,6 +239,8 @@ export function WorkoutProgramBuilderPage() {
         onOpenGymManagement={() => setIsGymManagementOpen(true)}
         showAuthAuditLogsButton={permissions.canViewAuthAuditLogs}
         onOpenAuthAuditLogs={() => setIsAuthAuditLogOpen(true)}
+        showCreditBalance={permissions.canViewBilling}
+        creditBalanceUser={user}
       />
       <MobileBuilderTabs activeTab={mobileTab} onTabChange={setMobileTab} />
       <section className="wpb-body">
