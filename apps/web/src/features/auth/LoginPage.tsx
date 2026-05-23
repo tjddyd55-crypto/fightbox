@@ -31,7 +31,7 @@ export function LoginPage() {
   }
 
   if (isAuthenticated) {
-    return <Navigate to="/workout-program-builder" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -41,7 +41,7 @@ export function LoginPage() {
 
     try {
       await login(loginId, password);
-      navigate('/workout-program-builder', { replace: true });
+      navigate('/dashboard', { replace: true });
     } catch (error) {
       if (error instanceof AuthError) {
         setErrorMessage(error.message);
