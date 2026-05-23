@@ -6,6 +6,8 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { requestContextMiddleware } from './middleware/requestContext.js';
 import authRoutes from './routes/authRoutes.js';
 import authAuditRoutes from './routes/authAuditRoutes.js';
+import billingRoutes from './routes/billingRoutes.js';
+import adminBillingRoutes from './routes/adminBillingRoutes.js';
 import gymAdminRoutes from './routes/gymAdminRoutes.js';
 import userManagementRoutes from './routes/userManagementRoutes.js';
 import gymStaffPermissionRoutes from './routes/gymStaffPermissionRoutes.js';
@@ -56,6 +58,8 @@ app.use('/api/gym/staff-permissions', ...protectedApi, gymStaffPermissionRoutes)
 app.use('/api/admin/gyms', ...protectedApi, gymAdminRoutes);
 app.use('/api/admin/users', ...protectedApi, userManagementRoutes);
 app.use('/api/admin/auth-audit-logs', ...protectedApi, authAuditRoutes);
+app.use('/api/billing', ...protectedApi, billingRoutes);
+app.use('/api/admin/billing', ...protectedApi, adminBillingRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
