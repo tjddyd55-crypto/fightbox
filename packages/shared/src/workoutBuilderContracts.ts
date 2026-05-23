@@ -30,6 +30,10 @@ export interface ProgramTemplateDto {
   publicRejectionReason?: string | null;
   publicReviewedAt?: string | null;
   publicReviewedBy?: string | null;
+  shareToken?: string | null;
+  shareEnabled?: boolean;
+  publishedAt?: string | null;
+  unpublishedAt?: string | null;
   createdBy: string;
   createdAt: string;
   updatedAt: string;

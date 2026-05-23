@@ -91,6 +91,15 @@ export {
 } from './userManagementContracts.js';
 
 export {
+  PROGRAM_SHARE_API_PATHS,
+  type PublicProgramShareResponse,
+  type PublishProgramTemplateResponse,
+  type PublishedProgramPlaybackItemDto,
+  type PublishedProgramShareDto,
+  type UnpublishProgramTemplateResponse,
+} from './programShareContracts.js';
+
+export {
   WORKOUT_BUILDER_API_PATHS,
   type CreateProgramTemplateRequest,
   type CreateUploadedVideoRequest,
