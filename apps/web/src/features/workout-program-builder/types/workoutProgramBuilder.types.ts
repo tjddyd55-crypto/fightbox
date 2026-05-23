@@ -156,6 +156,10 @@ export interface WorkoutProgramTemplate {
   publicRejectionReason?: string;
   publicReviewedAt?: string;
   publicReviewedBy?: string;
+  shareToken?: string | null;
+  shareEnabled?: boolean;
+  publishedAt?: string | null;
+  unpublishedAt?: string | null;
   createdAt: string;
   updatedAt: string;
   /** Gym scope for multi-tenant API (optional until backend). */

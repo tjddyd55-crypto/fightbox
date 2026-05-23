@@ -8,6 +8,13 @@ import {
   rejectPublicTemplate,
 } from '../repositories/programTemplateRepository';
 import { isPublicReviewPending, VISIBILITY_LABEL } from '../utils/visibilityUtils';
+import {
+  buildClientShareUrl,
+  publishProgramTemplate,
+  unpublishProgramTemplate,
+} from '../../program-share/programShareApiClient';
+import { programTemplateDtoToWorkoutProgramTemplate } from '../services/workoutBuilderApiClient';
+import { saveProgramTemplate } from '../storage/programTemplateStorage';
 
 function formatUpdatedAt(iso: string): string {
   try {
@@ -34,6 +41,7 @@ interface TemplateLibraryModalProps {
   onNotify?: (message: string) => void;
   showReviewTab?: boolean;
   canDeleteTemplates?: boolean;
+  canPublishTemplates?: boolean;
 }
 
 export function TemplateLibraryModal({
@@ -46,11 +54,14 @@ export function TemplateLibraryModal({
   onNotify,
   showReviewTab = false,
   canDeleteTemplates = true,
+  canPublishTemplates = false,
 }: TemplateLibraryModalProps) {
   const [activeTab, setActiveTab] = useState<LibraryTab>('saved');
   const [templates, setTemplates] = useState<WorkoutProgramTemplate[]>([]);
   const [pendingSubmissions, setPendingSubmissions] = useState<WorkoutProgramTemplate[]>([]);
   const [isReviewBusy, setIsReviewBusy] = useState(false);
+  const [isPublishBusy, setIsPublishBusy] = useState(false);
+  const [shareUrlByTemplateId, setShareUrlByTemplateId] = useState<Record<string, string>>({});
 
   const loadSavedTemplates = useCallback(async () => {
     const next = await refreshTemplatesFromApi();
@@ -79,6 +90,80 @@ export function TemplateLibraryModal({
 
   const notify = (message: string) => {
     onNotify?.(message);
+  };
+
+  const applyPublishedTemplate = (template: WorkoutProgramTemplate) => {
+    saveProgramTemplate(template);
+    setTemplates((prev) => prev.map((item) => (item.id === template.id ? template : item)));
+  };
+
+  const resolveShareUrl = (template: WorkoutProgramTemplate): string | null => {
+    if (shareUrlByTemplateId[template.id]) {
+      return shareUrlByTemplateId[template.id];
+    }
+    if (template.shareToken) {
+      return buildClientShareUrl(template.shareToken);
+    }
+    return null;
+  };
+
+  const copyShareUrl = async (shareUrl: string) => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      notify('공유 링크를 복사했습니다.');
+    } catch {
+      notify(`복사에 실패했습니다. 링크: ${shareUrl}`);
+    }
+  };
+
+  const handlePublish = async (templateId: string) => {
+    if (!canPublishTemplates || isPublishBusy) return;
+    const target = templates.find((item) => item.id === templateId);
+    if (!target) return;
+
+    setIsPublishBusy(true);
+    try {
+      const result = await publishProgramTemplate(templateId);
+      const synced = programTemplateDtoToWorkoutProgramTemplate(result.template);
+      if (!synced) {
+        notify('게시 결과를 반영하지 못했습니다.');
+        return;
+      }
+      applyPublishedTemplate(synced);
+      setShareUrlByTemplateId((prev) => ({
+        ...prev,
+        [templateId]: result.shareUrl || buildClientShareUrl(result.shareToken),
+      }));
+      notify('공유 링크가 생성되었습니다.');
+    } catch {
+      notify('게시에 실패했습니다.');
+    } finally {
+      setIsPublishBusy(false);
+    }
+  };
+
+  const handleUnpublish = async (templateId: string) => {
+    if (!canPublishTemplates || isPublishBusy) return;
+    const target = templates.find((item) => item.id === templateId);
+    if (!target) return;
+    const confirmed = window.confirm(`「${target.title}」 게시를 취소할까요?`);
+    if (!confirmed) return;
+
+    setIsPublishBusy(true);
+    try {
+      const dto = await unpublishProgramTemplate(templateId);
+      const synced = programTemplateDtoToWorkoutProgramTemplate(dto);
+      if (!synced) {
+        notify('게시 취소 결과를 반영하지 못했습니다.');
+        return;
+      }
+      applyPublishedTemplate(synced);
+      notify('게시를 취소했습니다.');
+    } catch {
+      notify('게시 취소에 실패했습니다.');
+    } finally {
+      setIsPublishBusy(false);
+    }
   };
 
   const handleApprove = async (templateId: string) => {
@@ -186,6 +271,11 @@ export function TemplateLibraryModal({
                   <div className="wpb-template-card-main">
                     <h3>
                       {template.title}
+                      {template.shareEnabled && (
+                        <span className="wpb-visibility-badge wpb-visibility-badge--published">
+                          게시됨
+                        </span>
+                      )}
                       {isPublicReviewPending(template.visibility) && (
                         <span className="wpb-visibility-badge wpb-visibility-badge--pending">
                           승인 대기
@@ -221,6 +311,43 @@ export function TemplateLibraryModal({
                     >
                       복사
                     </button>
+                    {canPublishTemplates &&
+                      (template.shareEnabled ? (
+                        <>
+                          <button
+                            type="button"
+                            className="wpb-btn wpb-btn-primary wpb-btn-sm"
+                            disabled={isPublishBusy}
+                            onClick={() => {
+                              const shareUrl = resolveShareUrl(template);
+                              if (!shareUrl) {
+                                notify('공유 링크를 찾을 수 없습니다. 다시 게시해 주세요.');
+                                return;
+                              }
+                              void copyShareUrl(shareUrl);
+                            }}
+                          >
+                            공유 링크 복사
+                          </button>
+                          <button
+                            type="button"
+                            className="wpb-btn wpb-btn-ghost wpb-btn-sm"
+                            disabled={isPublishBusy}
+                            onClick={() => void handleUnpublish(template.id)}
+                          >
+                            게시 취소
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          className="wpb-btn wpb-btn-primary wpb-btn-sm"
+                          disabled={isPublishBusy}
+                          onClick={() => void handlePublish(template.id)}
+                        >
+                          게시
+                        </button>
+                      ))}
                     <button
                       type="button"
                       className="wpb-btn wpb-btn-ghost wpb-btn-sm wpb-btn-danger-text"

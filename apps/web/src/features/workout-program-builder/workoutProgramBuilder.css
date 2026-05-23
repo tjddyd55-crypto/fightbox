@@ -1218,6 +1218,11 @@
   color: #ffd60a;
 }
 
+.wpb-visibility-badge--published {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
+
 .wpb-header-meta-credits {
   font-size: 13px;
   color: #ffd60a;

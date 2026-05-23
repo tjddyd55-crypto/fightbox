@@ -389,6 +389,9 @@ export function WorkoutProgramBuilderPage() {
         onNotify={state.showMessage}
         showReviewTab={permissions.canReviewPublicTemplates}
         canDeleteTemplates={permissions.canDeleteTemplates}
+        canPublishTemplates={
+          permissions.canEditTemplates || permissions.canCreateTemplates
+        }
       />
       {state.isTestPlaying && (
         <TestPlaybackModal
