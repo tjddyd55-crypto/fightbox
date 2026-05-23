@@ -166,6 +166,7 @@ migration 자동 실행은 아직 CI/Railway hook에 연결되어 있지 않습�
 | 경로 | 설명 |
 |------|------|
 | `/dashboard` | 로그인 후 기본 진입점 — 역할별 대시보드 |
+| `/dashboard/program-schedule` | 주간 프로그램 스케줄 편성 |
 | `/workout-program-builder` | 운동 프로그램 빌더 (대시보드 메뉴에서 진입) |
 | `/programs/:templateId/play` | 저장된 템플릿 프로그램 실행 (로그인 필요) |
 | `/share/programs/:shareToken` | 공유 링크 공개 페이지 (로그인 불필요) |
@@ -177,9 +178,9 @@ migration 자동 실행은 아직 CI/Railway hook에 연결되어 있지 않습�
 
 | 역할 | 대시보드 | 주요 메뉴 |
 |------|----------|-----------|
-| `super_admin` | FIGHTBOX 관리자 대시보드 | 사용자 관리, 프로그램 빌더, 공용 승인, 감사 로그, 직원 권한, **결제/크레딧** |
-| `gym_admin` | 체육관관리자 대시보드 | 프로그램 빌더, 영상·템플릿, 직원 권한, 사용자 관리, **크레딧 충전** |
-| `gym_staff` | 체육관직원 대시보드 | `staffPermissions`에 따라 영상 업로드·빌더·공용 신청 등 |
+| `super_admin` | FIGHTBOX 관리자 대시보드 | 사용자 관리, 프로그램 빌더, 공용 승인, 감사 로그, 직원 권한, **결제/크레딧**, **주간 스케줄** |
+| `gym_admin` | 체육관관리자 대시보드 | 프로그램 빌더, 영상·템플릿, 직원 권한, 사용자 관리, **크레딧 충전**, **주간 스케줄** |
+| `gym_staff` | 체육관직원 대시보드 | `staffPermissions`에 따라 영상 업로드·빌더·공용 신청·**주간 스케줄** 등 |
 | `video_creator` | 크리에이터 대시보드 | 영상 등록, 템플릿 세팅, 프로그램 실행 확인 |
 
 - 관리자 모달(사용자 관리·직원 권한·감사 로그)은 대시보드에서 직접 열 수 있습니다.
@@ -237,6 +238,23 @@ migration 자동 실행은 아직 CI/Railway hook에 연결되어 있지 않습�
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook secret |
 
 Migration: `011_billing_credits.sql` — `npm run db:migrate:api` (Railway: `railway run npm run db:migrate:api`)
+
+### 주간 프로그램 스케줄 (`/dashboard/program-schedule`)
+
+체육관 운영자가 저장된 **운동 프로그램 템플릿**을 요일·시간에 배치하는 **매주 반복 기본 시간표** MVP입니다.
+
+| 항목 | 설명 |
+|------|------|
+| 경로 | `/dashboard/program-schedule` |
+| 표시 | 일요일~토요일 7일 grid, 06:00~23:00, 30분 단위 |
+| 연동 | `program_templates` + `/programs/:templateId/play` 실행 |
+| 권한 | 조회: super_admin / gym_admin / gym_staff · 편집: admin 또는 템플릿 권한 있는 staff |
+
+- PC/대형 모니터 우선 레이아웃, 모바일은 horizontal scroll fallback
+- 같은 요일·시간 다중 수업 허용, **roomName**이 겹치면 409 `SCHEDULE_CONFLICT`
+- Migration: `012_program_weekly_schedules.sql`
+
+**향후 예정:** 특정 날짜 예외, 휴무일, 코치/룸 필터, CRM·출석·결제 연동
 
 ## Workout Program Builder
 
