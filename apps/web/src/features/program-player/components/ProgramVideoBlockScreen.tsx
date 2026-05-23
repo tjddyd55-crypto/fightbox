@@ -63,7 +63,7 @@ export function ProgramVideoBlockScreen({
         ) : (
           <div className="pp-video-placeholder" aria-hidden="true">
             <span className="pp-video-placeholder-icon">▶</span>
-            <span className="pp-video-placeholder-label">영상 준비 중</span>
+            <span className="pp-video-placeholder-label">영상 URL이 없습니다.</span>
           </div>
         )}
         {!hasPlayback && (
