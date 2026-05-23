@@ -209,7 +209,21 @@ migration 자동 실행은 아직 CI/Railway hook에 연결되어 있지 않습�
 
 - `credit_wallets.balance`는 ledger entry와 **트랜잭션으로 함께** 갱신합니다.
 - 카드번호·결제 민감정보는 **저장하지 않습니다**. PG 결제창/외부 URL 이동 구조를 전제로 합니다.
-- 이번 1차는 **크레딧 사용 차감**(업로드/공유/AI 등)은 구현하지 않습니다.
+
+**크레딧 사용 차감 1차 (프로그램 게시)**
+
+| 항목 | 정책 |
+|------|------|
+| 과금 시점 | 프로그램 템플릿 **최초 게시** (`published_at`이 null → publish) |
+| 비용 | `CREDIT_USAGE_COSTS.programPublish` = **1 credit** |
+| idempotency | `program_publish:{templateId}:first_publish` |
+| 재게시 | `published_at`이 이미 있으면 **추가 차감 없음** (게시 취소 후 재게시 포함) |
+| super_admin | MVP에서 **차감 면제** |
+| 차감 대상 | `gym_admin`, `gym_staff`, `video_creator` |
+| ledger | `entry_type=spend`, `amount=-1`, `source_type=program_publish` |
+| 잔액 부족 | `402 INSUFFICIENT_CREDITS` — `/dashboard/billing`에서 충전 |
+
+publish API는 **크레딧 차감과 share 활성화를 단일 DB 트랜잭션**으로 처리합니다.
 
 **Payment provider**
 
@@ -225,7 +239,9 @@ migration 자동 실행은 아직 CI/Railway hook에 연결되어 있지 않습�
 - PortOne 인증결제 / webhook signature 검증
 - Stripe Checkout Sessions
 - 환불, 영수증/세금계산서, 구독/빌링키
-- 업로드·공유·AI별 크레딧 차감 정책
+- 업로드·AI·회원배정별 크레딧 차감 정책
+- 상품별/플랜별 publish 비용, 환불(credit restore)
+- 월 구독/포함 크레딧
 
 **API env (선택, 2차 PG용 — 코드/커밋에 secret 금지)**
 
@@ -334,9 +350,10 @@ web UI는 템플릿 목록 모달의 「승인 대기」 탭에서 MVP 승인/�
 체육관 코치가 저장한 템플릿을 **회원에게 공유할 수 있는 읽기 전용 링크**로 게시합니다. (회원 DB·회원 로그인은 이번 범위 아님)
 
 1. 템플릿 저장 후 `POST /api/workout-builder/templates/:id/publish` (또는 UI 「게시」)
-2. API가 `share_token`을 생성(또는 재게시 시 기존 token 재사용)하고 `shareUrl` 반환
-3. web `/share/programs/:shareToken` 공개 페이지에서 로그인 없이 프로그램·타임라인·영상 재생
-4. `POST .../unpublish` 또는 UI 「게시 취소」 → `share_enabled=false` → 동일 URL 404
+2. **최초 게시** 시 체육관 wallet에서 **1 credit** 차감 (`super_admin` 제외). 잔액 부족 시 `402 INSUFFICIENT_CREDITS`
+3. API가 `share_token`을 생성(또는 재게시 시 기존 token 재사용)하고 `shareUrl` 반환
+4. web `/share/programs/:shareToken` 공개 페이지에서 로그인 없이 프로그램·타임라인·영상 재생
+5. `POST .../unpublish` 또는 UI 「게시 취소」 → `share_enabled=false` → 동일 URL 404
 
 | API env | 용도 |
 |---------|------|
@@ -344,6 +361,7 @@ web UI는 템플릿 목록 모달의 「승인 대기」 탭에서 MVP 승인/�
 
 - share token: `crypto.randomBytes(24).base64url` — URL에만 노출, 추측 어려움
 - public endpoint에는 password/token/사용자 관리 정보 없음
+- 게시 취소 후 재게시(MVP): `published_at`이 있으면 **추가 크레딧 차감 없음**
 - 게시 취소 후에도 DB `share_token`은 유지 가능 — `share_enabled=false`면 접근 차단
 - **향후:** 회원 배정, 만료일, 조회수, 접근 로그, 비밀번호 보호, 커스텀 도메인
 
