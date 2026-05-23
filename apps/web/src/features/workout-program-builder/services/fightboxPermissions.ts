@@ -3,12 +3,15 @@ import {
   canDeleteTemplates,
   canEditTemplates,
   canManageGyms,
+  canManageBilling,
   canManageUsers,
   canManageStaffPermissions,
   canManageVideos,
+  canPurchaseCredits,
   canReviewPublicTemplates,
   canSubmitPublicTemplates,
   canUploadVideos,
+  canViewBilling,
   canViewAuthAuditLogs,
   FIGHTBOX_ROLE_LABELS,
   sessionUserToRequestContext,
@@ -30,6 +33,9 @@ export interface FightboxClientPermissions {
   canManageGyms: boolean;
   canManageUsers: boolean;
   canViewAuthAuditLogs: boolean;
+  canManageBilling: boolean;
+  canPurchaseCredits: boolean;
+  canViewBilling: boolean;
 }
 
 function buildPermissions(context: FightboxRequestContext): FightboxClientPermissions {
@@ -46,6 +52,9 @@ function buildPermissions(context: FightboxRequestContext): FightboxClientPermis
     canManageGyms: canManageGyms(context),
     canManageUsers: canManageUsers(context),
     canViewAuthAuditLogs: canViewAuthAuditLogs(context),
+    canManageBilling: canManageBilling(context),
+    canPurchaseCredits: canPurchaseCredits(context),
+    canViewBilling: canViewBilling(context),
   };
 }
 

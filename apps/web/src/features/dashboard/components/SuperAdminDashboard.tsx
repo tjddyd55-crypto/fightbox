@@ -57,6 +57,13 @@ export function SuperAdminDashboard({ user, scopeLabel, actions }: DashboardView
         description="체육관 직원 권한 조정"
         onClick={actions.openStaffPermissions}
       />
+      <DashboardMenuCard
+        icon="💳"
+        title="결제/크레딧 관리"
+        description="체육관 크레딧 지갑 조회, 수동 지급/차감, 결제 내역"
+        badge="결제"
+        onClick={actions.goToBilling}
+      />
     </DashboardHome>
   );
 }

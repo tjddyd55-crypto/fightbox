@@ -69,6 +69,15 @@ function buildSidebarItems(
     });
   }
 
+  if (permissions.canViewBilling && actions.goToBilling) {
+    items.push({
+      id: 'billing',
+      label: permissions.canManageBilling ? '결제/크레딧' : '크레딧 충전',
+      icon: '💳',
+      onClick: actions.goToBilling,
+    });
+  }
+
   return items;
 }
 
@@ -98,6 +107,9 @@ export function DashboardPage() {
   const actions: DashboardActions = useMemo(
     () => ({
       goToBuilder: (params) => navigate(buildBuilderUrl(params)),
+      goToBilling: permissions?.canViewBilling
+        ? () => navigate('/dashboard/billing')
+        : undefined,
       openUserManagement: permissions?.canManageUsers
         ? () => setIsUserManagementOpen(true)
         : undefined,
@@ -154,6 +166,7 @@ export function DashboardPage() {
         title={title}
         sidebarItems={sidebarItems}
         onLogout={handleLogout}
+        showCreditBalance={permissions.canViewBilling}
       >
         {content}
       </DashboardLayout>

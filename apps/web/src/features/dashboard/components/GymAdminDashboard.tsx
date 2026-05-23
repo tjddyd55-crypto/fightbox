@@ -53,6 +53,13 @@ export function GymAdminDashboard({ user, scopeLabel, actions }: DashboardViewPr
         description="템플릿 공용 라이브러리 신청 및 공유 링크"
         onClick={() => actions.goToBuilder()}
       />
+      <DashboardMenuCard
+        icon="💳"
+        title="크레딧 충전/결제"
+        description="체육관 크레딧 잔액 확인 및 충전 요청"
+        badge="결제"
+        onClick={actions.goToBilling}
+      />
     </DashboardHome>
   );
 }
