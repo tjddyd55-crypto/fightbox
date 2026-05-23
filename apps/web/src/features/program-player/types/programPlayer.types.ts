@@ -52,6 +52,8 @@ export interface ProgramPlayerSnapshot {
   currentIndex: number;
   isPlaying: boolean;
   elapsedSec: number;
+  /** Broadcast drift correction — wall clock ms when snapshot was sent */
+  timestamp?: number;
 }
 
 export type ProgramPlayerOutgoingMessage =
@@ -63,6 +65,7 @@ export type ProgramPlayerOutgoingMessage =
   | { type: 'RESTART' }
   | { type: 'START' }
   | { type: 'COMPLETE' }
+  | { type: 'RETURN_TO_START' }
   | { type: 'JUMP_TO_BLOCK'; index: number };
 
 export type ProgramPlayerBroadcastMessage = ProgramPlayerOutgoingMessage & {
