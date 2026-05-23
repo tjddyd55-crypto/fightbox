@@ -34,6 +34,7 @@ type LibraryTab = 'saved' | 'pending-review';
 interface TemplateLibraryModalProps {
   isOpen: boolean;
   activeTemplateId: string | null;
+  initialTab?: LibraryTab;
   onClose: () => void;
   onLoad: (templateId: string) => void;
   onCopy: (templateId: string) => void;
@@ -47,6 +48,7 @@ interface TemplateLibraryModalProps {
 export function TemplateLibraryModal({
   isOpen,
   activeTemplateId,
+  initialTab = 'saved',
   onClose,
   onLoad,
   onCopy,
@@ -58,6 +60,12 @@ export function TemplateLibraryModal({
 }: TemplateLibraryModalProps) {
   const [activeTab, setActiveTab] = useState<LibraryTab>('saved');
   const [templates, setTemplates] = useState<WorkoutProgramTemplate[]>([]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
   const [pendingSubmissions, setPendingSubmissions] = useState<WorkoutProgramTemplate[]>([]);
   const [isReviewBusy, setIsReviewBusy] = useState(false);
   const [isPublishBusy, setIsPublishBusy] = useState(false);

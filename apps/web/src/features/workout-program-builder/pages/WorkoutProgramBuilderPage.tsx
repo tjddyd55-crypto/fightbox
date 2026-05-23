@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { BuilderHeader } from '../components/BuilderHeader';
 import {
@@ -69,6 +69,7 @@ function focusBuilderPanel(panelId: string, preferSearchInput = false): void {
 export function WorkoutProgramBuilderPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const permissions = useMemo(
     () => (user ? getFightboxClientPermissionsForUser(user) : null),
     [user],
@@ -79,6 +80,9 @@ export function WorkoutProgramBuilderPage() {
   const [activeSidebarSection, setActiveSidebarSection] =
     useState<BuilderSidebarActiveSection>('builder');
   const [isTemplateLibraryOpen, setIsTemplateLibraryOpen] = useState(false);
+  const [templateLibraryInitialTab, setTemplateLibraryInitialTab] = useState<
+    'saved' | 'pending-review'
+  >('saved');
   const [isStaffPermissionOpen, setIsStaffPermissionOpen] = useState(false);
   const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
   const [isAuthAuditLogOpen, setIsAuthAuditLogOpen] = useState(false);
@@ -87,6 +91,31 @@ export function WorkoutProgramBuilderPage() {
   const [isVideoUploadOpen, setIsVideoUploadOpen] = useState(false);
   const [editingVideo, setEditingVideo] = useState<WorkoutVideo | null>(null);
   const { setSelectedBlockId, selectedBlockId, showMessage } = state;
+
+  useEffect(() => {
+    const panel = searchParams.get('panel');
+    const modal = searchParams.get('modal');
+    const tab = searchParams.get('tab');
+
+    if (panel === 'videos') {
+      setMobileTab('videos');
+      setActiveSidebarSection('videos');
+      if (!isCompactLayout()) {
+        focusBuilderPanel(PANEL_IDS.videos, true);
+      }
+    }
+
+    if (modal === 'templates') {
+      setTemplateLibraryInitialTab(tab === 'pending' ? 'pending-review' : 'saved');
+      setIsTemplateLibraryOpen(true);
+    } else if (modal === 'user-management') {
+      setIsUserManagementOpen(true);
+    } else if (modal === 'staff-permissions') {
+      setIsStaffPermissionOpen(true);
+    } else if (modal === 'auth-audit') {
+      setIsAuthAuditLogOpen(true);
+    }
+  }, [searchParams]);
 
   const handleLogout = useCallback(() => {
     logout();
@@ -378,6 +407,7 @@ export function WorkoutProgramBuilderPage() {
       <TemplateLibraryModal
         isOpen={isTemplateLibraryOpen}
         activeTemplateId={state.activeTemplateId}
+        initialTab={templateLibraryInitialTab}
         onClose={() => setIsTemplateLibraryOpen(false)}
         onLoad={(id) => {
           state.loadTemplate(id);
