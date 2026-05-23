@@ -5,7 +5,8 @@ import { ProgramBlockTimeline } from './ProgramBlockTimeline';
 import { ProgramCurrentBlockPanel } from './ProgramCurrentBlockPanel';
 import { ProgramMultiScreenLauncher } from './ProgramMultiScreenLauncher';
 import { ProgramNextBlockPanel } from './ProgramNextBlockPanel';
-import { ProgramPlayerControls, useProgramPlayerKeyboard } from './ProgramPlayerControls';
+import { ProgramPlayerControls } from './ProgramPlayerControls';
+import { useProgramPlayerKeyboard } from '../hooks/useProgramPlayerKeyboard';
 import { ProgramProgressHeader } from './ProgramProgressHeader';
 
 interface ProgramSingleViewProps {
