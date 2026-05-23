@@ -240,6 +240,24 @@ web UI는 템플릿 목록 모달의 「승인 대기」 탭에서 MVP 승인/�
 - 게시 취소 후에도 DB `share_token`은 유지 가능 — `share_enabled=false`면 접근 차단
 - **향후:** 회원 배정, 만료일, 조회수, 접근 로그, 비밀번호 보호, 커스텀 도메인
 
+#### 프로그램 실행 화면 UI 1차 (mock)
+
+체육관 PC·대형 TV·프로젝터·듀얼/트리플 모니터에서 운동 프로그램을 **실행 전용**으로 재생하는 UI 데모입니다. 빌더 UI와 분리되어 있습니다.
+
+| URL | 용도 |
+|-----|------|
+| `/program-player-demo` | 기본 (single view) |
+| `/program-player-demo?view=single` | PC 통합 실행 화면 |
+| `/program-player-demo?view=display` | 회원용 대형 표시 화면 |
+| `/program-player-demo?view=coach` | 코치 컨트롤 화면 |
+| `/program-player-demo?view=queue` | 순서/대기 큐 화면 |
+
+- **로그인 불필요** — UI 확인용 mock data
+- **PC/대형 모니터 우선** — desktop-first CSS, 900px 이하 1열 fallback
+- **2~3 모니터 운영** — 「표시/코치/순서 화면 열기」로 브라우저 새 창 → 각 모니터로 이동
+- **BroadcastChannel** — 같은 브라우저 내 창 간 mock 상태 동기화 (미지원 시 독립 fallback)
+- **향후:** `/programs/:templateId/play` 실제 템플릿 연결, 공유 페이지 통합, 자동 타이머 정교화, 음성 가이드, 회원 배정, 완료 기록, 리모컨/키보드 UX, 멀티 디스플레이 동기화 고도화
+
 #### API 로그인 MVP (JWT)
 
 운영 전환 1차: web `VITE_AUTH_PROVIDER=api` + API `JWT_SECRET` 설정 시 DB `users` 테이블 기반 로그인을 사용합니다.
