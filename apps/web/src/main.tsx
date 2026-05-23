@@ -7,6 +7,7 @@ import { ProtectedRoute } from './features/auth/ProtectedRoute';
 import { WorkoutProgramBuilderPage } from './features/workout-program-builder/pages/WorkoutProgramBuilderPage';
 import { PublicProgramPage } from './features/program-share/PublicProgramPage';
 import { ProgramPlayerDemoPage } from './features/program-player/pages/ProgramPlayerDemoPage';
+import { ProgramTemplatePlayerPage } from './features/program-player/pages/ProgramTemplatePlayerPage';
 import './index.css';
 
 function RootRedirect() {
@@ -22,6 +23,14 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/login" element={<LoginPage />} />
           <Route path="/share/programs/:shareToken" element={<PublicProgramPage />} />
           <Route path="/program-player-demo" element={<ProgramPlayerDemoPage />} />
+          <Route
+            path="/programs/:templateId/play"
+            element={
+              <ProtectedRoute>
+                <ProgramTemplatePlayerPage />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/workout-program-builder"
             element={
