@@ -7,6 +7,7 @@ interface BottomActionBarProps {
   onSaveTemplate: () => void;
   onCopySave: () => void;
   onTestPlay: () => void;
+  onLaunchPlayer?: () => void;
   onPublicShare?: () => void;
   canSaveTemplate?: boolean;
   canCopySave?: boolean;
@@ -19,6 +20,7 @@ export function BottomActionBar({
   onSaveTemplate,
   onCopySave,
   onTestPlay,
+  onLaunchPlayer,
   onPublicShare,
   canSaveTemplate = true,
   canCopySave = true,
@@ -57,6 +59,11 @@ export function BottomActionBar({
         {onPublicShare && (
           <button type="button" className="wpb-btn wpb-btn-ghost" onClick={onPublicShare}>
             공용 신청
+          </button>
+        )}
+        {onLaunchPlayer && (
+          <button type="button" className="wpb-btn wpb-btn-ghost" onClick={onLaunchPlayer}>
+            프로그램 실행
           </button>
         )}
         <button

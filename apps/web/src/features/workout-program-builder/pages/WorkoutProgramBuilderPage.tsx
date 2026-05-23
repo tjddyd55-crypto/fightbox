@@ -302,6 +302,13 @@ export function WorkoutProgramBuilderPage() {
           }
           state.setIsTestPlaying(true);
         }}
+        onLaunchPlayer={() => {
+          if (!state.activeTemplateId) {
+            state.showMessage('먼저 템플릿을 저장해 주세요.');
+            return;
+          }
+          navigate(`/programs/${encodeURIComponent(state.activeTemplateId)}/play`);
+        }}
       />
       {state.statusMessage && (
         <p className="wpb-status-toast" role="status">
