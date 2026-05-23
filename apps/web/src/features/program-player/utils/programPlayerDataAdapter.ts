@@ -3,13 +3,13 @@ import type { ProgramBlock, WorkoutProgramTemplate, WorkoutVideo } from '../../w
 import {
   buildWorkoutVideoMap,
   getBlockDurationSeconds,
-  getTimelineTotalDurationSeconds,
 } from '../../workout-program-builder/utils/programTimelineUtils';
 import type {
   ProgramPlayerBlock,
   ProgramPlayerBlockType,
   ProgramPlayerProgram,
 } from '../types/programPlayer.types';
+import { getProgramBlockDurationSec, getProgramTotalDurationSec } from './programPlayerTimeUtils';
 import { MOCK_PROGRAM_BLOCKS } from '../data/mockProgramPlayerData';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -82,14 +82,19 @@ export function normalizeProgramBlock(
   }
 
   const video = block.type === 'video' ? videoMap.get(block.videoId) : undefined;
-  const durationSec = Math.max(
-    1,
+  const rawDuration =
     playbackItem?.durationSec ??
-      getBlockDurationSeconds(block, videoMap) ??
-      video?.durationSec ??
-      block.durationSec ??
-      (mappedType === 'rest' ? 30 : mappedType === 'countdown' ? 10 : 10),
-  );
+    getBlockDurationSeconds(block, videoMap) ??
+    video?.durationSec ??
+    block.durationSec ??
+    0;
+
+  const targetDurationSec = block.type === 'video' ? block.targetDurationSec : undefined;
+  const durationSec = getProgramBlockDurationSec({
+    type: mappedType,
+    durationSec: rawDuration,
+    targetDurationSec,
+  });
 
   const playbackUrl =
     resolveHttpUrl(playbackItem?.playbackUrl) ??
@@ -145,7 +150,7 @@ export function programFromWorkoutTemplate(
   const totalDurationSec =
     template.totalDurationSec > 0
       ? template.totalDurationSec
-      : getTimelineTotalDurationSeconds(template.blocks, videoMap);
+      : getProgramTotalDurationSec(blocks);
 
   return {
     id: template.id,
@@ -189,12 +194,16 @@ export function programFromPublishedShare(shared: PublishedProgramShareDto): Pro
     .sort((a, b) => a.order - b.order)
     .map((item, index) => {
       const type = inferBlockTypeFromPlayback(item, typeMap);
+      const durationSec = getProgramBlockDurationSec({
+        type,
+        durationSec: readNumber(item.durationSec, 0),
+      });
       return {
         id: item.blockId,
         type,
         order: item.order ?? index + 1,
         title: readString(item.title, '운동 블록'),
-        durationSec: readNumber(item.durationSec, type === 'rest' ? 30 : 10),
+        durationSec,
         videoId: item.videoId,
         playbackUrl: resolveHttpUrl(item.playbackUrl),
         thumbnailUrl: resolveHttpUrl(item.thumbnailUrl) ?? null,
