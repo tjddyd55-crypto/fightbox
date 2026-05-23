@@ -5,6 +5,7 @@ import { AuthProvider } from './features/auth/AuthContext';
 import { LoginPage } from './features/auth/LoginPage';
 import { ProtectedRoute } from './features/auth/ProtectedRoute';
 import { DashboardPage } from './features/dashboard/pages/DashboardPage';
+import { BillingPage } from './features/billing/pages/BillingPage';
 import { WorkoutProgramBuilderPage } from './features/workout-program-builder/pages/WorkoutProgramBuilderPage';
 import { PublicProgramPage } from './features/program-share/PublicProgramPage';
 import { ProgramPlayerDemoRoute } from './features/program-player/components/ProgramPlayerDemoRoute';
@@ -37,6 +38,14 @@ createRoot(document.getElementById('root')!).render(
             element={
               <ProtectedRoute>
                 <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/billing"
+            element={
+              <ProtectedRoute>
+                <BillingPage />
               </ProtectedRoute>
             }
           />
