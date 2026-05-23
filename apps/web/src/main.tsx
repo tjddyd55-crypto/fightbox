@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './features/auth/AuthContext';
 import { LoginPage } from './features/auth/LoginPage';
 import { ProtectedRoute } from './features/auth/ProtectedRoute';
+import { DashboardPage } from './features/dashboard/pages/DashboardPage';
 import { WorkoutProgramBuilderPage } from './features/workout-program-builder/pages/WorkoutProgramBuilderPage';
 import { PublicProgramPage } from './features/program-share/PublicProgramPage';
 import { ProgramPlayerDemoRoute } from './features/program-player/components/ProgramPlayerDemoRoute';
@@ -11,7 +12,7 @@ import { ProgramTemplatePlayerPage } from './features/program-player/pages/Progr
 import './index.css';
 
 function RootRedirect() {
-  return <Navigate to="/workout-program-builder" replace />;
+  return <Navigate to="/dashboard" replace />;
 }
 
 createRoot(document.getElementById('root')!).render(
@@ -28,6 +29,14 @@ createRoot(document.getElementById('root')!).render(
             element={
               <ProtectedRoute>
                 <ProgramTemplatePlayerPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
               </ProtectedRoute>
             }
           />
