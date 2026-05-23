@@ -18,7 +18,7 @@ npm install
 npm run dev:web
 ```
 
-브라우저에서 `http://localhost:5173/login` 으로 접속한 뒤 개발용 계정으로 로그인합니다. 로그인 후 `/workout-program-builder` 로 이동합니다.
+브라우저에서 `http://localhost:5173/login` 으로 접속한 뒤 개발용 계정으로 로그인합니다. 로그인 후 `/dashboard` 로 이동합니다.
 
 API health 확인:
 
@@ -159,7 +159,30 @@ migration 자동 실행은 아직 CI/Railway hook에 연결되어 있지 않습�
 
 ## 주요 라우트
 
-프론트 라우트는 `apps/web/src/main.tsx`를 참고하세요. 운동 프로그램 빌더는 `/workout-program-builder` 경로입니다.
+프론트 라우트는 `apps/web/src/main.tsx`를 참고하세요.
+
+| 경로 | 설명 |
+|------|------|
+| `/dashboard` | 로그인 후 기본 진입점 — 역할별 대시보드 |
+| `/workout-program-builder` | 운동 프로그램 빌더 (대시보드 메뉴에서 진입) |
+| `/programs/:templateId/play` | 저장된 템플릿 프로그램 실행 (로그인 필요) |
+| `/share/programs/:shareToken` | 공유 링크 공개 페이지 (로그인 불필요) |
+| `/login` | 로그인 |
+
+### 역할별 대시보드 (`/dashboard`)
+
+로그인 성공 시 역할에 맞는 대시보드가 표시됩니다. 기존 기능 URL(`/workout-program-builder`, 플레이어, 공유 링크)은 그대로 유지됩니다.
+
+| 역할 | 대시보드 | 주요 메뉴 |
+|------|----------|-----------|
+| `super_admin` | FIGHTBOX 관리자 대시보드 | 사용자 관리, 프로그램 빌더, 공용 승인, 감사 로그, 직원 권한 |
+| `gym_admin` | 체육관관리자 대시보드 | 프로그램 빌더, 영상·템플릿, 직원 권한, 사용자 관리 |
+| `gym_staff` | 체육관직원 대시보드 | `staffPermissions`에 따라 영상 업로드·빌더·공용 신청 등 |
+| `video_creator` | 크리에이터 대시보드 | 영상 등록, 템플릿 세팅, 프로그램 실행 확인 |
+
+- 관리자 모달(사용자 관리·직원 권한·감사 로그)은 대시보드에서 직접 열 수 있습니다.
+- 빌더 진입 시 query param 지원(선택): `?panel=videos`, `?modal=templates`, `?tab=pending`
+- 추후 관리자 기능을 `/dashboard` 하위 전용 페이지로 분리할 예정입니다.
 
 ## Workout Program Builder
 
@@ -464,7 +487,7 @@ web UI는 템플릿 목록 모달의 「승인 대기」 탭에서 MVP 승인/�
 
 - 계정 정의: `packages/shared/src/demoAccounts.ts` (비밀번호는 DB에 저장하지 않음)
 - web 세션: `localStorage` key `fightbox.auth.session.v1` (`user` + optional `token`, 비밀번호 미저장)
-- 로그인 UI: `/login` → 성공 시 `/workout-program-builder`
+- 로그인 UI: `/login` → 성공 시 `/dashboard`
 - 슈퍼관리자 빌더 헤더 **「체육관 관리」**: `GET/POST/PATCH/DELETE /api/admin/gyms` (demo DB `gyms` 테이블)
 
 API 요청 헤더 (로그인 세션 우선, 없으면 env fallback):
