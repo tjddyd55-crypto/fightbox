@@ -4,12 +4,35 @@ export type ProgramPlayerMode = 'start' | 'video' | 'rest' | 'countdown' | 'comp
 
 export type ProgramPlayerViewMode = 'single' | 'display' | 'coach' | 'queue';
 
+export type ProgramPlayerSource = 'template' | 'share' | 'mock';
+
 export interface ProgramPlayerBlock {
   id: string;
   type: ProgramPlayerBlockType;
+  order: number;
   title: string;
+  description?: string;
   durationSec: number;
   subtitle?: string;
+  videoId?: string;
+  playbackUrl?: string;
+  thumbnailUrl?: string | null;
+  bodyParts?: string[];
+  tags?: string[];
+  playbackMode?: string;
+  repeatCount?: number;
+  targetDurationSec?: number;
+  restAfterSec?: number;
+}
+
+export interface ProgramPlayerProgram {
+  id: string;
+  title: string;
+  description?: string;
+  totalDurationSec: number;
+  blocks: ProgramPlayerBlock[];
+  source: ProgramPlayerSource;
+  shareToken?: string;
 }
 
 export interface ProgramPlayerMeta {
