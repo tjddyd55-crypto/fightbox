@@ -29,6 +29,8 @@ export interface PublishProgramTemplateResponse {
     template: ProgramTemplateDto;
     shareUrl: string;
     shareToken: string;
+    /** 이번 요청에서 차감된 크레딧 (최초 게시 1, 재게시·super_admin 0) */
+    creditsCharged: number;
   };
 }
 

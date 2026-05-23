@@ -106,6 +106,8 @@ export {
 
 export {
   BILLING_API_PATHS,
+  CREDIT_USAGE_COSTS,
+  buildProgramPublishIdempotencyKey,
   type BillingLedgerResponse,
   type BillingOrdersResponse,
   type BillingProductsResponse,
@@ -115,6 +117,7 @@ export {
   type CreatePaymentOrderResponse,
   type CreditLedgerEntryDto,
   type CreditLedgerEntryType,
+  type CreditUsageSourceType,
   type CreditWalletDto,
   type ManualCreditAdjustmentRequest,
   type ManualCreditAdjustmentResponse,

@@ -118,6 +118,16 @@ export interface ManualCreditAdjustmentResponse {
   };
 }
 
+export const CREDIT_USAGE_COSTS = {
+  programPublish: 1,
+} as const;
+
+export type CreditUsageSourceType = 'program_publish';
+
+export function buildProgramPublishIdempotencyKey(templateId: string): string {
+  return `program_publish:${templateId}:first_publish`;
+}
+
 export const BILLING_API_PATHS = {
   myWallet: '/api/billing/wallet',
   ledger: '/api/billing/ledger',
