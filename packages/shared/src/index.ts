@@ -8,13 +8,16 @@ export {
   canDeleteTemplates,
   canEditTemplates,
   canManageGyms,
+  canManageBilling,
   canManageUserRole,
   canManageUsers,
   canManageStaffPermissions,
   canManageVideos,
+  canPurchaseCredits,
   canReviewPublicTemplates,
   canSubmitPublicTemplates,
   canUploadVideos,
+  canViewBilling,
   canViewAuthAuditLogs,
   hasAnyFightboxPermission,
   hasFightboxPermission,
@@ -98,6 +101,25 @@ export {
   type PublishedProgramShareDto,
   type UnpublishProgramTemplateResponse,
 } from './programShareContracts.js';
+
+export {
+  BILLING_API_PATHS,
+  type BillingLedgerResponse,
+  type BillingOrdersResponse,
+  type BillingProductsResponse,
+  type BillingWalletResponse,
+  type BillingWalletsResponse,
+  type CreatePaymentOrderRequest,
+  type CreatePaymentOrderResponse,
+  type CreditLedgerEntryDto,
+  type CreditLedgerEntryType,
+  type CreditWalletDto,
+  type ManualCreditAdjustmentRequest,
+  type ManualCreditAdjustmentResponse,
+  type PaymentOrderDto,
+  type PaymentOrderStatus,
+  type PaymentProductDto,
+} from './billingContracts.js';
 
 export {
   WORKOUT_BUILDER_API_PATHS,
