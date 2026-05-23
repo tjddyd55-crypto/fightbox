@@ -100,6 +100,21 @@ export interface CreateLedgerEntryInput {
   createdBy?: string | null;
 }
 
+export interface SpendCreditsInput {
+  gymId: string;
+  amount: number;
+  sourceType: string;
+  sourceId: string;
+  reason: string;
+  idempotencyKey: string;
+  createdBy: string;
+}
+
+interface LedgerApplyOptions {
+  insufficientStatus?: number;
+  insufficientMessage?: string;
+}
+
 export interface CreatePaymentOrderInput {
   gymId: string;
   userId: string;
@@ -374,85 +389,140 @@ export async function listCreditLedgerEntries(
   }
 }
 
-export async function createLedgerEntryWithWalletUpdate(
+async function applyLedgerEntryOnClient(
+  client: PoolClient,
   input: CreateLedgerEntryInput,
+  options?: LedgerApplyOptions,
 ): Promise<CreditLedgerEntryDto> {
   assertLedgerType(input.entryType);
+
+  if (input.idempotencyKey) {
+    const existing = await client.query<CreditLedgerRow>(
+      `SELECT id, gym_id, wallet_id, entry_type, amount, balance_after, reason,
+              source_type, source_id, created_by, created_at
+       FROM credit_ledger_entries
+       WHERE idempotency_key = $1`,
+      [input.idempotencyKey],
+    );
+    if (existing.rows[0]) {
+      return ledgerRowToDto(existing.rows[0]);
+    }
+  }
+
+  const wallet = await selectWalletForUpdate(client, input.gymId);
+  const newBalance = wallet.balance + input.amount;
+
+  if (newBalance < 0) {
+    throw new ApiError(
+      options?.insufficientStatus ?? 400,
+      'INSUFFICIENT_CREDITS',
+      options?.insufficientMessage ?? 'Insufficient credit balance',
+    );
+  }
+
+  const lifetimePatch = applyLifetimeCounters(wallet, input.entryType, input.amount);
+  const ledgerId = `ledger-${randomUUID()}`;
+
+  await client.query(
+    `UPDATE credit_wallets
+     SET balance = $2,
+         lifetime_purchased = $3,
+         lifetime_granted = $4,
+         lifetime_spent = $5,
+         lifetime_refunded = $6,
+         updated_at = now()
+     WHERE id = $1`,
+    [
+      wallet.id,
+      newBalance,
+      lifetimePatch.lifetime_purchased ?? wallet.lifetime_purchased,
+      lifetimePatch.lifetime_granted ?? wallet.lifetime_granted,
+      lifetimePatch.lifetime_spent ?? wallet.lifetime_spent,
+      lifetimePatch.lifetime_refunded ?? wallet.lifetime_refunded,
+    ],
+  );
+
+  const inserted = await client.query<CreditLedgerRow>(
+    `INSERT INTO credit_ledger_entries (
+       id, gym_id, wallet_id, entry_type, amount, balance_after, reason,
+       source_type, source_id, idempotency_key, created_by
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+     RETURNING id, gym_id, wallet_id, entry_type, amount, balance_after, reason,
+               source_type, source_id, created_by, created_at`,
+    [
+      ledgerId,
+      input.gymId,
+      wallet.id,
+      input.entryType,
+      input.amount,
+      newBalance,
+      input.reason,
+      input.sourceType,
+      input.sourceId ?? null,
+      input.idempotencyKey ?? null,
+      input.createdBy ?? null,
+    ],
+  );
+
+  return ledgerRowToDto(inserted.rows[0]);
+}
+
+export async function spendCredits(
+  input: SpendCreditsInput,
+  externalClient?: PoolClient,
+): Promise<CreditLedgerEntryDto> {
+  if (!Number.isInteger(input.amount) || input.amount <= 0) {
+    throw new ApiError(400, 'INVALID_AMOUNT', 'amount must be a positive integer');
+  }
+
+  const ledgerInput: CreateLedgerEntryInput = {
+    gymId: input.gymId,
+    entryType: 'spend',
+    amount: -input.amount,
+    reason: input.reason,
+    sourceType: input.sourceType,
+    sourceId: input.sourceId,
+    idempotencyKey: input.idempotencyKey,
+    createdBy: input.createdBy,
+  };
+
+  const insufficientOptions: LedgerApplyOptions = {
+    insufficientStatus: 402,
+    insufficientMessage: '크레딧이 부족합니다. 크레딧을 충전한 뒤 다시 시도해 주세요.',
+  };
+
+  if (externalClient) {
+    return applyLedgerEntryOnClient(externalClient, ledgerInput, insufficientOptions);
+  }
 
   const pool = getDatabasePool();
   const client = await pool.connect();
 
   try {
     await client.query('BEGIN');
-
-    if (input.idempotencyKey) {
-      const existing = await client.query<CreditLedgerRow>(
-        `SELECT id, gym_id, wallet_id, entry_type, amount, balance_after, reason,
-                source_type, source_id, created_by, created_at
-         FROM credit_ledger_entries
-         WHERE idempotency_key = $1`,
-        [input.idempotencyKey],
-      );
-      if (existing.rows[0]) {
-        await client.query('COMMIT');
-        return ledgerRowToDto(existing.rows[0]);
-      }
-    }
-
-    const wallet = await selectWalletForUpdate(client, input.gymId);
-    const newBalance = wallet.balance + input.amount;
-
-    if (newBalance < 0) {
-      throw new ApiError(400, 'INSUFFICIENT_CREDITS', 'Insufficient credit balance');
-    }
-
-    const lifetimePatch = applyLifetimeCounters(wallet, input.entryType, input.amount);
-    const ledgerId = `ledger-${randomUUID()}`;
-
-    await client.query(
-      `UPDATE credit_wallets
-       SET balance = $2,
-           lifetime_purchased = $3,
-           lifetime_granted = $4,
-           lifetime_spent = $5,
-           lifetime_refunded = $6,
-           updated_at = now()
-       WHERE id = $1`,
-      [
-        wallet.id,
-        newBalance,
-        lifetimePatch.lifetime_purchased ?? wallet.lifetime_purchased,
-        lifetimePatch.lifetime_granted ?? wallet.lifetime_granted,
-        lifetimePatch.lifetime_spent ?? wallet.lifetime_spent,
-        lifetimePatch.lifetime_refunded ?? wallet.lifetime_refunded,
-      ],
-    );
-
-    const inserted = await client.query<CreditLedgerRow>(
-      `INSERT INTO credit_ledger_entries (
-         id, gym_id, wallet_id, entry_type, amount, balance_after, reason,
-         source_type, source_id, idempotency_key, created_by
-       )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-       RETURNING id, gym_id, wallet_id, entry_type, amount, balance_after, reason,
-                 source_type, source_id, created_by, created_at`,
-      [
-        ledgerId,
-        input.gymId,
-        wallet.id,
-        input.entryType,
-        input.amount,
-        newBalance,
-        input.reason,
-        input.sourceType,
-        input.sourceId ?? null,
-        input.idempotencyKey ?? null,
-        input.createdBy ?? null,
-      ],
-    );
-
+    const entry = await applyLedgerEntryOnClient(client, ledgerInput, insufficientOptions);
     await client.query('COMMIT');
-    return ledgerRowToDto(inserted.rows[0]);
+    return entry;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw wrapDatabaseError(error);
+  } finally {
+    client.release();
+  }
+}
+
+export async function createLedgerEntryWithWalletUpdate(
+  input: CreateLedgerEntryInput,
+): Promise<CreditLedgerEntryDto> {
+  const pool = getDatabasePool();
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+    const entry = await applyLedgerEntryOnClient(client, input);
+    await client.query('COMMIT');
+    return entry;
   } catch (error) {
     await client.query('ROLLBACK');
     throw wrapDatabaseError(error);

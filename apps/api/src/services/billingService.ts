@@ -6,7 +6,12 @@ import type {
   PaymentOrderDto,
   PaymentProductDto,
 } from '@fightbox/shared';
-import { canManageBilling, canPurchaseCredits } from '@fightbox/shared';
+import {
+  CREDIT_USAGE_COSTS,
+  buildProgramPublishIdempotencyKey,
+  canManageBilling,
+  canPurchaseCredits,
+} from '@fightbox/shared';
 import { getPaymentConfig, isManualPaymentProvider } from '../config/paymentConfig.js';
 import {
   createLedgerEntryWithWalletUpdate,
@@ -19,9 +24,11 @@ import {
   listCreditWallets,
   listPaymentOrders,
   listPaymentProducts,
+  spendCredits,
   updatePaymentOrderCheckout,
   updatePaymentOrderStatus,
 } from '../repositories/billingRepository.js';
+import type { PoolClient } from 'pg';
 import { getPaymentProvider } from '../services/manualPaymentProvider.js';
 import { ApiError } from '../utils/apiError.js';
 
@@ -235,4 +242,24 @@ export async function listAllWallets(
     throw new ApiError(403, 'FORBIDDEN', 'Cannot list wallets');
   }
   return listCreditWallets();
+}
+
+export async function spendCreditsForProgramPublish(
+  gymId: string,
+  templateId: string,
+  actorId: string,
+  client?: PoolClient,
+): Promise<CreditLedgerEntryDto> {
+  return spendCredits(
+    {
+      gymId,
+      amount: CREDIT_USAGE_COSTS.programPublish,
+      sourceType: 'program_publish',
+      sourceId: templateId,
+      reason: 'Program template publish',
+      idempotencyKey: buildProgramPublishIdempotencyKey(templateId),
+      createdBy: actorId,
+    },
+    client,
+  );
 }
