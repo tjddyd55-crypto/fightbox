@@ -327,6 +327,20 @@ export async function fetchProgramTemplates(): Promise<ProgramTemplateDto[]> {
   return response.data;
 }
 
+export async function fetchProgramTemplateById(id: string): Promise<ProgramTemplateDto | null> {
+  try {
+    const response = await requestJson<WorkoutBuilderApiItemResponse<ProgramTemplateDto>>(
+      `${WORKOUT_BUILDER_API_PATHS.templates}/${encodeURIComponent(id)}`,
+    );
+    return response.data;
+  } catch (error) {
+    if (error instanceof WorkoutBuilderApiError && error.status === 404) {
+      return null;
+    }
+    throw error;
+  }
+}
+
 export async function createProgramTemplateApi(
   request: CreateProgramTemplateRequest,
 ): Promise<ProgramTemplateDto> {
