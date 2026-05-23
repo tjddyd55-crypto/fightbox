@@ -12,6 +12,7 @@ import gymAdminRoutes from './routes/gymAdminRoutes.js';
 import userManagementRoutes from './routes/userManagementRoutes.js';
 import gymStaffPermissionRoutes from './routes/gymStaffPermissionRoutes.js';
 import workoutBuilderRoutes from './routes/workoutBuilderRoutes.js';
+import programScheduleRoutes from './routes/programScheduleRoutes.js';
 import programShareRoutes from './routes/programShareRoutes.js';
 import workoutVideoUploadRoutes from './routes/workoutVideoUploadRoutes.js';
 
@@ -60,6 +61,7 @@ app.use('/api/admin/users', ...protectedApi, userManagementRoutes);
 app.use('/api/admin/auth-audit-logs', ...protectedApi, authAuditRoutes);
 app.use('/api/billing', ...protectedApi, billingRoutes);
 app.use('/api/admin/billing', ...protectedApi, adminBillingRoutes);
+app.use('/api/program-schedules', ...protectedApi, programScheduleRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
