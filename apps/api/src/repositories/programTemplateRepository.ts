@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import type {
   CreateProgramTemplateRequest,
   ProgramTemplateDto,
@@ -22,6 +22,12 @@ interface ProgramTemplateRow {
   public_rejection_reason: string | null;
   public_reviewed_at: Date | null;
   public_reviewed_by: string | null;
+  published_at: Date | null;
+  unpublished_at: Date | null;
+  share_token: string | null;
+  share_enabled: boolean;
+  share_created_at: Date | null;
+  share_updated_at: Date | null;
   created_by: string;
   created_at: Date;
   updated_at: Date;
@@ -46,6 +52,10 @@ function mapProgramTemplateRow(row: ProgramTemplateRow): ProgramTemplateDto {
     publicRejectionReason: row.public_rejection_reason,
     publicReviewedAt: row.public_reviewed_at?.toISOString() ?? null,
     publicReviewedBy: row.public_reviewed_by,
+    shareToken: row.share_token,
+    shareEnabled: row.share_enabled,
+    publishedAt: row.published_at?.toISOString() ?? null,
+    unpublishedAt: row.unpublished_at?.toISOString() ?? null,
     createdBy: row.created_by,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
@@ -406,6 +416,132 @@ export async function softDeleteProgramTemplate(id: string, gymId: string): Prom
       [id, gymId],
     );
     return (result.rowCount ?? 0) > 0;
+  } catch (error) {
+    throw wrapDatabaseError(error);
+  }
+}
+
+function generateShareToken(): string {
+  return randomBytes(24).toString('base64url');
+}
+
+async function generateUniqueShareToken(): Promise<string> {
+  const pool = getDatabasePool();
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const token = generateShareToken();
+    const existing = await pool.query(
+      `
+        SELECT 1
+        FROM program_templates
+        WHERE share_token = $1
+        LIMIT 1
+      `,
+      [token],
+    );
+    if ((existing.rowCount ?? 0) === 0) {
+      return token;
+    }
+  }
+  throw new ApiError(500, 'SHARE_TOKEN_FAILED', 'Could not generate share token');
+}
+
+export async function publishProgramTemplate(
+  id: string,
+  gymId: string,
+  _actorId: string,
+): Promise<ProgramTemplateDto | null> {
+  const existing = await getProgramTemplate(id, gymId);
+  if (!existing) {
+    return null;
+  }
+
+  const shareToken = existing.shareToken?.trim() || (await generateUniqueShareToken());
+
+  try {
+    const pool = getDatabasePool();
+    const result = await pool.query<ProgramTemplateRow>(
+      `
+        UPDATE program_templates
+        SET
+          status = 'active',
+          share_enabled = true,
+          share_token = $1,
+          published_at = COALESCE(published_at, now()),
+          unpublished_at = NULL,
+          share_created_at = COALESCE(share_created_at, now()),
+          share_updated_at = now(),
+          updated_at = now()
+        WHERE id = $2 AND gym_id = $3 AND deleted_at IS NULL
+        RETURNING *
+      `,
+      [shareToken, id, gymId],
+    );
+
+    const row = result.rows[0];
+    return row ? mapProgramTemplateRow(row) : null;
+  } catch (error) {
+    throw wrapDatabaseError(error);
+  }
+}
+
+export async function unpublishProgramTemplate(
+  id: string,
+  gymId: string,
+  _actorId: string,
+): Promise<ProgramTemplateDto | null> {
+  const existing = await getProgramTemplate(id, gymId);
+  if (!existing) {
+    return null;
+  }
+
+  try {
+    const pool = getDatabasePool();
+    const result = await pool.query<ProgramTemplateRow>(
+      `
+        UPDATE program_templates
+        SET
+          share_enabled = false,
+          unpublished_at = now(),
+          share_updated_at = now(),
+          updated_at = now()
+        WHERE id = $1 AND gym_id = $2 AND deleted_at IS NULL
+        RETURNING *
+      `,
+      [id, gymId],
+    );
+
+    const row = result.rows[0];
+    return row ? mapProgramTemplateRow(row) : null;
+  } catch (error) {
+    throw wrapDatabaseError(error);
+  }
+}
+
+export async function findSharedProgramByToken(
+  shareToken: string,
+): Promise<ProgramTemplateDto | null> {
+  const normalized = shareToken.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  try {
+    const pool = getDatabasePool();
+    const result = await pool.query<ProgramTemplateRow>(
+      `
+        SELECT *
+        FROM program_templates
+        WHERE share_token = $1
+          AND share_enabled = true
+          AND deleted_at IS NULL
+          AND status = 'active'
+        LIMIT 1
+      `,
+      [normalized],
+    );
+
+    const row = result.rows[0];
+    return row ? mapProgramTemplateRow(row) : null;
   } catch (error) {
     throw wrapDatabaseError(error);
   }
