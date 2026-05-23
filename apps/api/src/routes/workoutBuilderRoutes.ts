@@ -15,7 +15,6 @@ import {
   getProgramTemplate,
   listProgramTemplates,
   listPublicPendingSubmissions,
-  publishProgramTemplate,
   rejectPublicSubmission,
   softDeleteProgramTemplate,
   submitProgramTemplateForPublic,
@@ -28,6 +27,7 @@ import {
   listUploadedVideos,
   updateUploadedVideo,
 } from '../repositories/workoutVideoRepository.js';
+import { publishProgramTemplateWithCredits } from '../services/programPublishService.js';
 import { ApiError, toErrorResponse } from '../utils/apiError.js';
 import { buildProgramShareUrl } from '../utils/programShareUrl.js';
 
@@ -334,12 +334,14 @@ router.post(
   requireAnyPermission(['createTemplates', 'editTemplates']),
   async (req, res) => {
     try {
-      const { gymId, userId } = req.fightboxContext;
+      const { gymId, userId, role } = req.fightboxContext;
       const templateId = routeParam(req.params.id);
-      const template = await publishProgramTemplate(templateId, gymId, userId);
-      if (!template) {
-        throw new ApiError(404, 'NOT_FOUND', 'Program template not found');
-      }
+      const { template, creditsCharged } = await publishProgramTemplateWithCredits(
+        templateId,
+        gymId,
+        userId,
+        role,
+      );
       if (!template.shareToken) {
         throw new ApiError(500, 'SHARE_TOKEN_FAILED', 'Share token was not created');
       }
@@ -349,6 +351,7 @@ router.post(
           template,
           shareToken: template.shareToken,
           shareUrl: buildProgramShareUrl(template.shareToken, req),
+          creditsCharged,
         },
       });
     } catch (error) {

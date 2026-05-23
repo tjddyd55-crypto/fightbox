@@ -5,6 +5,7 @@ import type {
   SubmitPublicTemplateRequest,
   UpdateProgramTemplateRequest,
 } from '@fightbox/shared';
+import type { PoolClient } from 'pg';
 import { getDatabasePool } from '../config/database.js';
 import { DEFAULT_DEMO_ADMIN_ID } from '../constants/workoutBuilderConstants.js';
 import { ApiError } from '../utils/apiError.js';
@@ -444,6 +445,72 @@ async function generateUniqueShareToken(): Promise<string> {
   }
   throw new ApiError(500, 'SHARE_TOKEN_FAILED', 'Could not generate share token');
 }
+
+async function generateUniqueShareTokenWithClient(client: PoolClient): Promise<string> {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const token = generateShareToken();
+    const existing = await client.query(
+      `
+        SELECT 1
+        FROM program_templates
+        WHERE share_token = $1
+        LIMIT 1
+      `,
+      [token],
+    );
+    if ((existing.rowCount ?? 0) === 0) {
+      return token;
+    }
+  }
+  throw new ApiError(500, 'SHARE_TOKEN_FAILED', 'Could not generate share token');
+}
+
+export async function lockProgramTemplateForUpdate(
+  client: PoolClient,
+  id: string,
+  gymId: string,
+): Promise<ProgramTemplateRow | null> {
+  const result = await client.query<ProgramTemplateRow>(
+    `
+      SELECT *
+      FROM program_templates
+      WHERE id = $1 AND gym_id = $2 AND deleted_at IS NULL
+      FOR UPDATE
+    `,
+    [id, gymId],
+  );
+  return result.rows[0] ?? null;
+}
+
+export async function updateProgramTemplatePublishState(
+  client: PoolClient,
+  id: string,
+  gymId: string,
+  shareToken: string,
+): Promise<ProgramTemplateDto | null> {
+  const result = await client.query<ProgramTemplateRow>(
+    `
+      UPDATE program_templates
+      SET
+        status = 'active',
+        share_enabled = true,
+        share_token = $1,
+        published_at = COALESCE(published_at, now()),
+        unpublished_at = NULL,
+        share_created_at = COALESCE(share_created_at, now()),
+        share_updated_at = now(),
+        updated_at = now()
+      WHERE id = $2 AND gym_id = $3 AND deleted_at IS NULL
+      RETURNING *
+    `,
+    [shareToken, id, gymId],
+  );
+
+  const row = result.rows[0];
+  return row ? mapProgramTemplateRow(row) : null;
+}
+
+export { generateUniqueShareTokenWithClient };
 
 export async function publishProgramTemplate(
   id: string,
