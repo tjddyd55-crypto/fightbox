@@ -1,5 +1,7 @@
 import { useCreditWallet } from '../hooks/useCreditWallet';
+import { CREDITS_CHANGED_EVENT } from '../creditsEvents';
 import type { FightboxSessionUser } from '@fightbox/shared';
+import { useEffect } from 'react';
 
 interface CreditBalanceBadgeProps {
   user: FightboxSessionUser;
@@ -7,7 +9,15 @@ interface CreditBalanceBadgeProps {
 }
 
 export function CreditBalanceBadge({ user, className }: CreditBalanceBadgeProps) {
-  const { balance, loading, error } = useCreditWallet(user);
+  const { balance, loading, error, refresh } = useCreditWallet(user);
+
+  useEffect(() => {
+    const onCreditsChanged = () => {
+      refresh();
+    };
+    window.addEventListener(CREDITS_CHANGED_EVENT, onCreditsChanged);
+    return () => window.removeEventListener(CREDITS_CHANGED_EVENT, onCreditsChanged);
+  }, [refresh]);
 
   let label = '-- 크레딧';
   if (loading) {
