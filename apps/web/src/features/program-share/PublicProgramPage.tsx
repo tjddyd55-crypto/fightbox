@@ -77,7 +77,7 @@ export function PublicProgramPage() {
       } else if (error instanceof ProgramShareApiError) {
         setErrorMessage(error.message);
       } else {
-        setErrorMessage('프로그램을 불러오지 못했습니다.');
+        setErrorMessage('공유 프로그램을 불러오지 못했습니다.');
       }
       setProgram(null);
     } finally {
