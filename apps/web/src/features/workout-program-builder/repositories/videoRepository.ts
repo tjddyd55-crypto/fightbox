@@ -1,12 +1,11 @@
 /**
  * Workout video data access layer.
- * Merges mock catalog with user-registered metadata from localStorage.
+ * User-registered metadata from localStorage; optional dev mock catalog when enabled.
  * When VITE_WORKOUT_BUILDER_STORAGE=api, syncs with the API and keeps localStorage as fallback cache.
  */
 import {
   UPLOADED_VIDEO_PLACEHOLDER_THUMBNAIL,
 } from '../constants/builderConstants';
-import { mockWorkoutVideos } from '../data/mockWorkoutVideos';
 import {
   createUploadedVideoApi,
   deleteUploadedVideoApi,
@@ -39,11 +38,10 @@ import {
   filterWorkoutVideos,
   type VideoLibraryFilters,
 } from '../utils/videoFilterUtils';
+import { getCatalogVideos } from '../utils/videoCatalogUtils';
 
 function mergeVideos(): WorkoutVideo[] {
-  const mockIds = new Set(mockWorkoutVideos.map((video) => video.id));
-  const uploaded = getUploadedVideos().filter((video) => !mockIds.has(video.id));
-  return [...mockWorkoutVideos, ...uploaded];
+  return getCatalogVideos();
 }
 
 function createVideoId(): string {

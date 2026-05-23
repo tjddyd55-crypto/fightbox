@@ -1,6 +1,6 @@
 import { PROGRAM_TEMPLATES_STORAGE_KEY } from '../constants/builderConstants';
 import type { WorkoutProgramTemplate } from '../types/workoutProgramBuilder.types';
-import { mockWorkoutVideos } from '../data/mockWorkoutVideos';
+import { getCatalogVideos } from '../utils/videoCatalogUtils';
 import {
   buildWorkoutVideoMap,
   getTimelineTotalDurationSeconds,
@@ -87,7 +87,7 @@ export function duplicateProgramTemplate(
     blocks: cloneBlocks(source.blocks),
     totalDurationSec: getTimelineTotalDurationSeconds(
       cloneBlocks(source.blocks),
-      buildWorkoutVideoMap(mockWorkoutVideos),
+      buildWorkoutVideoMap(getCatalogVideos()),
     ),
     createdAt: now,
     updatedAt: now,

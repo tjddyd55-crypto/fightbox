@@ -6,7 +6,7 @@ import type {
   PublicShareSubmissionPayload,
   WorkoutProgramTemplate,
 } from '../types/workoutProgramBuilder.types';
-import { mockWorkoutVideos } from '../data/mockWorkoutVideos';
+import { getCatalogVideos } from '../utils/videoCatalogUtils';
 import {
   approvePublicTemplateApi,
   deleteProgramTemplateApi,
@@ -163,7 +163,7 @@ function submitTemplateForPublicLocal(
 
   const now = new Date().toISOString();
   const blocks = existing.blocks;
-  const videoMap = buildWorkoutVideoMap(mockWorkoutVideos);
+  const videoMap = buildWorkoutVideoMap(getCatalogVideos());
   const updated: WorkoutProgramTemplate = {
     ...existing,
     title: payload.title.trim() || existing.title,
