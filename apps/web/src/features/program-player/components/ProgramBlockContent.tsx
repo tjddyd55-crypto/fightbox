@@ -51,6 +51,7 @@ export function ProgramBlockContent({ player, variant = 'default' }: ProgramBloc
       remainingSec={player.remainingSec}
       nextBlock={player.nextBlock}
       elapsedSec={player.elapsedSec}
+      isPlaying={player.isPlaying}
       variant={variant}
     />
   );
