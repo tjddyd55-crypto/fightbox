@@ -11,6 +11,7 @@ interface BottomActionBarProps {
   onPublicShare?: () => void;
   canSaveTemplate?: boolean;
   canCopySave?: boolean;
+  canLaunchPlayer?: boolean;
 }
 
 export function BottomActionBar({
@@ -24,6 +25,7 @@ export function BottomActionBar({
   onPublicShare,
   canSaveTemplate = true,
   canCopySave = true,
+  canLaunchPlayer = false,
 }: BottomActionBarProps) {
   return (
     <footer className="wpb-bottom-bar">
@@ -62,7 +64,13 @@ export function BottomActionBar({
           </button>
         )}
         {onLaunchPlayer && (
-          <button type="button" className="wpb-btn wpb-btn-ghost" onClick={onLaunchPlayer}>
+          <button
+            type="button"
+            className="wpb-btn wpb-btn-ghost"
+            onClick={onLaunchPlayer}
+            disabled={!canLaunchPlayer}
+            title={!canLaunchPlayer ? '먼저 템플릿을 저장해 주세요.' : undefined}
+          >
             프로그램 실행
           </button>
         )}

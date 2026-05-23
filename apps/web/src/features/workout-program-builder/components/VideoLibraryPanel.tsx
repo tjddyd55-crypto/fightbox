@@ -119,12 +119,26 @@ export function VideoLibraryPanel({
         <div className="wpb-video-list-area">
           {filteredVideos.length === 0 ? (
           <div className="wpb-empty">
-            <p className="wpb-empty-title">조건에 맞는 영상이 없습니다</p>
-            <p className="wpb-empty-desc">검색어나 필터를 변경하거나 초기화해 보세요.</p>
-            {isFiltered && (
-              <button type="button" className="wpb-btn wpb-btn-ghost wpb-btn-sm" onClick={resetFilters}>
-                필터 초기화
-              </button>
+            {videos.length === 0 && !isFiltered ? (
+              <>
+                <p className="wpb-empty-title">등록된 영상이 없습니다.</p>
+                <p className="wpb-empty-desc">먼저 영상을 업로드해 주세요.</p>
+                {canUploadVideos && (
+                  <button type="button" className="wpb-btn wpb-btn-outline wpb-btn-sm" onClick={onOpenUpload}>
+                    영상 등록
+                  </button>
+                )}
+              </>
+            ) : (
+              <>
+                <p className="wpb-empty-title">조건에 맞는 영상이 없습니다</p>
+                <p className="wpb-empty-desc">검색어나 필터를 변경하거나 초기화해 보세요.</p>
+                {isFiltered && (
+                  <button type="button" className="wpb-btn wpb-btn-ghost wpb-btn-sm" onClick={resetFilters}>
+                    필터 초기화
+                  </button>
+                )}
+              </>
             )}
           </div>
         ) : (

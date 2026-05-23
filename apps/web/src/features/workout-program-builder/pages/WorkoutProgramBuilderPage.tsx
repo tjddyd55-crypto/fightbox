@@ -309,6 +309,7 @@ export function WorkoutProgramBuilderPage() {
           }
           navigate(`/programs/${encodeURIComponent(state.activeTemplateId)}/play`);
         }}
+        canLaunchPlayer={Boolean(state.activeTemplateId)}
       />
       {state.statusMessage && (
         <p className="wpb-status-toast" role="status">

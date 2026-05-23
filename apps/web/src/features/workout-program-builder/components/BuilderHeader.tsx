@@ -1,5 +1,6 @@
 import { FIGHTBOX_ROLE_LABELS } from '@fightbox/shared';
 import { mockCreditWallet } from '../data/mockCreditWallet';
+import { shouldUseWorkoutBuilderMockCatalog } from '../services/workoutBuilderFeatureFlags';
 import type { WorkoutProgramTemplate } from '../types/workoutProgramBuilder.types';
 import { formatDuration } from '../utils/durationUtils';
 
@@ -50,9 +51,11 @@ export function BuilderHeader({
         <span className="wpb-save-badge">● 자동 저장됨</span>
         <span className="wpb-header-meta-template">{template.title}</span>
         <span className="wpb-header-meta-duration">총 {formatDuration(totalDurationSec)}</span>
-        <span className="wpb-header-meta-credits" title="보유 크레딧 (더미)">
-          {mockCreditWallet.balance} {mockCreditWallet.currencyLabel}
-        </span>
+        {shouldUseWorkoutBuilderMockCatalog() && (
+          <span className="wpb-header-meta-credits" title="보유 크레딧 (더미)">
+            {mockCreditWallet.balance} {mockCreditWallet.currencyLabel}
+          </span>
+        )}
         <span className="wpb-header-meta-role" title={`${userDisplayName} (${userLoginId})`}>
           {roleLabel} · {userLoginId} · {scopeLabel}
         </span>

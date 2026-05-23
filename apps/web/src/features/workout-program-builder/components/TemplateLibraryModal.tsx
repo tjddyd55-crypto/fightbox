@@ -258,7 +258,7 @@ export function TemplateLibraryModal({
             <div className="wpb-template-library-empty">
               <p className="wpb-empty-title">저장된 템플릿이 없습니다</p>
               <p className="wpb-empty-desc">
-                프로그램을 구성한 뒤 하단의 「템플릿 저장」으로 첫 템플릿을 만들어 보세요.
+                프로그램을 만든 뒤 템플릿 저장을 눌러주세요.
               </p>
             </div>
           ) : (
