@@ -1,8 +1,8 @@
 import { useEffect, type RefObject } from 'react';
-import type { MockProgramPlayerState } from '../hooks/useMockProgramPlayerState';
+import type { ProgramPlayerState } from '../hooks/useProgramPlayerState';
 
 interface ProgramPlayerControlsProps {
-  player: MockProgramPlayerState;
+  player: ProgramPlayerState;
   rootRef?: RefObject<HTMLElement | null>;
   size?: 'default' | 'large' | 'minimal';
   showFullscreen?: boolean;
@@ -69,7 +69,7 @@ export function ProgramPlayerControls({
 }
 
 export function useProgramPlayerKeyboard(
-  player: MockProgramPlayerState,
+  player: ProgramPlayerState,
   rootRef?: RefObject<HTMLElement | null>,
 ): void {
   const { start, togglePlay, previous, next, mode } = player;

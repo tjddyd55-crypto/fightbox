@@ -1,8 +1,8 @@
 import { formatDuration } from '../../workout-program-builder/utils/durationUtils';
-import type { MockProgramPlayerState } from '../hooks/useMockProgramPlayerState';
+import type { ProgramPlayerState } from '../hooks/useProgramPlayerState';
 
 interface ProgramBlockTimelineProps {
-  player: MockProgramPlayerState;
+  player: ProgramPlayerState;
   onSelectBlock?: (index: number) => void;
   compact?: boolean;
 }

@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import type { MockProgramPlayerState } from '../hooks/useMockProgramPlayerState';
+import type { ProgramPlayerState } from '../hooks/useProgramPlayerState';
 import { ProgramBlockContent } from './ProgramBlockContent';
 import { ProgramBlockTimeline } from './ProgramBlockTimeline';
 import { ProgramCurrentBlockPanel } from './ProgramCurrentBlockPanel';
@@ -9,10 +9,16 @@ import { ProgramPlayerControls, useProgramPlayerKeyboard } from './ProgramPlayer
 import { ProgramProgressHeader } from './ProgramProgressHeader';
 
 interface ProgramSingleViewProps {
-  player: MockProgramPlayerState;
+  player: ProgramPlayerState;
+  multiScreenBasePath?: string;
+  allowCoachQueue?: boolean;
 }
 
-export function ProgramSingleView({ player }: ProgramSingleViewProps) {
+export function ProgramSingleView({
+  player,
+  multiScreenBasePath,
+  allowCoachQueue = true,
+}: ProgramSingleViewProps) {
   const rootRef = useRef<HTMLElement>(null);
   useProgramPlayerKeyboard(player, rootRef);
 
@@ -43,6 +49,8 @@ export function ProgramSingleView({ player }: ProgramSingleViewProps) {
       )}
       <ProgramPlayerControls player={player} rootRef={rootRef} size="large" />
       <ProgramMultiScreenLauncher
+        basePath={multiScreenBasePath}
+        allowCoachQueue={allowCoachQueue}
         showFullscreen
         onFullscreen={() => void rootRef.current?.requestFullscreen()}
       />

@@ -1,8 +1,8 @@
 import { formatDuration } from '../../workout-program-builder/utils/durationUtils';
-import type { MockProgramPlayerState } from '../hooks/useMockProgramPlayerState';
+import type { ProgramPlayerState } from '../hooks/useProgramPlayerState';
 
 interface ProgramQueueViewProps {
-  player: MockProgramPlayerState;
+  player: ProgramPlayerState;
 }
 
 export function ProgramQueueView({ player }: ProgramQueueViewProps) {

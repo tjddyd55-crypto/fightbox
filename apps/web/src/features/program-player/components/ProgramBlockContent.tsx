@@ -1,4 +1,4 @@
-import type { MockProgramPlayerState } from '../hooks/useMockProgramPlayerState';
+import type { ProgramPlayerState } from '../hooks/useProgramPlayerState';
 import { ProgramCompleteScreen } from './ProgramCompleteScreen';
 import { ProgramCountdownBlockScreen } from './ProgramCountdownBlockScreen';
 import { ProgramRestBlockScreen } from './ProgramRestBlockScreen';
@@ -6,7 +6,7 @@ import { ProgramStartScreen } from './ProgramStartScreen';
 import { ProgramVideoBlockScreen } from './ProgramVideoBlockScreen';
 
 interface ProgramBlockContentProps {
-  player: MockProgramPlayerState;
+  player: ProgramPlayerState;
   variant?: 'default' | 'display';
 }
 

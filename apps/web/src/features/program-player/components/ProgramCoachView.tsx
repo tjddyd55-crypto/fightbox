@@ -1,15 +1,21 @@
 import { useRef } from 'react';
-import type { MockProgramPlayerState } from '../hooks/useMockProgramPlayerState';
+import type { ProgramPlayerState } from '../hooks/useProgramPlayerState';
 import { formatDuration } from '../../workout-program-builder/utils/durationUtils';
 import { ProgramBlockTimeline } from './ProgramBlockTimeline';
 import { ProgramMultiScreenLauncher } from './ProgramMultiScreenLauncher';
 import { ProgramPlayerControls, useProgramPlayerKeyboard } from './ProgramPlayerControls';
 
 interface ProgramCoachViewProps {
-  player: MockProgramPlayerState;
+  player: ProgramPlayerState;
+  multiScreenBasePath?: string;
+  allowCoachQueue?: boolean;
 }
 
-export function ProgramCoachView({ player }: ProgramCoachViewProps) {
+export function ProgramCoachView({
+  player,
+  multiScreenBasePath,
+  allowCoachQueue = true,
+}: ProgramCoachViewProps) {
   const rootRef = useRef<HTMLElement>(null);
   useProgramPlayerKeyboard(player, rootRef);
 
@@ -43,7 +49,11 @@ export function ProgramCoachView({ player }: ProgramCoachViewProps) {
 
       <ProgramPlayerControls player={player} rootRef={rootRef} size="large" />
 
-      <ProgramMultiScreenLauncher compact />
+      <ProgramMultiScreenLauncher
+        basePath={multiScreenBasePath}
+        allowCoachQueue={allowCoachQueue}
+        compact
+      />
 
       <div className="pp-coach-list">
         <h2>전체 블록</h2>

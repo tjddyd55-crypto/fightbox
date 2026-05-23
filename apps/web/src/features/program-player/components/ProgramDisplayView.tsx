@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import type { MockProgramPlayerState } from '../hooks/useMockProgramPlayerState';
+import type { ProgramPlayerState } from '../hooks/useProgramPlayerState';
 import { ProgramBlockContent } from './ProgramBlockContent';
 import { ProgramCurrentBlockPanel } from './ProgramCurrentBlockPanel';
 import { ProgramNextBlockPanel } from './ProgramNextBlockPanel';
@@ -7,7 +7,7 @@ import { ProgramPlayerControls } from './ProgramPlayerControls';
 import { ProgramProgressHeader } from './ProgramProgressHeader';
 
 interface ProgramDisplayViewProps {
-  player: MockProgramPlayerState;
+  player: ProgramPlayerState;
 }
 
 export function ProgramDisplayView({ player }: ProgramDisplayViewProps) {

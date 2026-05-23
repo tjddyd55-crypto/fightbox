@@ -1,8 +1,8 @@
 import { formatDuration } from '../../workout-program-builder/utils/durationUtils';
-import type { MockProgramPlayerState } from '../hooks/useMockProgramPlayerState';
+import type { ProgramPlayerState } from '../hooks/useProgramPlayerState';
 
 interface ProgramProgressHeaderProps {
-  player: MockProgramPlayerState;
+  player: ProgramPlayerState;
   variant?: 'default' | 'large' | 'compact';
   showControlsHint?: boolean;
 }
