@@ -1,4 +1,4 @@
-import { useEffect, type RefObject } from 'react';
+import type { RefObject } from 'react';
 import type { ProgramPlayerState } from '../hooks/useProgramPlayerState';
 
 interface ProgramPlayerControlsProps {
@@ -23,7 +23,7 @@ export function ProgramPlayerControls({
   size = 'default',
   showFullscreen = true,
 }: ProgramPlayerControlsProps) {
-  const canGoPrevious = player.mode !== 'start' && player.currentIndex > 0;
+  const canGoPrevious = player.mode !== 'start' && player.mode !== 'complete';
   const isComplete = player.mode === 'complete';
 
   return (
@@ -32,7 +32,7 @@ export function ProgramPlayerControls({
         type="button"
         className="pp-control-btn"
         onClick={player.previous}
-        disabled={!canGoPrevious || isComplete}
+        disabled={!canGoPrevious}
       >
         이전
       </button>
@@ -52,7 +52,12 @@ export function ProgramPlayerControls({
       >
         다음
       </button>
-      <button type="button" className="pp-control-btn" onClick={player.restart}>
+      <button
+        type="button"
+        className="pp-control-btn"
+        onClick={player.restart}
+        disabled={player.mode === 'start'}
+      >
         다시시작
       </button>
       {showFullscreen && (
@@ -66,36 +71,4 @@ export function ProgramPlayerControls({
       )}
     </div>
   );
-}
-
-export function useProgramPlayerKeyboard(
-  player: ProgramPlayerState,
-  rootRef?: RefObject<HTMLElement | null>,
-): void {
-  const { start, togglePlay, previous, next, mode } = player;
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') return;
-
-      if (event.code === 'Space') {
-        event.preventDefault();
-        if (mode === 'start') start();
-        else if (mode !== 'complete') togglePlay();
-      } else if (event.code === 'ArrowLeft') {
-        event.preventDefault();
-        previous();
-      } else if (event.code === 'ArrowRight') {
-        event.preventDefault();
-        next();
-      } else if (event.key.toLowerCase() === 'f') {
-        event.preventDefault();
-        void requestPlayerFullscreen(rootRef?.current ?? document.documentElement);
-      }
-    };
-
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [start, togglePlay, previous, next, mode, rootRef]);
 }
