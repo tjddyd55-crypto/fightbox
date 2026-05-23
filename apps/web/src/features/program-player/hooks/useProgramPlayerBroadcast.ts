@@ -3,8 +3,10 @@ import type {
   ProgramPlayerBroadcastMessage,
   ProgramPlayerOutgoingMessage,
   ProgramPlayerSnapshot,
+  ProgramPlayerSource,
 } from '../types/programPlayer.types';
 
+/** @deprecated demo-only fallback; prefer buildProgramPlayerBroadcastChannel */
 export const PROGRAM_PLAYER_BROADCAST_CHANNEL = 'fightbox-program-player-demo';
 
 const instanceId =
@@ -12,7 +14,15 @@ const instanceId =
     ? crypto.randomUUID()
     : `player-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
+export function buildProgramPlayerBroadcastChannel(
+  programId: string,
+  source: ProgramPlayerSource,
+): string {
+  return `fightbox-program-player:${programId}:${source}`;
+}
+
 export function useProgramPlayerBroadcast(
+  channelName: string,
   onMessage: (message: ProgramPlayerBroadcastMessage) => void,
 ): {
   broadcast: (message: ProgramPlayerOutgoingMessage) => void;
@@ -27,7 +37,7 @@ export function useProgramPlayerBroadcast(
       return undefined;
     }
 
-    const channel = new BroadcastChannel(PROGRAM_PLAYER_BROADCAST_CHANNEL);
+    const channel = new BroadcastChannel(channelName);
     channelRef.current = channel;
 
     channel.onmessage = (event: MessageEvent<ProgramPlayerBroadcastMessage>) => {
@@ -42,7 +52,7 @@ export function useProgramPlayerBroadcast(
       channel.close();
       channelRef.current = null;
     };
-  }, []);
+  }, [channelName]);
 
   const broadcast = useCallback((message: ProgramPlayerOutgoingMessage) => {
     if (!channelRef.current) {
@@ -61,5 +71,11 @@ export function syncSnapshot(
   broadcast: (message: ProgramPlayerOutgoingMessage) => void,
   snapshot: ProgramPlayerSnapshot,
 ): void {
-  broadcast({ type: 'SYNC', payload: snapshot });
+  broadcast({
+    type: 'SYNC',
+    payload: {
+      ...snapshot,
+      timestamp: Date.now(),
+    },
+  });
 }
