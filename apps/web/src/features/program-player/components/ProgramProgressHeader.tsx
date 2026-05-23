@@ -1,4 +1,4 @@
-import { formatDuration } from '../../workout-program-builder/utils/durationUtils';
+import { formatPlayerTime } from '../utils/programPlayerTimeUtils';
 import type { ProgramPlayerState } from '../hooks/useProgramPlayerState';
 
 interface ProgramProgressHeaderProps {
@@ -29,7 +29,7 @@ export function ProgramProgressHeader({
         <div className="pp-progress-meta">
           <span className="pp-progress-block">{blockLabel}</span>
           <span className="pp-progress-remaining">
-            {formatDuration(player.totalRemainingSec)} 남음
+            {formatPlayerTime(player.totalRemainingSec)} 남음
           </span>
         </div>
       </div>
@@ -40,7 +40,7 @@ export function ProgramProgressHeader({
         <span className="pp-progress-percent">{player.progressPercent}%</span>
       </div>
       {showControlsHint && (
-        <p className="pp-progress-hint">Space 재생 · ← → 이동 · F 전체화면</p>
+        <p className="pp-progress-hint">Space 재생 · ← → 이동 · R 다시시작 · F 전체화면</p>
       )}
     </header>
   );

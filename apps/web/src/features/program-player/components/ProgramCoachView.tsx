@@ -1,9 +1,10 @@
 import { useRef } from 'react';
 import type { ProgramPlayerState } from '../hooks/useProgramPlayerState';
-import { formatDuration } from '../../workout-program-builder/utils/durationUtils';
+import { formatPlayerTime } from '../utils/programPlayerTimeUtils';
 import { ProgramBlockTimeline } from './ProgramBlockTimeline';
 import { ProgramMultiScreenLauncher } from './ProgramMultiScreenLauncher';
-import { ProgramPlayerControls, useProgramPlayerKeyboard } from './ProgramPlayerControls';
+import { ProgramPlayerControls } from './ProgramPlayerControls';
+import { useProgramPlayerKeyboard } from '../hooks/useProgramPlayerKeyboard';
 
 interface ProgramCoachViewProps {
   player: ProgramPlayerState;
@@ -34,7 +35,7 @@ export function ProgramCoachView({
                 ? '완료'
                 : `${player.currentIndex + 1} / ${player.blocks.length}`}
           </span>
-          <span>{formatDuration(player.totalRemainingSec)} 남음</span>
+          <span>{formatPlayerTime(player.totalRemainingSec)} 남음</span>
           <span>{player.isPlaying ? '재생 중' : '일시정지'}</span>
         </div>
       </header>
@@ -43,7 +44,7 @@ export function ProgramCoachView({
         <div className="pp-coach-current">
           <p>현재</p>
           <strong>{player.currentBlock.title}</strong>
-          <span>{formatDuration(player.remainingSec)}</span>
+          <span>{formatPlayerTime(player.remainingSec)}</span>
         </div>
       )}
 

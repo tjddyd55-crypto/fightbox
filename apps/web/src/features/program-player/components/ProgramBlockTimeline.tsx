@@ -1,4 +1,4 @@
-import { formatDuration } from '../../workout-program-builder/utils/durationUtils';
+import { formatPlayerTime } from '../utils/programPlayerTimeUtils';
 import type { ProgramPlayerState } from '../hooks/useProgramPlayerState';
 
 interface ProgramBlockTimelineProps {
@@ -22,7 +22,7 @@ export function ProgramBlockTimeline({
     <div className={`pp-block-timeline${compact ? ' pp-block-timeline--compact' : ''}`}>
       {player.blocks.map((block, index) => {
         const isCurrent = index === player.currentIndex && player.mode !== 'start' && player.mode !== 'complete';
-        const isDone = index < player.currentIndex || player.mode === 'complete';
+        const isDone = player.mode === 'complete' || index < player.currentIndex;
         return (
           <button
             key={block.id}
@@ -35,7 +35,7 @@ export function ProgramBlockTimeline({
             <span className="pp-block-card-body">
               <strong>{block.title}</strong>
               <span>
-                {blockTypeLabel(block.type)} · {formatDuration(block.durationSec)}
+                {blockTypeLabel(block.type)} · {formatPlayerTime(block.durationSec)}
               </span>
             </span>
             {isDone && <span className="pp-block-card-check" aria-hidden="true">✓</span>}
