@@ -95,6 +95,8 @@ Workout builder DB CRUD가 준비되면 `VITE_WORKOUT_BUILDER_STORAGE=api`로 �
 | `JWT_SECRET` | JWT 서명 시크릿 (API 서비스에만, 커밋 금지). production에서 미설정 시 기동 실패 |
 | `JWT_EXPIRES_IN` | 액세스 토큰 만료 (예: `12h`). 기본 `12h` |
 | `JWT_EXPIRES_IN_SEC` | (레거시) 초 단위 만료. `JWT_EXPIRES_IN` 미설정 시 `43200`(12h) |
+| `PAYMENT_PROVIDER` | `manual` (기본) — 결제 provider. 2차: `portone` / `stripe` |
+| `FRONTEND_PUBLIC_URL` | 결제 checkout return URL (web public URL, `FRONTEND_ORIGIN` fallback) |
 | `AUTH_PROVIDER` | `db` (기본) — Bearer JWT 우선. `header`는 헤더 fallback 전용 실험용 |
 | `ENABLE_R2_DIAGNOSTICS` | `true`일 때만 R2 CORS 진단 endpoint 활성화 |
 | `R2_ACCOUNT_ID` | Cloudflare account ID |
@@ -175,14 +177,66 @@ migration 자동 실행은 아직 CI/Railway hook에 연결되어 있지 않습�
 
 | 역할 | 대시보드 | 주요 메뉴 |
 |------|----------|-----------|
-| `super_admin` | FIGHTBOX 관리자 대시보드 | 사용자 관리, 프로그램 빌더, 공용 승인, 감사 로그, 직원 권한 |
-| `gym_admin` | 체육관관리자 대시보드 | 프로그램 빌더, 영상·템플릿, 직원 권한, 사용자 관리 |
+| `super_admin` | FIGHTBOX 관리자 대시보드 | 사용자 관리, 프로그램 빌더, 공용 승인, 감사 로그, 직원 권한, **결제/크레딧** |
+| `gym_admin` | 체육관관리자 대시보드 | 프로그램 빌더, 영상·템플릿, 직원 권한, 사용자 관리, **크레딧 충전** |
 | `gym_staff` | 체육관직원 대시보드 | `staffPermissions`에 따라 영상 업로드·빌더·공용 신청 등 |
 | `video_creator` | 크리에이터 대시보드 | 영상 등록, 템플릿 세팅, 프로그램 실행 확인 |
 
 - 관리자 모달(사용자 관리·직원 권한·감사 로그)은 대시보드에서 직접 열 수 있습니다.
 - 빌더 진입 시 query param 지원(선택): `?panel=videos`, `?modal=templates`, `?tab=pending`
 - 추후 관리자 기능을 `/dashboard` 하위 전용 페이지로 분리할 예정입니다.
+
+### 결제/크레딧 1차 (`/dashboard/billing`)
+
+체육관(`gym_id`) 단위 **크레딧 지갑** + **원장(ledger)** 기반 충전/수동조정 MVP입니다.
+
+| 경로 | 설명 |
+|------|------|
+| `/dashboard/billing` | 크레딧 잔액·충전·결제 내역·원장 (gym_admin / super_admin) |
+
+**DB 테이블**
+
+| 테이블 | 역할 |
+|--------|------|
+| `credit_wallets` | gym별 잔액·누적 통계 |
+| `credit_ledger_entries` | 모든 증감 원장 (삭제 없음, `idempotency_key` unique) |
+| `payment_products` | 충전 상품 catalog |
+| `payment_orders` | 결제 주문 (`pending` → `paid` 등) |
+| `payment_webhook_events` | PG webhook 이벤트 저장 (2차 연동용) |
+
+**원칙**
+
+- `credit_wallets.balance`는 ledger entry와 **트랜잭션으로 함께** 갱신합니다.
+- 카드번호·결제 민감정보는 **저장하지 않습니다**. PG 결제창/외부 URL 이동 구조를 전제로 합니다.
+- 이번 1차는 **크레딧 사용 차감**(업로드/공유/AI 등)은 구현하지 않습니다.
+
+**Payment provider**
+
+| 변수 | 설명 |
+|------|------|
+| `PAYMENT_PROVIDER` | `manual` (기본) — 테스트용 수동 결제 완료 흐름 |
+| `FRONTEND_PUBLIC_URL` | checkout return URL 생성 (미설정 시 `FRONTEND_ORIGIN` fallback) |
+
+`manual` provider: 주문 생성 → `/dashboard/billing`에서 「수동 결제 완료」→ wallet 충전 + ledger `purchase` entry.
+
+**2차 예정 (미구현)**
+
+- PortOne 인증결제 / webhook signature 검증
+- Stripe Checkout Sessions
+- 환불, 영수증/세금계산서, 구독/빌링키
+- 업로드·공유·AI별 크레딧 차감 정책
+
+**API env (선택, 2차 PG용 — 코드/커밋에 secret 금지)**
+
+| 변수 | 설명 |
+|------|------|
+| `PORTONE_STORE_ID` | PortOne store id |
+| `PORTONE_CHANNEL_KEY` | PortOne channel key |
+| `PORTONE_API_SECRET` | PortOne API secret (API 서비스만) |
+| `STRIPE_SECRET_KEY` | Stripe secret (API 서비스만) |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook secret |
+
+Migration: `011_billing_credits.sql` — `npm run db:migrate:api` (Railway: `railway run npm run db:migrate:api`)
 
 ## Workout Program Builder
 
