@@ -15,9 +15,11 @@ import {
   getProgramTemplate,
   listProgramTemplates,
   listPublicPendingSubmissions,
+  publishProgramTemplate,
   rejectPublicSubmission,
   softDeleteProgramTemplate,
   submitProgramTemplateForPublic,
+  unpublishProgramTemplate,
   updateProgramTemplate,
 } from '../repositories/programTemplateRepository.js';
 import {
@@ -27,6 +29,7 @@ import {
   updateUploadedVideo,
 } from '../repositories/workoutVideoRepository.js';
 import { ApiError, toErrorResponse } from '../utils/apiError.js';
+import { buildProgramShareUrl } from '../utils/programShareUrl.js';
 
 const router = Router();
 
@@ -319,6 +322,55 @@ router.post(
         throw new ApiError(404, 'NOT_FOUND', 'Program template not found');
       }
       res.status(200).json({ data });
+    } catch (error) {
+      const { status, body } = toErrorResponse(error);
+      res.status(status).json(body);
+    }
+  },
+);
+
+router.post(
+  '/templates/:id/publish',
+  requireAnyPermission(['createTemplates', 'editTemplates']),
+  async (req, res) => {
+    try {
+      const { gymId, userId } = req.fightboxContext;
+      const templateId = routeParam(req.params.id);
+      const template = await publishProgramTemplate(templateId, gymId, userId);
+      if (!template) {
+        throw new ApiError(404, 'NOT_FOUND', 'Program template not found');
+      }
+      if (!template.shareToken) {
+        throw new ApiError(500, 'SHARE_TOKEN_FAILED', 'Share token was not created');
+      }
+
+      res.status(200).json({
+        data: {
+          template,
+          shareToken: template.shareToken,
+          shareUrl: buildProgramShareUrl(template.shareToken, req),
+        },
+      });
+    } catch (error) {
+      const { status, body } = toErrorResponse(error);
+      res.status(status).json(body);
+    }
+  },
+);
+
+router.post(
+  '/templates/:id/unpublish',
+  requirePermission('editTemplates'),
+  async (req, res) => {
+    try {
+      const { gymId, userId } = req.fightboxContext;
+      const templateId = routeParam(req.params.id);
+      const template = await unpublishProgramTemplate(templateId, gymId, userId);
+      if (!template) {
+        throw new ApiError(404, 'NOT_FOUND', 'Program template not found');
+      }
+
+      res.status(200).json({ data: { template } });
     } catch (error) {
       const { status, body } = toErrorResponse(error);
       res.status(status).json(body);

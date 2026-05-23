@@ -10,6 +10,7 @@ import gymAdminRoutes from './routes/gymAdminRoutes.js';
 import userManagementRoutes from './routes/userManagementRoutes.js';
 import gymStaffPermissionRoutes from './routes/gymStaffPermissionRoutes.js';
 import workoutBuilderRoutes from './routes/workoutBuilderRoutes.js';
+import programShareRoutes from './routes/programShareRoutes.js';
 import workoutVideoUploadRoutes from './routes/workoutVideoUploadRoutes.js';
 
 assertAuthConfiguredForStartup();
@@ -45,6 +46,7 @@ app.get('/health', (_req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/public/programs', programShareRoutes);
 
 const protectedApi = [optionalAuth, requestContextMiddleware] as const;
 
