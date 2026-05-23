@@ -5,7 +5,11 @@
  * Does not own: layout/viewport, filter UI state (VideoLibraryPanel local), persistence (STEP 2+ storage).
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { mockProgramTemplate } from '../data/mockProgramTemplate';
+import {
+  createInitialEditorTemplate,
+  getInitialActiveTemplateId,
+  getInitialSelectedBlockId,
+} from '../utils/editorTemplateUtils';
 import type {
   CreateWorkoutVideoInput,
   ProgramBlock,
@@ -55,15 +59,12 @@ import {
 import { logFightboxClientContext } from '../services/fightboxContextConfig';
 
 export function useProgramBuilderState() {
-  const [template, setTemplate] = useState<WorkoutProgramTemplate>(() => ({
-    ...mockProgramTemplate,
-    blocks: [...mockProgramTemplate.blocks],
-  }));
-  const [activeTemplateId, setActiveTemplateId] = useState<string | null>(
-    mockProgramTemplate.id,
+  const [template, setTemplate] = useState<WorkoutProgramTemplate>(() => createInitialEditorTemplate());
+  const [activeTemplateId, setActiveTemplateId] = useState<string | null>(() =>
+    getInitialActiveTemplateId(),
   );
-  const [selectedBlockId, setSelectedBlockId] = useState<string | null>(
-    mockProgramTemplate.blocks[0]?.id ?? null,
+  const [selectedBlockId, setSelectedBlockId] = useState<string | null>(() =>
+    getInitialSelectedBlockId(createInitialEditorTemplate()),
   );
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isTestPlaying, setIsTestPlaying] = useState(false);
@@ -186,6 +187,9 @@ export function useProgramBuilderState() {
       }
       if (activeTemplateId === templateId) {
         setActiveTemplateId(null);
+        const resetTemplate = createInitialEditorTemplate();
+        setTemplate(resetTemplate);
+        setSelectedBlockId(null);
       }
       showMessage('템플릿이 삭제되었습니다.');
       return true;
