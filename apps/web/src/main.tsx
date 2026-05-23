@@ -5,6 +5,7 @@ import { AuthProvider } from './features/auth/AuthContext';
 import { LoginPage } from './features/auth/LoginPage';
 import { ProtectedRoute } from './features/auth/ProtectedRoute';
 import { WorkoutProgramBuilderPage } from './features/workout-program-builder/pages/WorkoutProgramBuilderPage';
+import { PublicProgramPage } from './features/program-share/PublicProgramPage';
 import './index.css';
 
 function RootRedirect() {
@@ -18,6 +19,7 @@ createRoot(document.getElementById('root')!).render(
         <Routes>
           <Route path="/" element={<RootRedirect />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/share/programs/:shareToken" element={<PublicProgramPage />} />
           <Route
             path="/workout-program-builder"
             element={
