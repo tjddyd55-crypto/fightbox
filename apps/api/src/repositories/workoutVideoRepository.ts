@@ -94,6 +94,33 @@ export async function listUploadedVideos(gymId: string): Promise<UploadedVideoDt
   }
 }
 
+export async function listUploadedVideosByIds(
+  gymId: string,
+  videoIds: string[],
+): Promise<UploadedVideoDto[]> {
+  const ids = [...new Set(videoIds.map((id) => id.trim()).filter(Boolean))];
+  if (ids.length === 0) {
+    return [];
+  }
+
+  try {
+    const pool = getDatabasePool();
+    const result = await pool.query<UploadedVideoRow>(
+      `
+        SELECT *
+        FROM uploaded_videos
+        WHERE gym_id = $1
+          AND id = ANY($2::text[])
+          AND deleted_at IS NULL
+      `,
+      [gymId, ids],
+    );
+    return result.rows.map(mapUploadedVideoRow);
+  } catch (error) {
+    throw wrapDatabaseError(error);
+  }
+}
+
 export async function createUploadedVideo(
   input: CreateUploadedVideoRecord,
 ): Promise<UploadedVideoDto> {
