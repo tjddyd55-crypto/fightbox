@@ -263,6 +263,55 @@ web UI는 템플릿 목록 모달의 「승인 대기」 탭에서 MVP 승인/�
 
 **향후 TODO:** 실시간 multi-window sync 고도화, 자동 타이머 정확도, 음성 가이드, 회원 배정/완료 기록, 공개 공유 조회 로그, share page 비밀번호/만료일
 
+#### 프로그램 실행 화면 — 자동 타이머/진행 1차
+
+**자동 타이머**
+
+- `isPlaying=true`이고 `mode`가 `video` / `rest` / `countdown`일 때 1초 간격 tick
+- `start` / `complete` 화면에서는 tick 없음
+- 현재 블록 `remainingSec`이 0이 되면 다음 블록 자동 이동, 마지막 블록이면 `complete`
+
+**블록 duration 규칙** (`programPlayerTimeUtils`)
+
+| 타입 | 우선순위 |
+|------|----------|
+| video | `durationSec` → `targetDurationSec` → 10초 |
+| rest | `durationSec` → 30초 |
+| countdown | `durationSec` → 10초 |
+
+**video 재생 vs timer**
+
+- Program Player block timer가 **전체 진행 기준**
+- `<video>` 실제 재생 시각과 100% 동기화하지 않음
+- `isPlaying`이면 `video.play()` 시도, `pause`면 `video.pause()`
+- autoplay 차단 시에도 timer는 계속 진행 (사용자가 controls로 재생 가능)
+- 브라우저 정책상 **첫 재생은 사용자 gesture(시작 버튼 등) 이후** 안정적
+
+**컨트롤**
+
+| 동작 | 규칙 |
+|------|------|
+| 이전 | `elapsedSec > 3` → 현재 블록 처음 / `≤ 3` → 이전 블록 / 첫 블록 → start 화면 |
+| 다음 | 다음 블록 / 마지막이면 complete |
+| 다시시작 | 첫 블록부터 재생 |
+| 완료 화면 종료 | start 화면으로 복귀 |
+
+**키보드** (single / coach): Space 재생·일시정지 · ← → 이전·다음 · R 다시시작 · F 전체화면
+
+**BroadcastChannel 멀티 창 동기화**
+
+- 채널 키: `fightbox-program-player:{programId}:{source}` (demo/template/share 분리)
+- 명령 broadcast: PLAY / PAUSE / NEXT / PREVIOUS / RESTART / JUMP_TO_BLOCK / START / COMPLETE
+- state sync: 블록 전환·명령 직후 + 재생 중 5초마다 (`currentIndex`, `elapsedSec`, `isPlaying`, `mode`)
+- 같은 `sourceId` 메시지는 무시 (echo 방지)
+- BroadcastChannel 미지원 시 각 창 독립 동작
+
+**현재 한계**
+
+- 1초 `setInterval` 기준 — 백그라운드 탭 drift 가능 (추후 timestamp/`requestAnimationFrame` 개선)
+- 여러 물리 PC·기기 간 동기화 없음 (같은 브라우저/PC 창 간 1차)
+- video autoplay는 브라우저 정책 영향
+
 #### 프로그램 실행 화면 UI 1차 (mock demo)
 
 체육관 PC·대형 TV·프로젝터·듀얼/트리플 모니터에서 운동 프로그램을 **실행 전용**으로 재생하는 UI 데모입니다. 빌더 UI와 분리되어 있습니다.
