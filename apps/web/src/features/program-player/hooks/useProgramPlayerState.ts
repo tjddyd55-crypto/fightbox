@@ -8,12 +8,21 @@ import type {
   ProgramPlayerSnapshot,
 } from '../types/programPlayer.types';
 import { buildProgramMeta } from '../utils/programPlayerMeta';
-import { syncSnapshot, useProgramPlayerBroadcast } from './useProgramPlayerBroadcast';
+import {
+  getProgramBlockDurationSec,
+  getProgramTotalDurationSec,
+} from '../utils/programPlayerTimeUtils';
+import {
+  buildProgramPlayerBroadcastChannel,
+  syncSnapshot,
+  useProgramPlayerBroadcast,
+} from './useProgramPlayerBroadcast';
 
 interface PlayerState extends ProgramPlayerSnapshot {
   blocks: ProgramPlayerBlock[];
   programId: string;
   totalDurationSec: number;
+  lastTickAt: number | null;
 }
 
 type PlayerAction =
@@ -24,6 +33,7 @@ type PlayerAction =
   | { type: 'PREVIOUS' }
   | { type: 'RESTART' }
   | { type: 'COMPLETE' }
+  | { type: 'RETURN_TO_START' }
   | { type: 'JUMP_TO_BLOCK'; index: number }
   | { type: 'TICK' }
   | { type: 'APPLY_SNAPSHOT'; snapshot: ProgramPlayerSnapshot }
@@ -36,15 +46,47 @@ function blockTypeToMode(block: ProgramPlayerBlock | undefined): ProgramPlayerMo
   return 'video';
 }
 
+function normalizeBlocks(blocks: ProgramPlayerBlock[]): ProgramPlayerBlock[] {
+  return blocks.map((block) => ({
+    ...block,
+    durationSec: getProgramBlockDurationSec(block),
+  }));
+}
+
 function createInitialState(program: ProgramPlayerProgram): PlayerState {
+  const blocks = normalizeBlocks(program.blocks);
+  const totalDurationSec =
+    program.totalDurationSec > 0
+      ? program.totalDurationSec
+      : getProgramTotalDurationSec(blocks);
+
   return {
     mode: 'start',
     currentIndex: 0,
     isPlaying: false,
     elapsedSec: 0,
-    blocks: program.blocks,
+    blocks,
     programId: program.id,
-    totalDurationSec: program.totalDurationSec,
+    totalDurationSec,
+    lastTickAt: null,
+  };
+}
+
+function blockDuration(state: PlayerState, index: number): number {
+  const block = state.blocks[index];
+  return block ? getProgramBlockDurationSec(block) : 0;
+}
+
+function completeState(state: PlayerState): PlayerState {
+  const lastIndex = Math.max(0, state.blocks.length - 1);
+  const duration = blockDuration(state, lastIndex);
+  return {
+    ...state,
+    mode: 'complete',
+    isPlaying: false,
+    currentIndex: lastIndex,
+    elapsedSec: duration,
+    lastTickAt: null,
   };
 }
 
@@ -59,11 +101,12 @@ function reducer(state: PlayerState, action: PlayerAction): PlayerState {
         currentIndex: 0,
         isPlaying: true,
         elapsedSec: 0,
+        lastTickAt: Date.now(),
       };
     case 'PLAY':
-      return { ...state, isPlaying: true };
+      return { ...state, isPlaying: true, lastTickAt: Date.now() };
     case 'PAUSE':
-      return { ...state, isPlaying: false };
+      return { ...state, isPlaying: false, lastTickAt: null };
     case 'RESTART':
       return {
         ...state,
@@ -71,9 +114,19 @@ function reducer(state: PlayerState, action: PlayerAction): PlayerState {
         currentIndex: 0,
         isPlaying: true,
         elapsedSec: 0,
+        lastTickAt: Date.now(),
+      };
+    case 'RETURN_TO_START':
+      return {
+        ...state,
+        mode: 'start',
+        currentIndex: 0,
+        isPlaying: false,
+        elapsedSec: 0,
+        lastTickAt: null,
       };
     case 'COMPLETE':
-      return { ...state, mode: 'complete', isPlaying: false };
+      return completeState(state);
     case 'JUMP_TO_BLOCK': {
       const index = Math.max(0, Math.min(action.index, state.blocks.length - 1));
       return {
@@ -82,6 +135,7 @@ function reducer(state: PlayerState, action: PlayerAction): PlayerState {
         currentIndex: index,
         elapsedSec: 0,
         isPlaying: state.isPlaying,
+        lastTickAt: state.isPlaying ? Date.now() : null,
       };
     }
     case 'NEXT': {
@@ -90,18 +144,35 @@ function reducer(state: PlayerState, action: PlayerAction): PlayerState {
       }
       const nextIndex = state.currentIndex + 1;
       if (nextIndex >= state.blocks.length) {
-        return { ...state, mode: 'complete', isPlaying: false };
+        return completeState({ ...state, elapsedSec: blockDuration(state, state.currentIndex) });
       }
       return {
         ...state,
         mode: blockTypeToMode(state.blocks[nextIndex]),
         currentIndex: nextIndex,
         elapsedSec: 0,
+        lastTickAt: state.isPlaying ? Date.now() : state.lastTickAt,
       };
     }
     case 'PREVIOUS': {
-      if (state.mode === 'start' || state.currentIndex === 0) {
+      if (state.mode === 'start' || state.mode === 'complete') {
         return state;
+      }
+      if (state.elapsedSec > 3) {
+        return {
+          ...state,
+          elapsedSec: 0,
+          lastTickAt: state.isPlaying ? Date.now() : null,
+        };
+      }
+      if (state.currentIndex === 0) {
+        return {
+          ...state,
+          mode: 'start',
+          isPlaying: false,
+          elapsedSec: 0,
+          lastTickAt: null,
+        };
       }
       const prevIndex = state.currentIndex - 1;
       return {
@@ -109,6 +180,7 @@ function reducer(state: PlayerState, action: PlayerAction): PlayerState {
         mode: blockTypeToMode(state.blocks[prevIndex]),
         currentIndex: prevIndex,
         elapsedSec: 0,
+        lastTickAt: state.isPlaying ? Date.now() : null,
       };
     }
     case 'TICK': {
@@ -117,16 +189,31 @@ function reducer(state: PlayerState, action: PlayerAction): PlayerState {
       }
       const block = state.blocks[state.currentIndex];
       if (!block) return state;
+
+      const durationSec = getProgramBlockDurationSec(block);
       const nextElapsed = state.elapsedSec + 1;
-      if (nextElapsed >= block.durationSec) {
-        return reducer({ ...state, elapsedSec: block.durationSec }, { type: 'NEXT' });
+
+      if (nextElapsed >= durationSec) {
+        return reducer(
+          { ...state, elapsedSec: durationSec, lastTickAt: Date.now() },
+          { type: 'NEXT' },
+        );
       }
-      return { ...state, elapsedSec: nextElapsed };
+
+      return {
+        ...state,
+        elapsedSec: nextElapsed,
+        lastTickAt: Date.now(),
+      };
     }
     case 'APPLY_SNAPSHOT':
       return {
         ...state,
-        ...action.snapshot,
+        mode: action.snapshot.mode,
+        currentIndex: action.snapshot.currentIndex,
+        isPlaying: action.snapshot.isPlaying,
+        elapsedSec: action.snapshot.elapsedSec,
+        lastTickAt: action.snapshot.isPlaying ? Date.now() : null,
       };
     default:
       return state;
@@ -145,13 +232,22 @@ function toSnapshot(state: PlayerState): ProgramPlayerSnapshot {
 export function useProgramPlayerState(program: ProgramPlayerProgram) {
   const [state, dispatch] = useReducer(reducer, program, createInitialState);
   const suppressBroadcastRef = useRef(false);
+  const skipSyncEffectRef = useRef(false);
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   useEffect(() => {
     dispatch({ type: 'RESET', program });
   }, [program]);
 
+  const channelName = useMemo(
+    () => buildProgramPlayerBroadcastChannel(program.id, program.source),
+    [program.id, program.source],
+  );
+
   const handleBroadcast = useCallback((message: ProgramPlayerBroadcastMessage) => {
     suppressBroadcastRef.current = true;
+    skipSyncEffectRef.current = true;
     switch (message.type) {
       case 'SYNC':
         dispatch({ type: 'APPLY_SNAPSHOT', snapshot: message.payload });
@@ -177,6 +273,9 @@ export function useProgramPlayerState(program: ProgramPlayerProgram) {
       case 'COMPLETE':
         dispatch({ type: 'COMPLETE' });
         break;
+      case 'RETURN_TO_START':
+        dispatch({ type: 'RETURN_TO_START' });
+        break;
       case 'JUMP_TO_BLOCK':
         dispatch({ type: 'JUMP_TO_BLOCK', index: message.index });
         break;
@@ -188,7 +287,7 @@ export function useProgramPlayerState(program: ProgramPlayerProgram) {
     });
   }, []);
 
-  const { broadcast, isSupported } = useProgramPlayerBroadcast(handleBroadcast);
+  const { broadcast, isSupported } = useProgramPlayerBroadcast(channelName, handleBroadcast);
 
   const emit = useCallback(
     (message: ProgramPlayerOutgoingMessage) => {
@@ -197,48 +296,90 @@ export function useProgramPlayerState(program: ProgramPlayerProgram) {
     [broadcast],
   );
 
+  const emitSync = useCallback(() => {
+    if (suppressBroadcastRef.current) return;
+    syncSnapshot(emit, toSnapshot(stateRef.current));
+  }, [emit]);
+
   const dispatchAndBroadcast = useCallback(
     (action: PlayerAction, broadcastType?: ProgramPlayerOutgoingMessage['type']) => {
       dispatch(action);
       if (broadcastType === 'JUMP_TO_BLOCK' && action.type === 'JUMP_TO_BLOCK') {
         emit({ type: 'JUMP_TO_BLOCK', index: action.index });
+      } else if (broadcastType === 'RETURN_TO_START') {
+        emit({ type: 'RETURN_TO_START' });
       } else if (broadcastType && broadcastType !== 'JUMP_TO_BLOCK' && broadcastType !== 'SYNC') {
         emit({ type: broadcastType });
       }
+      queueMicrotask(emitSync);
     },
-    [emit],
+    [emit, emitSync],
   );
 
   useEffect(() => {
-    if (suppressBroadcastRef.current) return;
-    syncSnapshot(emit, toSnapshot(state));
-  }, [state, emit]);
+    if (skipSyncEffectRef.current) {
+      skipSyncEffectRef.current = false;
+      return;
+    }
+    if (suppressBroadcastRef.current) {
+      return;
+    }
+    emitSync();
+  }, [state.currentIndex, state.mode, emitSync]);
 
   useEffect(() => {
     if (!state.isPlaying || state.mode === 'start' || state.mode === 'complete') {
       return undefined;
     }
+
     const timer = window.setInterval(() => dispatch({ type: 'TICK' }), 1000);
     return () => window.clearInterval(timer);
   }, [state.isPlaying, state.mode, state.currentIndex]);
+
+  useEffect(() => {
+    if (!state.isPlaying || state.mode === 'start' || state.mode === 'complete') {
+      return undefined;
+    }
+
+    const syncTimer = window.setInterval(emitSync, 5000);
+    return () => window.clearInterval(syncTimer);
+  }, [state.isPlaying, state.mode, state.currentIndex, emitSync]);
 
   const currentBlock = state.blocks[state.currentIndex] ?? null;
   const previousBlock = state.currentIndex > 0 ? state.blocks[state.currentIndex - 1] : null;
   const nextBlock =
     state.currentIndex < state.blocks.length - 1 ? state.blocks[state.currentIndex + 1] : null;
 
+  const currentBlockDurationSec = currentBlock ? getProgramBlockDurationSec(currentBlock) : 0;
+
   const remainingSec = currentBlock
-    ? Math.max(0, currentBlock.durationSec - state.elapsedSec)
+    ? Math.max(0, currentBlockDurationSec - state.elapsedSec)
     : 0;
 
   const completedBeforeSec = state.blocks
     .slice(0, state.currentIndex)
-    .reduce((sum, block) => sum + block.durationSec, 0);
+    .reduce((sum, block) => sum + getProgramBlockDurationSec(block), 0);
 
-  const totalElapsedSec = completedBeforeSec + state.elapsedSec;
+  const totalElapsedSec =
+    state.mode === 'complete'
+      ? state.totalDurationSec
+      : completedBeforeSec + state.elapsedSec;
+
   const totalDurationSec = Math.max(state.totalDurationSec, 1);
-  const totalRemainingSec = Math.max(0, totalDurationSec - totalElapsedSec);
-  const progressPercent = Math.min(100, Math.round((totalElapsedSec / totalDurationSec) * 100));
+  const totalRemainingSec =
+    state.mode === 'complete' ? 0 : Math.max(0, totalDurationSec - totalElapsedSec);
+  const progressPercent =
+    state.mode === 'complete'
+      ? 100
+      : Math.min(100, Math.round((totalElapsedSec / totalDurationSec) * 100));
+
+  const blockProgressPercent =
+    currentBlock && currentBlockDurationSec > 0
+      ? Math.min(100, Math.round((state.elapsedSec / currentBlockDurationSec) * 100))
+      : 0;
+
+  const completedBlockCount =
+    state.mode === 'complete' ? state.blocks.length : state.currentIndex;
 
   const actions = useMemo(
     () => ({
@@ -253,6 +394,7 @@ export function useProgramPlayerState(program: ProgramPlayerProgram) {
       previous: () => dispatchAndBroadcast({ type: 'PREVIOUS' }, 'PREVIOUS'),
       restart: () => dispatchAndBroadcast({ type: 'RESTART' }, 'RESTART'),
       complete: () => dispatchAndBroadcast({ type: 'COMPLETE' }, 'COMPLETE'),
+      exitToStart: () => dispatchAndBroadcast({ type: 'RETURN_TO_START' }, 'RETURN_TO_START'),
       jumpToBlock: (index: number) =>
         dispatchAndBroadcast({ type: 'JUMP_TO_BLOCK', index }, 'JUMP_TO_BLOCK'),
     }),
@@ -276,6 +418,9 @@ export function useProgramPlayerState(program: ProgramPlayerProgram) {
     totalElapsedSec,
     totalRemainingSec,
     progressPercent,
+    blockProgressPercent,
+    completedBlockCount,
+    lastTickAt: state.lastTickAt,
     isBroadcastSupported: isSupported,
     ...actions,
   };
