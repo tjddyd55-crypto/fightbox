@@ -4,6 +4,7 @@ import type { FightboxSessionUser } from '@fightbox/shared';
 export interface DashboardActions {
   goToBuilder: (params?: Record<string, string>) => void;
   goToBilling?: () => void;
+  goToProgramSchedule?: () => void;
   openUserManagement?: () => void;
   openStaffPermissions?: () => void;
   openAuthAuditLogs?: () => void;

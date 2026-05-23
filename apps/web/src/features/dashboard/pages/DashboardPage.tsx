@@ -78,6 +78,15 @@ function buildSidebarItems(
     });
   }
 
+  if (permissions.canViewProgramSchedule && actions.goToProgramSchedule) {
+    items.push({
+      id: 'schedule',
+      label: '주간 스케줄',
+      icon: '📅',
+      onClick: actions.goToProgramSchedule,
+    });
+  }
+
   return items;
 }
 
@@ -109,6 +118,9 @@ export function DashboardPage() {
       goToBuilder: (params) => navigate(buildBuilderUrl(params)),
       goToBilling: permissions?.canViewBilling
         ? () => navigate('/dashboard/billing')
+        : undefined,
+      goToProgramSchedule: permissions?.canViewProgramSchedule
+        ? () => navigate('/dashboard/program-schedule')
         : undefined,
       openUserManagement: permissions?.canManageUsers
         ? () => setIsUserManagementOpen(true)

@@ -64,6 +64,13 @@ export function SuperAdminDashboard({ user, scopeLabel, actions }: DashboardView
         badge="결제"
         onClick={actions.goToBilling}
       />
+      <DashboardMenuCard
+        icon="📅"
+        title="주간 프로그램 스케줄"
+        description="체육관 주간 운동 시간표 편성"
+        badge="스케줄"
+        onClick={actions.goToProgramSchedule}
+      />
     </DashboardHome>
   );
 }

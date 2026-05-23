@@ -61,6 +61,15 @@ export function GymStaffDashboard({ user, scopeLabel, permissions, actions }: Da
           onClick={() => actions.goToBuilder({ modal: 'templates' })}
         />
       ) : null}
+      {permissions.canCreateTemplates || permissions.canEditTemplates ? (
+        <DashboardMenuCard
+          icon="📅"
+          title="주간 프로그램 스케줄"
+          description="요일·시간별 운동 프로그램 배치"
+          badge="스케줄"
+          onClick={actions.goToProgramSchedule}
+        />
+      ) : null}
       {canAccessBuilder ? (
         <DashboardMenuCard
           icon="▶"

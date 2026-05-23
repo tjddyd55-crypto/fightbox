@@ -60,6 +60,12 @@ export function GymAdminDashboard({ user, scopeLabel, actions }: DashboardViewPr
         badge="결제"
         onClick={actions.goToBilling}
       />
+      <DashboardMenuCard
+        icon="📅"
+        title="주간 프로그램 스케줄"
+        description="요일·시간별 운동 프로그램 배치"
+        onClick={actions.goToProgramSchedule}
+      />
     </DashboardHome>
   );
 }
