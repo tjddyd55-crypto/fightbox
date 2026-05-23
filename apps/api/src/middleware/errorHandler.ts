@@ -10,7 +10,8 @@ export const notFoundHandler: RequestHandler = (_req, res) => {
   });
 };
 
-export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
+export const errorHandler: ErrorRequestHandler = (err, _req, res, next) => {
+  void next;
   if (process.env.NODE_ENV !== 'production') {
     console.error('[fightbox-api] unhandled error', err);
   }

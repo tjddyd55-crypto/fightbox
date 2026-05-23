@@ -448,8 +448,9 @@ async function generateUniqueShareToken(): Promise<string> {
 export async function publishProgramTemplate(
   id: string,
   gymId: string,
-  _actorId: string,
+  actorId: string,
 ): Promise<ProgramTemplateDto | null> {
+  void actorId;
   const existing = await getProgramTemplate(id, gymId);
   if (!existing) {
     return null;
@@ -487,8 +488,9 @@ export async function publishProgramTemplate(
 export async function unpublishProgramTemplate(
   id: string,
   gymId: string,
-  _actorId: string,
+  actorId: string,
 ): Promise<ProgramTemplateDto | null> {
+  void actorId;
   const existing = await getProgramTemplate(id, gymId);
   if (!existing) {
     return null;

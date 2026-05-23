@@ -79,6 +79,7 @@ Workout builder DB CRUD가 준비되면 `VITE_WORKOUT_BUILDER_STORAGE=api`로 �
 |------|------|
 | `PORT` | Railway가 주입 (예: `3000`) |
 | `FRONTEND_ORIGIN` | web app origin (CORS, 예: `https://app-production-6692.up.railway.app`) |
+| `FRONTEND_PUBLIC_URL` | publish API `shareUrl` 생성용 web public URL (미설정 시 요청 `Origin` fallback) |
 | `JWT_SECRET` | JWT 서명 시크릿 (API 서비스에만, 커밋 금지). production에서 미설정 시 기동 실패 |
 | `JWT_EXPIRES_IN` | 액세스 토큰 만료 (예: `12h`). 기본 `12h` |
 | `JWT_EXPIRES_IN_SEC` | (레거시) 초 단위 만료. `JWT_EXPIRES_IN` 미설정 시 `43200`(12h) |
@@ -200,6 +201,9 @@ migration 자동 실행은 아직 CI/Railway hook에 연결되어 있지 않습�
 - `PATCH /api/workout-builder/templates/:id`
 - `DELETE /api/workout-builder/templates/:id`
 - `POST /api/workout-builder/templates/:id/submit-public` — 공용 라이브러리 신청 (`visibility: public_pending`)
+- `POST /api/workout-builder/templates/:id/publish` — 회원용 공유 링크 게시 (`share_enabled=true`, `share_token` 생성)
+- `POST /api/workout-builder/templates/:id/unpublish` — 게시 취소 (`share_enabled=false`, 링크 접근 차단)
+- `GET /api/public/programs/:shareToken` — **인증 없음** · 게시된 프로그램 읽기 전용 조회
 - `GET /api/workout-builder/admin/public-submissions` — 승인 대기 목록 (demo admin, **인증 없음**)
 - `POST /api/workout-builder/admin/public-submissions/:id/approve` — 승인 (`visibility: public`)
 - `POST /api/workout-builder/admin/public-submissions/:id/reject` — 반려 (`visibility: public_rejected`, body `{ "reason": "..." }`)
@@ -217,6 +221,24 @@ migration 자동 실행은 아직 CI/Railway hook에 연결되어 있지 않습�
 5. 반려 → `visibility = public_rejected`, `public_rejection_reason` 저장
 
 web UI는 템플릿 목록 모달의 「승인 대기」 탭에서 MVP 승인/반려를 제공합니다 (`super_admin`만 표시).
+
+#### 프로그램 게시/공유 (회원용 링크)
+
+체육관 코치가 저장한 템플릿을 **회원에게 공유할 수 있는 읽기 전용 링크**로 게시합니다. (회원 DB·회원 로그인은 이번 범위 아님)
+
+1. 템플릿 저장 후 `POST /api/workout-builder/templates/:id/publish` (또는 UI 「게시」)
+2. API가 `share_token`을 생성(또는 재게시 시 기존 token 재사용)하고 `shareUrl` 반환
+3. web `/share/programs/:shareToken` 공개 페이지에서 로그인 없이 프로그램·타임라인·영상 재생
+4. `POST .../unpublish` 또는 UI 「게시 취소」 → `share_enabled=false` → 동일 URL 404
+
+| API env | 용도 |
+|---------|------|
+| `FRONTEND_PUBLIC_URL` | publish 응답 `shareUrl` 생성 (예: `https://app-production-6692.up.railway.app`) |
+
+- share token: `crypto.randomBytes(24).base64url` — URL에만 노출, 추측 어려움
+- public endpoint에는 password/token/사용자 관리 정보 없음
+- 게시 취소 후에도 DB `share_token`은 유지 가능 — `share_enabled=false`면 접근 차단
+- **향후:** 회원 배정, 만료일, 조회수, 접근 로그, 비밀번호 보호, 커스텀 도메인
 
 #### API 로그인 MVP (JWT)
 
