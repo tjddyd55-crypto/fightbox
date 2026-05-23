@@ -121,7 +121,9 @@ export type FightboxPermission =
   | 'viewAuthAuditLogs'
   | 'manageBilling'
   | 'purchaseCredits'
-  | 'viewBilling';
+  | 'viewBilling'
+  | 'viewProgramSchedule'
+  | 'manageProgramSchedule';
 
 const VALID_ROLES: FightboxUserRole[] = [
   'super_admin',
@@ -261,6 +263,32 @@ export function canViewBilling(context: FightboxRequestContext): boolean {
   return context.role === 'super_admin' || context.role === 'gym_admin';
 }
 
+export function canViewProgramSchedule(context: FightboxRequestContext): boolean {
+  switch (context.role) {
+    case 'super_admin':
+    case 'gym_admin':
+    case 'gym_staff':
+      return true;
+    default:
+      return false;
+  }
+}
+
+export function canManageProgramSchedule(context: FightboxRequestContext): boolean {
+  switch (context.role) {
+    case 'super_admin':
+    case 'gym_admin':
+      return true;
+    case 'gym_staff':
+      return (
+        resolveStaffPermissions(context).canCreateTemplates ||
+        resolveStaffPermissions(context).canEditTemplates
+      );
+    default:
+      return false;
+  }
+}
+
 export function canManageUserRole(
   managerRole: FightboxUserRole,
   targetRole: FightboxUserRole,
@@ -307,6 +335,10 @@ export function hasFightboxPermission(
       return canPurchaseCredits(context);
     case 'viewBilling':
       return canViewBilling(context);
+    case 'viewProgramSchedule':
+      return canViewProgramSchedule(context);
+    case 'manageProgramSchedule':
+      return canManageProgramSchedule(context);
     default:
       return false;
   }

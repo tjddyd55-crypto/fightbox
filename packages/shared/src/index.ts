@@ -9,6 +9,7 @@ export {
   canEditTemplates,
   canManageGyms,
   canManageBilling,
+  canManageProgramSchedule,
   canManageUserRole,
   canManageUsers,
   canManageStaffPermissions,
@@ -18,6 +19,7 @@ export {
   canSubmitPublicTemplates,
   canUploadVideos,
   canViewBilling,
+  canViewProgramSchedule,
   canViewAuthAuditLogs,
   hasAnyFightboxPermission,
   hasFightboxPermission,
@@ -120,6 +122,16 @@ export {
   type PaymentOrderStatus,
   type PaymentProductDto,
 } from './billingContracts.js';
+
+export {
+  PROGRAM_SCHEDULE_API_PATHS,
+  type CreateProgramScheduleEntryRequest,
+  type ProgramScheduleEntriesResponse,
+  type ProgramScheduleEntryDto,
+  type ProgramScheduleEntryResponse,
+  type ProgramScheduleStatus,
+  type UpdateProgramScheduleEntryRequest,
+} from './programScheduleContracts.js';
 
 export {
   WORKOUT_BUILDER_API_PATHS,
