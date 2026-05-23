@@ -12,7 +12,9 @@ import {
   buildClientShareUrl,
   publishProgramTemplate,
   unpublishProgramTemplate,
+  ProgramShareApiError,
 } from '../../program-share/programShareApiClient';
+import { dispatchCreditsChanged } from '../../billing/creditsEvents';
 import { programTemplateDtoToWorkoutProgramTemplate } from '../services/workoutBuilderApiClient';
 import { saveProgramTemplate } from '../storage/programTemplateStorage';
 
@@ -129,6 +131,8 @@ export function TemplateLibraryModal({
     const target = templates.find((item) => item.id === templateId);
     if (!target) return;
 
+    const wasFirstPublish = !target.publishedAt;
+
     setIsPublishBusy(true);
     try {
       const result = await publishProgramTemplate(templateId);
@@ -142,8 +146,20 @@ export function TemplateLibraryModal({
         ...prev,
         [templateId]: result.shareUrl || buildClientShareUrl(result.shareToken),
       }));
-      notify('공유 링크가 생성되었습니다.');
-    } catch {
+
+      if (result.creditsCharged > 0) {
+        dispatchCreditsChanged();
+        notify('공유 링크가 생성되었습니다. 1 크레딧이 차감되었습니다.');
+      } else if (wasFirstPublish) {
+        notify('공유 링크가 생성되었습니다.');
+      } else {
+        notify('공유 링크가 활성화되었습니다.');
+      }
+    } catch (error) {
+      if (error instanceof ProgramShareApiError && error.code === 'INSUFFICIENT_CREDITS') {
+        notify('크레딧이 부족합니다. 결제/크레딧 페이지에서 충전해 주세요.');
+        return;
+      }
       notify('게시에 실패했습니다.');
     } finally {
       setIsPublishBusy(false);
