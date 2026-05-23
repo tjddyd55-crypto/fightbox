@@ -58,6 +58,8 @@ npm run dev:api
 | `VITE_VIDEO_UPLOAD_PROVIDER` | `mock` (기본) 또는 `api` |
 | `VITE_API_BASE_URL` | API 서비스 public URL (예: `https://<api-domain>`) |
 | `VITE_WORKOUT_BUILDER_STORAGE` | `local` (기본) 또는 `api` — 템플릿/업로드 영상 메타데이터 저장소 |
+| `VITE_ENABLE_PROGRAM_PLAYER_DEMO` | `false` (기본) — `true`일 때만 `/program-player-demo` mock route 허용 |
+| `VITE_ENABLE_WORKOUT_BUILDER_MOCK_DATA` | `false` (기본) — `true`일 때만 local mode에서 mock 영상/템플릿 catalog 표시 |
 | `VITE_FIGHTBOX_GYM_ID` | (선택) 로그인 세션 없을 때만 fallback gym scope |
 | `VITE_FIGHTBOX_USER_ID` | (선택) 로그인 세션 없을 때만 fallback user id |
 | `VITE_FIGHTBOX_USER_ROLE` | (선택) 로그인 세션 없을 때만 fallback role |
@@ -65,6 +67,16 @@ npm run dev:api
 
 API presign이 정상 확인된 후 `VITE_VIDEO_UPLOAD_PROVIDER=api`와 `VITE_API_BASE_URL`을 설정하세요.
 Workout builder DB CRUD가 준비되면 `VITE_WORKOUT_BUILDER_STORAGE=api`로 전환합니다. 기본값 `local`은 localStorage fallback을 유지합니다.
+
+**실제 데이터 테스트 권장 env (web)**
+
+| 변수 | 권장값 |
+|------|--------|
+| `VITE_WORKOUT_BUILDER_STORAGE` | `api` |
+| `VITE_VIDEO_UPLOAD_PROVIDER` | `api` |
+| `VITE_AUTH_PROVIDER` | `api` |
+| `VITE_ENABLE_PROGRAM_PLAYER_DEMO` | `false` |
+| `VITE_ENABLE_WORKOUT_BUILDER_MOCK_DATA` | `false` |
 
 ### API — api 서비스
 
@@ -242,7 +254,7 @@ web UI는 템플릿 목록 모달의 「승인 대기」 탭에서 MVP 승인/�
 
 #### 프로그램 실행 화면 — 실제 데이터 연결 1차
 
-저장된 템플릿·공유 프로그램을 Program Player UI에 연결합니다. `/program-player-demo`는 mock UI 확인용으로 유지됩니다.
+저장된 템플릿·공유 프로그램을 Program Player UI에 연결합니다. `/program-player-demo`는 **기본 비활성** (`VITE_ENABLE_PROGRAM_PLAYER_DEMO=false`)이며, 개발용 mock 확인 시에만 `true`로 켭니다.
 
 | URL | 용도 | 로그인 |
 |-----|------|--------|
@@ -252,7 +264,7 @@ web UI는 템플릿 목록 모달의 「승인 대기」 탭에서 MVP 승인/�
 | `/programs/:templateId/play?view=queue` | 순서/대기 큐 화면 | 필요 |
 | `/share/programs/:shareToken` | 게시된 공유 프로그램 (Program Player UI 재사용) | 불필요 |
 | `/share/programs/:shareToken?view=display` | 공유 프로그램 표시 화면 | 불필요 |
-| `/program-player-demo` | mock UI 확인 (개발·데모) | 불필요 |
+| `/program-player-demo` | mock UI (demo env `true`일 때만) | 불필요 |
 
 **데이터 연결**
 
@@ -324,10 +336,37 @@ web UI는 템플릿 목록 모달의 「승인 대기」 탭에서 MVP 승인/�
 | `/program-player-demo?view=coach` | 코치 컨트롤 화면 |
 | `/program-player-demo?view=queue` | 순서/대기 큐 화면 |
 
-- **로그인 불필요** — UI 확인용 mock data
+- **로그인 불필요** — `VITE_ENABLE_PROGRAM_PLAYER_DEMO=true`일 때만 접근 가능
 - **PC/대형 모니터 우선** — desktop-first CSS, 900px 이하 1열 fallback
 - **2~3 모니터 운영** — 「표시/코치/순서 화면 열기」로 브라우저 새 창 → 각 모니터로 이동
 - **BroadcastChannel** — 같은 브라우저 내 창 간 mock 상태 동기화 (미지원 시 독립 fallback)
+
+#### 실제 데이터 테스트 전 mock 데이터 제거 확인
+
+코드는 mock catalog·demo route를 **기본 비활성**합니다. production/Railway에서 아래 env를 확인하세요.
+
+- `VITE_WORKOUT_BUILDER_STORAGE=api`
+- `VITE_ENABLE_PROGRAM_PLAYER_DEMO=false`
+- `VITE_ENABLE_WORKOUT_BUILDER_MOCK_DATA=false`
+
+**브라우저 확인**
+
+1. `/program-player-demo` → `/workout-program-builder` redirect (demo env off)
+2. 영상 라이브러리 — DB `uploaded_videos`만, 없으면 「등록된 영상이 없습니다」
+3. 템플릿 목록 — DB `program_templates`만, 없으면 「저장된 템플릿이 없습니다」
+4. 새 영상 업로드 → `GET /api/workout-builder/videos` + R2 `playbackUrl`
+5. 새 템플릿 저장 → `/programs/:templateId/play` 실행
+6. 게시 → `/share/programs/:shareToken` 접근
+
+**DB 정리 원칙 (코드 hard delete 없음)**
+
+| 대상 | 방법 |
+|------|------|
+| `uploaded_videos` | UI/API 삭제 — R2 best-effort 삭제 |
+| `program_templates` | UI/API 삭제 — 공유 중이면 먼저 게시 취소 |
+| `users` | hard delete 금지 — disabled 처리 |
+| `auth_audit_logs` | 삭제하지 않음 |
+| `schema_migrations` | 절대 삭제 금지 |
 
 #### API 로그인 MVP (JWT)
 
