@@ -41,8 +41,54 @@ export interface PaymentProductDto {
   currency: string;
   isActive: boolean;
   sortOrder: number;
+  productType: PaymentProductType;
+  billingCycle: BillingCycle | null;
+  includedCredits: number;
+  isSubscription: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export type PaymentProductType = 'credit_pack' | 'subscription_plan';
+
+export type BillingCycle = 'monthly' | 'yearly';
+
+export type BillingSubscriptionStatus =
+  | 'pending'
+  | 'active'
+  | 'past_due'
+  | 'cancelled'
+  | 'expired';
+
+export type PaymentOrderType =
+  | 'credit_purchase'
+  | 'subscription_start'
+  | 'subscription_renewal';
+
+export interface BillingSubscriptionDto {
+  id: string;
+  gymId: string;
+  userId: string;
+  productId: string;
+  provider: string;
+  providerSubscriptionId: string | null;
+  status: BillingSubscriptionStatus;
+  billingCycle: BillingCycle;
+  priceAmount: number;
+  currency: string;
+  includedCreditsPerPeriod: number;
+  currentPeriodStart: string;
+  currentPeriodEnd: string;
+  cancelAtPeriodEnd: boolean;
+  cancelledAt: string | null;
+  endedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BillingSummaryDto {
+  wallet: CreditWalletDto;
+  activeSubscription: BillingSubscriptionDto | null;
 }
 
 export type PaymentOrderStatus =
@@ -67,6 +113,8 @@ export interface PaymentOrderDto {
   checkoutUrl: string | null;
   failureCode: string | null;
   failureMessage: string | null;
+  subscriptionId: string | null;
+  orderType: PaymentOrderType;
   paidAt: string | null;
   cancelledAt: string | null;
   refundedAt: string | null;
@@ -76,6 +124,34 @@ export interface PaymentOrderDto {
 
 export interface CreatePaymentOrderRequest {
   productId: string;
+}
+
+export interface CreateSubscriptionRequest {
+  productId: string;
+}
+
+export interface CreateSubscriptionResponse {
+  data: {
+    subscription: BillingSubscriptionDto;
+    order: PaymentOrderDto;
+    checkoutUrl: string | null;
+  };
+}
+
+export interface BillingSummaryResponse {
+  data: BillingSummaryDto;
+}
+
+export interface BillingSubscriptionsResponse {
+  data: BillingSubscriptionDto[];
+}
+
+export interface BillingSubscriptionResponse {
+  data: BillingSubscriptionDto | null;
+}
+
+export interface CompleteSubscriptionResponse {
+  data: BillingSubscriptionDto;
 }
 
 export interface ManualCreditAdjustmentRequest {
@@ -128,6 +204,10 @@ export function buildProgramPublishIdempotencyKey(templateId: string): string {
   return `program_publish:${templateId}:first_publish`;
 }
 
+export function buildSubscriptionGrantIdempotencyKey(subscriptionId: string): string {
+  return `subscription:${subscriptionId}:initial-grant`;
+}
+
 export const BILLING_API_PATHS = {
   myWallet: '/api/billing/wallet',
   ledger: '/api/billing/ledger',
@@ -135,6 +215,12 @@ export const BILLING_API_PATHS = {
   orders: '/api/billing/orders',
   createOrder: '/api/billing/orders',
   manualCompleteOrder: '/api/billing/orders/:id/manual-complete',
+  billingSummary: '/api/billing/summary',
+  subscriptions: '/api/billing/subscriptions',
+  activeSubscription: '/api/billing/subscriptions/active',
+  createSubscription: '/api/billing/subscriptions',
+  cancelSubscription: '/api/billing/subscriptions/:id/cancel',
+  manualCompleteSubscription: '/api/billing/subscriptions/:id/manual-complete',
   adminAdjustCredits: '/api/admin/billing/credits/adjust',
   adminWallets: '/api/admin/billing/wallets',
 } as const;
