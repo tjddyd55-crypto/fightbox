@@ -1,4 +1,4 @@
-import type { CreatePaymentOrderRequest, ManualCreditAdjustmentRequest } from '@fightbox/shared';
+import type { CreatePaymentOrderRequest, CreateSubscriptionRequest, ManualCreditAdjustmentRequest } from '@fightbox/shared';
 import { ApiError } from './apiError.js';
 
 function readStringField(body: unknown, field: string): string {
@@ -29,6 +29,10 @@ export function parseCreatePaymentOrderBody(body: unknown): CreatePaymentOrderRe
     throw new ApiError(400, 'INVALID_PRODUCT_ID', 'productId is required');
   }
   return { productId };
+}
+
+export function parseCreateSubscriptionBody(body: unknown): CreateSubscriptionRequest {
+  return parseCreatePaymentOrderBody(body);
 }
 
 export function parseManualCreditAdjustmentBody(body: unknown): ManualCreditAdjustmentRequest {
