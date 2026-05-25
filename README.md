@@ -193,7 +193,7 @@ migration 자동 실행은 아직 CI/Railway hook에 연결되어 있지 않습�
 
 | 경로 | 설명 |
 |------|------|
-| `/dashboard/billing` | 크레딧 잔액·충전·결제 내역·원장 (gym_admin / super_admin) |
+| `/dashboard/billing` | 크레딧 잔액·충전·**정액제 구독**·결제 내역·원장 (gym_admin / super_admin) |
 
 **DB 테이블**
 
@@ -201,9 +201,41 @@ migration 자동 실행은 아직 CI/Railway hook에 연결되어 있지 않습�
 |--------|------|
 | `credit_wallets` | gym별 잔액·누적 통계 |
 | `credit_ledger_entries` | 모든 증감 원장 (삭제 없음, `idempotency_key` unique) |
-| `payment_products` | 충전 상품 catalog |
-| `payment_orders` | 결제 주문 (`pending` → `paid` 등) |
+| `payment_products` | **credit_pack** + **subscription_plan** 상품 catalog |
+| `payment_orders` | 결제 주문 (`credit_purchase` / `subscription_start` 등) |
+| `billing_subscriptions` | gym별 구독 상태·기간·취소 예정 |
 | `payment_webhook_events` | PG webhook 이벤트 저장 (2차 연동용) |
+
+**상품 유형**
+
+| `product_type` | 설명 |
+|----------------|------|
+| `credit_pack` | 100 / 500 / 1000 크레딧 1회성 충전 (`purchase` ledger) |
+| `subscription_plan` | 월정액·연간정액 (`monthly_basic`, `yearly_basic`, `monthly_pro`, `yearly_pro`) |
+
+**정액제 구독 (manual activation 1차)**
+
+| 항목 | 정책 |
+|------|------|
+| 생성 | `POST /api/billing/subscriptions` → `pending` subscription + `subscription_start` order |
+| 활성화 | `POST .../manual-complete` → `active`, 기존 active 구독 `cancelled` 처리 |
+| 포함 크레딧 | `includedCreditsPerPeriod` → wallet **grant** (`source_type=subscription`) |
+| idempotency | `subscription:{subscriptionId}:initial-grant` |
+| 취소 | `POST .../cancel` → `cancel_at_period_end=true` (현재 기간까지 active 유지) |
+| 자동 갱신 | **미구현** (2차 PG 정기결제) |
+
+**API**
+
+| Method | Path | 설명 |
+|--------|------|------|
+| GET | `/api/billing/summary` | wallet + activeSubscription |
+| GET | `/api/billing/subscriptions` | gym 구독 목록 |
+| GET | `/api/billing/subscriptions/active` | 활성 구독 |
+| POST | `/api/billing/subscriptions` | 구독 시작 (pending) |
+| POST | `/api/billing/subscriptions/:id/manual-complete` | manual 활성화 |
+| POST | `/api/billing/subscriptions/:id/cancel` | 기간 종료 시 취소 예약 |
+
+Migration: `013_billing_subscriptions.sql`
 
 **원칙**
 
@@ -236,12 +268,12 @@ publish API는 **크레딧 차감과 share 활성화를 단일 DB 트랜잭션**
 
 **2차 예정 (미구현)**
 
-- PortOne 인증결제 / webhook signature 검증
-- Stripe Checkout Sessions
-- 환불, 영수증/세금계산서, 구독/빌링키
+- PortOne billing key / Stripe Subscription
+- webhook signature 검증, renewal payment, failed payment (`past_due`)
+- 영수증/세금계산서, invoice/receipt
+- 자동 갱신 시 `subscription_renewal` order + grant
 - 업로드·AI·회원배정별 크레딧 차감 정책
 - 상품별/플랜별 publish 비용, 환불(credit restore)
-- 월 구독/포함 크레딧
 
 **API env (선택, 2차 PG용 — 코드/커밋에 secret 금지)**
 
@@ -253,7 +285,7 @@ publish API는 **크레딧 차감과 share 활성화를 단일 DB 트랜잭션**
 | `STRIPE_SECRET_KEY` | Stripe secret (API 서비스만) |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook secret |
 
-Migration: `011_billing_credits.sql` — `npm run db:migrate:api` (Railway: `railway run npm run db:migrate:api`)
+Migration: `011_billing_credits.sql`, `013_billing_subscriptions.sql` — `npm run db:migrate:api`
 
 ### 주간 프로그램 스케줄 (`/dashboard/program-schedule`)
 

@@ -3,10 +3,18 @@ import {
   type BillingLedgerResponse,
   type BillingOrdersResponse,
   type BillingProductsResponse,
+  type BillingSubscriptionDto,
+  type BillingSubscriptionResponse,
+  type BillingSubscriptionsResponse,
+  type BillingSummaryDto,
+  type BillingSummaryResponse,
   type BillingWalletResponse,
   type BillingWalletsResponse,
+  type CompleteSubscriptionResponse,
   type CreatePaymentOrderRequest,
   type CreatePaymentOrderResponse,
+  type CreateSubscriptionRequest,
+  type CreateSubscriptionResponse,
   type CreditWalletDto,
   type FightboxSessionUser,
   type ManualCreditAdjustmentRequest,
@@ -148,5 +156,76 @@ export async function adminAdjustCredits(
       body: JSON.stringify(input),
     },
   );
+  return response.data;
+}
+
+export async function getBillingSummary(user: FightboxSessionUser): Promise<BillingSummaryDto> {
+  const response = await requestJson<BillingSummaryResponse>(
+    BILLING_API_PATHS.billingSummary,
+    user,
+  );
+  return response.data;
+}
+
+export async function listSubscriptions(
+  user: FightboxSessionUser,
+): Promise<BillingSubscriptionDto[]> {
+  const response = await requestJson<BillingSubscriptionsResponse>(
+    BILLING_API_PATHS.subscriptions,
+    user,
+  );
+  return response.data;
+}
+
+export async function getActiveSubscription(
+  user: FightboxSessionUser,
+): Promise<BillingSubscriptionDto | null> {
+  const response = await requestJson<BillingSubscriptionResponse>(
+    BILLING_API_PATHS.activeSubscription,
+    user,
+  );
+  return response.data;
+}
+
+export async function createSubscription(
+  user: FightboxSessionUser,
+  input: CreateSubscriptionRequest,
+): Promise<CreateSubscriptionResponse['data']> {
+  const response = await requestJson<CreateSubscriptionResponse>(
+    BILLING_API_PATHS.createSubscription,
+    user,
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+    },
+  );
+  return response.data;
+}
+
+export async function manualCompleteSubscription(
+  user: FightboxSessionUser,
+  subscriptionId: string,
+): Promise<BillingSubscriptionDto> {
+  const path = BILLING_API_PATHS.manualCompleteSubscription.replace(
+    ':id',
+    encodeURIComponent(subscriptionId),
+  );
+  const response = await requestJson<CompleteSubscriptionResponse>(path, user, {
+    method: 'POST',
+  });
+  return response.data;
+}
+
+export async function cancelSubscription(
+  user: FightboxSessionUser,
+  subscriptionId: string,
+): Promise<BillingSubscriptionDto> {
+  const path = BILLING_API_PATHS.cancelSubscription.replace(
+    ':id',
+    encodeURIComponent(subscriptionId),
+  );
+  const response = await requestJson<CompleteSubscriptionResponse>(path, user, {
+    method: 'POST',
+  });
   return response.data;
 }
