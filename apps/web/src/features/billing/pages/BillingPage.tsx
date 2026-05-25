@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { sessionUserToRequestContext } from '@fightbox/shared';
 import type {
+  BillingSubscriptionDto,
   CreditLedgerEntryDto,
   CreditWalletDto,
   PaymentOrderDto,
@@ -13,18 +14,26 @@ import {
   adminAdjustCredits,
   adminListWallets,
   BillingApiError,
+  cancelSubscription,
   createPaymentOrder,
+  createSubscription,
+  getBillingSummary,
   getMyLedger,
-  getMyWallet,
   listMyPaymentOrders,
   listPaymentProducts,
+  listSubscriptions,
   manualCompleteOrder,
+  manualCompleteSubscription,
 } from '../billingApiClient';
+import { dispatchCreditsChanged } from '../creditsEvents';
 import { AdminCreditAdjustModal } from '../components/AdminCreditAdjustModal';
 import { BillingSummaryCard } from '../components/BillingSummaryCard';
 import { CreditLedgerTable } from '../components/CreditLedgerTable';
 import { CreditPurchasePanel } from '../components/CreditPurchasePanel';
 import { PaymentOrderTable } from '../components/PaymentOrderTable';
+import { SubscriptionHistoryTable } from '../components/SubscriptionHistoryTable';
+import { SubscriptionPlanPanel } from '../components/SubscriptionPlanPanel';
+import { SubscriptionSummaryCard } from '../components/SubscriptionSummaryCard';
 import '../billing.css';
 
 export function BillingPage() {
@@ -36,9 +45,16 @@ export function BillingPage() {
   const [ledger, setLedger] = useState<CreditLedgerEntryDto[]>([]);
   const [products, setProducts] = useState<PaymentProductDto[]>([]);
   const [orders, setOrders] = useState<PaymentOrderDto[]>([]);
+  const [subscriptions, setSubscriptions] = useState<BillingSubscriptionDto[]>([]);
+  const [activeSubscription, setActiveSubscription] = useState<BillingSubscriptionDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [purchasingProductId, setPurchasingProductId] = useState<string | null>(null);
+  const [startingSubscriptionProductId, setStartingSubscriptionProductId] = useState<string | null>(
+    null,
+  );
   const [completingOrderId, setCompletingOrderId] = useState<string | null>(null);
+  const [completingSubscriptionId, setCompletingSubscriptionId] = useState<string | null>(null);
+  const [cancellingSubscriptionId, setCancellingSubscriptionId] = useState<string | null>(null);
   const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
@@ -61,16 +77,19 @@ export function BillingPage() {
 
     setLoading(true);
     try {
-      const [walletData, ledgerData, productData, orderData] = await Promise.all([
-        getMyWallet(user),
+      const [summary, ledgerData, productData, orderData, subscriptionData] = await Promise.all([
+        getBillingSummary(user),
         getMyLedger(user),
         listPaymentProducts(user),
         listMyPaymentOrders(user),
+        listSubscriptions(user),
       ]);
-      setWallet(walletData);
+      setWallet(summary.wallet);
+      setActiveSubscription(summary.activeSubscription);
       setLedger(ledgerData);
       setProducts(productData);
       setOrders(orderData);
+      setSubscriptions(subscriptionData);
 
       if (permissions.canManageBilling) {
         const wallets = await adminListWallets(user);
@@ -126,6 +145,7 @@ export function BillingPage() {
       const updated = await manualCompleteOrder(user, orderId);
       showMessage('결제가 완료되어 크레딧이 충전되었습니다.');
       setOrders((prev) => prev.map((order) => (order.id === updated.id ? updated : order)));
+      dispatchCreditsChanged();
       await loadBillingData();
     } catch (error) {
       showMessage(error instanceof BillingApiError ? error.message : '결제 완료 처리에 실패했습니다.');
@@ -142,7 +162,67 @@ export function BillingPage() {
     if (!user) return;
     await adminAdjustCredits(user, input);
     showMessage('크레딧이 조정되었습니다.');
+    dispatchCreditsChanged();
     await loadBillingData();
+  };
+
+  const handleStartSubscription = async (productId: string) => {
+    if (!user) return;
+    setStartingSubscriptionProductId(productId);
+    try {
+      const result = await createSubscription(user, { productId });
+      showMessage('구독 주문이 생성되었습니다. 수동 결제 완료로 활성화하세요.');
+      setSubscriptions((prev) => [result.subscription, ...prev]);
+      setOrders((prev) => [result.order, ...prev]);
+      if (result.checkoutUrl) {
+        window.open(result.checkoutUrl, '_blank', 'noopener,noreferrer');
+      }
+    } catch (error) {
+      showMessage(error instanceof BillingApiError ? error.message : '구독 생성에 실패했습니다.');
+    } finally {
+      setStartingSubscriptionProductId(null);
+    }
+  };
+
+  const handleManualCompleteSubscription = async (subscriptionId: string) => {
+    if (!user) return;
+    setCompletingSubscriptionId(subscriptionId);
+    try {
+      const updated = await manualCompleteSubscription(user, subscriptionId);
+      showMessage('구독이 활성화되어 포함 크레딧이 지급되었습니다.');
+      setSubscriptions((prev) =>
+        prev.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      setActiveSubscription(updated);
+      dispatchCreditsChanged();
+      await loadBillingData();
+    } catch (error) {
+      showMessage(
+        error instanceof BillingApiError ? error.message : '구독 활성화에 실패했습니다.',
+      );
+    } finally {
+      setCompletingSubscriptionId(null);
+    }
+  };
+
+  const handleCancelSubscription = async (subscriptionId: string) => {
+    if (!user) return;
+    const confirmed = window.confirm('현재 기간 종료 시 구독을 취소할까요?');
+    if (!confirmed) return;
+
+    setCancellingSubscriptionId(subscriptionId);
+    try {
+      const updated = await cancelSubscription(user, subscriptionId);
+      showMessage('기간 종료 시 구독이 취소되도록 설정되었습니다.');
+      setActiveSubscription(updated);
+      setSubscriptions((prev) =>
+        prev.map((item) => (item.id === updated.id ? updated : item)),
+      );
+    } catch (error) {
+      showMessage(error instanceof BillingApiError ? error.message : '구독 취소 설정에 실패했습니다.');
+    } finally {
+      setCancellingSubscriptionId(null);
+    }
   };
 
   if (!user || !permissions) {
@@ -181,6 +261,14 @@ export function BillingPage() {
 
       <div className="billing-page-body">
         <BillingSummaryCard wallet={wallet} loading={loading} />
+
+        <SubscriptionSummaryCard
+          activeSubscription={activeSubscription}
+          products={products}
+          loading={loading}
+          onCancel={permissions.canPurchaseCredits ? handleCancelSubscription : undefined}
+          cancellingSubscriptionId={cancellingSubscriptionId}
+        />
 
         {permissions.canManageBilling ? (
           <section className="billing-card">
@@ -222,12 +310,23 @@ export function BillingPage() {
         ) : null}
 
         {permissions.canPurchaseCredits ? (
-          <CreditPurchasePanel
-            products={products}
-            loading={loading}
-            purchasingProductId={purchasingProductId}
-            onPurchase={handlePurchase}
-          />
+          <>
+            <CreditPurchasePanel
+              products={products}
+              loading={loading}
+              purchasingProductId={purchasingProductId}
+              onPurchase={handlePurchase}
+            />
+            <SubscriptionPlanPanel
+              products={products}
+              subscriptions={subscriptions}
+              loading={loading}
+              startingProductId={startingSubscriptionProductId}
+              completingSubscriptionId={completingSubscriptionId}
+              onStart={handleStartSubscription}
+              onManualComplete={handleManualCompleteSubscription}
+            />
+          </>
         ) : null}
 
         <PaymentOrderTable
@@ -235,6 +334,12 @@ export function BillingPage() {
           loading={loading}
           completingOrderId={completingOrderId}
           onManualComplete={handleManualComplete}
+        />
+
+        <SubscriptionHistoryTable
+          subscriptions={subscriptions}
+          products={products}
+          loading={loading}
         />
 
         <CreditLedgerTable entries={ledger} loading={loading} />

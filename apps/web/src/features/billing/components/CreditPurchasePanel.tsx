@@ -13,15 +13,19 @@ export function CreditPurchasePanel({
   purchasingProductId,
   onPurchase,
 }: CreditPurchasePanelProps) {
+  const creditProducts = products.filter(
+    (product) => product.productType === 'credit_pack' || !product.isSubscription,
+  );
+
   return (
     <section className="billing-card">
       <h2>크레딧 충전 상품</h2>
       {loading ? <p className="billing-muted">상품 불러오는 중…</p> : null}
-      {!loading && products.length === 0 ? (
+      {!loading && creditProducts.length === 0 ? (
         <p className="billing-muted">등록된 충전 상품이 없습니다.</p>
       ) : null}
       <ul className="billing-product-list">
-        {products.map((product) => (
+        {creditProducts.map((product) => (
           <li key={product.id} className="billing-product-item">
             <div>
               <h3>{product.name}</h3>

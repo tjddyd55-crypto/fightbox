@@ -63,7 +63,9 @@ export function PaymentOrderTable({
                   <td>{STATUS_LABELS[order.status] ?? order.status}</td>
                   <td>{formatDate(order.createdAt)}</td>
                   <td>
-                    {order.status === 'pending' ? (
+                    {order.status === 'pending' && order.orderType === 'subscription_start' ? (
+                      <span className="billing-muted">정액제 섹션에서 완료</span>
+                    ) : order.status === 'pending' ? (
                       <button
                         type="button"
                         className="billing-btn billing-btn--secondary"
