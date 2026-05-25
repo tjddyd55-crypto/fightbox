@@ -1,12 +1,18 @@
 import { randomUUID } from 'node:crypto';
 import type {
+  BillingCycle,
+  BillingSubscriptionDto,
+  BillingSubscriptionStatus,
   CreditLedgerEntryDto,
   CreditLedgerEntryType,
   CreditWalletDto,
   PaymentOrderDto,
   PaymentOrderStatus,
+  PaymentOrderType,
   PaymentProductDto,
+  PaymentProductType,
 } from '@fightbox/shared';
+import { buildSubscriptionGrantIdempotencyKey } from '@fightbox/shared';
 import type { PoolClient } from 'pg';
 import { getDatabasePool } from '../config/database.js';
 import { ApiError } from '../utils/apiError.js';
@@ -46,6 +52,10 @@ interface PaymentProductRow {
   currency: string;
   is_active: boolean;
   sort_order: number;
+  product_type: string;
+  billing_cycle: string | null;
+  included_credits: number;
+  is_subscription: boolean;
   created_at: Date;
   updated_at: Date;
 }
@@ -65,12 +75,46 @@ interface PaymentOrderRow {
   checkout_url: string | null;
   failure_code: string | null;
   failure_message: string | null;
+  subscription_id: string | null;
+  order_type: string;
   paid_at: Date | null;
   cancelled_at: Date | null;
   refunded_at: Date | null;
   created_at: Date;
   updated_at: Date;
 }
+
+interface BillingSubscriptionRow {
+  id: string;
+  gym_id: string;
+  user_id: string;
+  product_id: string;
+  provider: string;
+  provider_subscription_id: string | null;
+  status: string;
+  billing_cycle: string;
+  price_amount: number;
+  currency: string;
+  included_credits_per_period: number;
+  current_period_start: Date;
+  current_period_end: Date;
+  cancel_at_period_end: boolean;
+  cancelled_at: Date | null;
+  ended_at: Date | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
+const PRODUCT_SELECT = `id, name, description, credits, price_amount, currency, is_active, sort_order,
+  product_type, billing_cycle, included_credits, is_subscription, created_at, updated_at`;
+
+const ORDER_SELECT = `id, gym_id, user_id, product_id, provider, provider_order_id, provider_payment_id,
+  status, credits, amount, currency, checkout_url, failure_code, failure_message,
+  subscription_id, order_type, paid_at, cancelled_at, refunded_at, created_at, updated_at`;
+
+const SUBSCRIPTION_SELECT = `id, gym_id, user_id, product_id, provider, provider_subscription_id, status,
+  billing_cycle, price_amount, currency, included_credits_per_period, current_period_start,
+  current_period_end, cancel_at_period_end, cancelled_at, ended_at, created_at, updated_at`;
 
 const VALID_LEDGER_TYPES: CreditLedgerEntryType[] = [
   'purchase',
@@ -125,6 +169,21 @@ export interface CreatePaymentOrderInput {
   amount: number;
   currency: string;
   checkoutUrl?: string | null;
+  subscriptionId?: string | null;
+  orderType?: PaymentOrderType;
+}
+
+export interface CreateBillingSubscriptionInput {
+  gymId: string;
+  userId: string;
+  productId: string;
+  provider: string;
+  billingCycle: BillingCycle;
+  priceAmount: number;
+  currency: string;
+  includedCreditsPerPeriod: number;
+  currentPeriodStart: Date;
+  currentPeriodEnd: Date;
 }
 
 export interface UpdatePaymentOrderStatusInput {
@@ -188,6 +247,10 @@ function productRowToDto(row: PaymentProductRow): PaymentProductDto {
     currency: row.currency,
     isActive: row.is_active,
     sortOrder: row.sort_order,
+    productType: row.product_type as PaymentProductType,
+    billingCycle: (row.billing_cycle as BillingCycle | null) ?? null,
+    includedCredits: row.included_credits,
+    isSubscription: row.is_subscription,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
   };
@@ -209,9 +272,34 @@ function orderRowToDto(row: PaymentOrderRow): PaymentOrderDto {
     checkoutUrl: row.checkout_url,
     failureCode: row.failure_code,
     failureMessage: row.failure_message,
+    subscriptionId: row.subscription_id,
+    orderType: (row.order_type ?? 'credit_purchase') as PaymentOrderType,
     paidAt: row.paid_at?.toISOString() ?? null,
     cancelledAt: row.cancelled_at?.toISOString() ?? null,
     refundedAt: row.refunded_at?.toISOString() ?? null,
+    createdAt: row.created_at.toISOString(),
+    updatedAt: row.updated_at.toISOString(),
+  };
+}
+
+function subscriptionRowToDto(row: BillingSubscriptionRow): BillingSubscriptionDto {
+  return {
+    id: row.id,
+    gymId: row.gym_id,
+    userId: row.user_id,
+    productId: row.product_id,
+    provider: row.provider,
+    providerSubscriptionId: row.provider_subscription_id,
+    status: row.status as BillingSubscriptionStatus,
+    billingCycle: row.billing_cycle as BillingCycle,
+    priceAmount: row.price_amount,
+    currency: row.currency,
+    includedCreditsPerPeriod: row.included_credits_per_period,
+    currentPeriodStart: row.current_period_start.toISOString(),
+    currentPeriodEnd: row.current_period_end.toISOString(),
+    cancelAtPeriodEnd: row.cancel_at_period_end,
+    cancelledAt: row.cancelled_at?.toISOString() ?? null,
+    endedAt: row.ended_at?.toISOString() ?? null,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
   };
@@ -535,8 +623,7 @@ export async function listPaymentProducts(): Promise<PaymentProductDto[]> {
   try {
     const pool = getDatabasePool();
     const result = await pool.query<PaymentProductRow>(
-      `SELECT id, name, description, credits, price_amount, currency, is_active, sort_order,
-              created_at, updated_at
+      `SELECT ${PRODUCT_SELECT}
        FROM payment_products
        WHERE is_active = true
        ORDER BY sort_order ASC, id ASC`,
@@ -551,8 +638,7 @@ export async function getPaymentProduct(productId: string): Promise<PaymentProdu
   try {
     const pool = getDatabasePool();
     const result = await pool.query<PaymentProductRow>(
-      `SELECT id, name, description, credits, price_amount, currency, is_active, sort_order,
-              created_at, updated_at
+      `SELECT ${PRODUCT_SELECT}
        FROM payment_products
        WHERE id = $1`,
       [productId],
@@ -570,12 +656,10 @@ export async function createPaymentOrder(input: CreatePaymentOrderInput): Promis
     const result = await pool.query<PaymentOrderRow>(
       `INSERT INTO payment_orders (
          id, gym_id, user_id, product_id, provider, provider_order_id, status,
-         credits, amount, currency, checkout_url
+         credits, amount, currency, checkout_url, subscription_id, order_type
        )
-       VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7, $8, $9, $10)
-       RETURNING id, gym_id, user_id, product_id, provider, provider_order_id, provider_payment_id,
-                 status, credits, amount, currency, checkout_url, failure_code, failure_message,
-                 paid_at, cancelled_at, refunded_at, created_at, updated_at`,
+       VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7, $8, $9, $10, $11, $12)
+       RETURNING ${ORDER_SELECT}`,
       [
         orderId,
         input.gymId,
@@ -587,6 +671,8 @@ export async function createPaymentOrder(input: CreatePaymentOrderInput): Promis
         input.amount,
         input.currency,
         input.checkoutUrl ?? null,
+        input.subscriptionId ?? null,
+        input.orderType ?? 'credit_purchase',
       ],
     );
     return orderRowToDto(result.rows[0]);
@@ -599,9 +685,7 @@ export async function getPaymentOrder(orderId: string): Promise<PaymentOrderDto 
   try {
     const pool = getDatabasePool();
     const result = await pool.query<PaymentOrderRow>(
-      `SELECT id, gym_id, user_id, product_id, provider, provider_order_id, provider_payment_id,
-              status, credits, amount, currency, checkout_url, failure_code, failure_message,
-              paid_at, cancelled_at, refunded_at, created_at, updated_at
+      `SELECT ${ORDER_SELECT}
        FROM payment_orders
        WHERE id = $1`,
       [orderId],
@@ -616,9 +700,7 @@ export async function listPaymentOrders(gymId: string): Promise<PaymentOrderDto[
   try {
     const pool = getDatabasePool();
     const result = await pool.query<PaymentOrderRow>(
-      `SELECT id, gym_id, user_id, product_id, provider, provider_order_id, provider_payment_id,
-              status, credits, amount, currency, checkout_url, failure_code, failure_message,
-              paid_at, cancelled_at, refunded_at, created_at, updated_at
+      `SELECT ${ORDER_SELECT}
        FROM payment_orders
        WHERE gym_id = $1
        ORDER BY created_at DESC
@@ -653,9 +735,7 @@ export async function updatePaymentOrderStatus(
            refunded_at = COALESCE($8, refunded_at),
            updated_at = now()
        WHERE id = $1
-       RETURNING id, gym_id, user_id, product_id, provider, provider_order_id, provider_payment_id,
-                 status, credits, amount, currency, checkout_url, failure_code, failure_message,
-                 paid_at, cancelled_at, refunded_at, created_at, updated_at`,
+       RETURNING ${ORDER_SELECT}`,
       [
         input.orderId,
         input.status,
@@ -691,9 +771,7 @@ export async function updatePaymentOrderCheckout(
            checkout_url = $3,
            updated_at = now()
        WHERE id = $1
-       RETURNING id, gym_id, user_id, product_id, provider, provider_order_id, provider_payment_id,
-                 status, credits, amount, currency, checkout_url, failure_code, failure_message,
-                 paid_at, cancelled_at, refunded_at, created_at, updated_at`,
+       RETURNING ${ORDER_SELECT}`,
       [orderId, providerOrderId, checkoutUrl],
     );
 
@@ -702,6 +780,260 @@ export async function updatePaymentOrderCheckout(
     }
 
     return orderRowToDto(result.rows[0]);
+  } catch (error) {
+    throw wrapDatabaseError(error);
+  }
+}
+
+export async function listSubscriptionProducts(): Promise<PaymentProductDto[]> {
+  try {
+    const pool = getDatabasePool();
+    const result = await pool.query<PaymentProductRow>(
+      `SELECT ${PRODUCT_SELECT}
+       FROM payment_products
+       WHERE is_active = true AND product_type = 'subscription_plan'
+       ORDER BY sort_order ASC, id ASC`,
+    );
+    return result.rows.map(productRowToDto);
+  } catch (error) {
+    throw wrapDatabaseError(error);
+  }
+}
+
+export async function createBillingSubscription(
+  input: CreateBillingSubscriptionInput,
+): Promise<BillingSubscriptionDto> {
+  try {
+    const pool = getDatabasePool();
+    const subscriptionId = `sub-${randomUUID()}`;
+    const result = await pool.query<BillingSubscriptionRow>(
+      `INSERT INTO billing_subscriptions (
+         id, gym_id, user_id, product_id, provider, status, billing_cycle,
+         price_amount, currency, included_credits_per_period,
+         current_period_start, current_period_end
+       )
+       VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7, $8, $9, $10, $11)
+       RETURNING ${SUBSCRIPTION_SELECT}`,
+      [
+        subscriptionId,
+        input.gymId,
+        input.userId,
+        input.productId,
+        input.provider,
+        input.billingCycle,
+        input.priceAmount,
+        input.currency,
+        input.includedCreditsPerPeriod,
+        input.currentPeriodStart,
+        input.currentPeriodEnd,
+      ],
+    );
+    return subscriptionRowToDto(result.rows[0]);
+  } catch (error) {
+    throw wrapDatabaseError(error);
+  }
+}
+
+export async function getBillingSubscription(
+  subscriptionId: string,
+): Promise<BillingSubscriptionDto | null> {
+  try {
+    const pool = getDatabasePool();
+    const result = await pool.query<BillingSubscriptionRow>(
+      `SELECT ${SUBSCRIPTION_SELECT}
+       FROM billing_subscriptions
+       WHERE id = $1`,
+      [subscriptionId],
+    );
+    return result.rows[0] ? subscriptionRowToDto(result.rows[0]) : null;
+  } catch (error) {
+    throw wrapDatabaseError(error);
+  }
+}
+
+export async function getActiveBillingSubscription(
+  gymId: string,
+): Promise<BillingSubscriptionDto | null> {
+  try {
+    const pool = getDatabasePool();
+    const result = await pool.query<BillingSubscriptionRow>(
+      `SELECT ${SUBSCRIPTION_SELECT}
+       FROM billing_subscriptions
+       WHERE gym_id = $1
+         AND status = 'active'
+         AND current_period_end > now()
+       ORDER BY current_period_end DESC
+       LIMIT 1`,
+      [gymId],
+    );
+    return result.rows[0] ? subscriptionRowToDto(result.rows[0]) : null;
+  } catch (error) {
+    throw wrapDatabaseError(error);
+  }
+}
+
+export async function listBillingSubscriptions(
+  gymId: string,
+): Promise<BillingSubscriptionDto[]> {
+  try {
+    const pool = getDatabasePool();
+    const result = await pool.query<BillingSubscriptionRow>(
+      `SELECT ${SUBSCRIPTION_SELECT}
+       FROM billing_subscriptions
+       WHERE gym_id = $1
+       ORDER BY created_at DESC
+       LIMIT 100`,
+      [gymId],
+    );
+    return result.rows.map(subscriptionRowToDto);
+  } catch (error) {
+    throw wrapDatabaseError(error);
+  }
+}
+
+async function setExistingActiveSubscriptionsCancelledOnClient(
+  client: PoolClient,
+  gymId: string,
+  exceptSubscriptionId: string,
+): Promise<void> {
+  await client.query(
+    `UPDATE billing_subscriptions
+     SET status = 'cancelled',
+         cancelled_at = now(),
+         ended_at = now(),
+         updated_at = now()
+     WHERE gym_id = $1
+       AND status = 'active'
+       AND id <> $2`,
+    [gymId, exceptSubscriptionId],
+  );
+}
+
+export interface ActivateBillingSubscriptionInput {
+  subscriptionId: string;
+  gymId: string;
+  actorId: string;
+  orderId?: string | null;
+}
+
+export async function activateBillingSubscription(
+  input: ActivateBillingSubscriptionInput,
+): Promise<BillingSubscriptionDto> {
+  const pool = getDatabasePool();
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const locked = await client.query<BillingSubscriptionRow>(
+      `SELECT ${SUBSCRIPTION_SELECT}
+       FROM billing_subscriptions
+       WHERE id = $1 AND gym_id = $2
+       FOR UPDATE`,
+      [input.subscriptionId, input.gymId],
+    );
+
+    const subscription = locked.rows[0];
+    if (!subscription) {
+      throw new ApiError(404, 'SUBSCRIPTION_NOT_FOUND', 'Subscription not found');
+    }
+
+    if (subscription.status === 'active') {
+      await client.query('COMMIT');
+      return subscriptionRowToDto(subscription);
+    }
+
+    if (subscription.status !== 'pending') {
+      throw new ApiError(400, 'SUBSCRIPTION_NOT_PENDING', 'Subscription is not pending');
+    }
+
+    await setExistingActiveSubscriptionsCancelledOnClient(
+      client,
+      input.gymId,
+      input.subscriptionId,
+    );
+
+    const activated = await client.query<BillingSubscriptionRow>(
+      `UPDATE billing_subscriptions
+       SET status = 'active', updated_at = now()
+       WHERE id = $1
+       RETURNING ${SUBSCRIPTION_SELECT}`,
+      [input.subscriptionId],
+    );
+
+    if (subscription.included_credits_per_period > 0) {
+      await applyLedgerEntryOnClient(client, {
+        gymId: input.gymId,
+        entryType: 'grant',
+        amount: subscription.included_credits_per_period,
+        reason: 'Subscription period credit grant',
+        sourceType: 'subscription',
+        sourceId: input.subscriptionId,
+        idempotencyKey: buildSubscriptionGrantIdempotencyKey(input.subscriptionId),
+        createdBy: input.actorId,
+      });
+    }
+
+    if (input.orderId) {
+      await client.query(
+        `UPDATE payment_orders
+         SET status = 'paid',
+             provider_payment_id = COALESCE(provider_payment_id, $2),
+             paid_at = COALESCE(paid_at, now()),
+             updated_at = now()
+         WHERE id = $1 AND status = 'pending'`,
+        [input.orderId, `manual-${input.orderId}`],
+      );
+    }
+
+    await client.query('COMMIT');
+    return subscriptionRowToDto(activated.rows[0]);
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw wrapDatabaseError(error);
+  } finally {
+    client.release();
+  }
+}
+
+export async function cancelBillingSubscription(
+  subscriptionId: string,
+  gymId: string,
+): Promise<BillingSubscriptionDto> {
+  try {
+    const pool = getDatabasePool();
+    const result = await pool.query<BillingSubscriptionRow>(
+      `UPDATE billing_subscriptions
+       SET cancel_at_period_end = true, updated_at = now()
+       WHERE id = $1 AND gym_id = $2 AND status = 'active'
+       RETURNING ${SUBSCRIPTION_SELECT}`,
+      [subscriptionId, gymId],
+    );
+
+    if (!result.rows[0]) {
+      throw new ApiError(404, 'SUBSCRIPTION_NOT_FOUND', 'Active subscription not found');
+    }
+
+    return subscriptionRowToDto(result.rows[0]);
+  } catch (error) {
+    throw wrapDatabaseError(error);
+  }
+}
+
+export async function getPendingOrderForSubscription(
+  subscriptionId: string,
+): Promise<PaymentOrderDto | null> {
+  try {
+    const pool = getDatabasePool();
+    const result = await pool.query<PaymentOrderRow>(
+      `SELECT ${ORDER_SELECT}
+       FROM payment_orders
+       WHERE subscription_id = $1 AND order_type = 'subscription_start'
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [subscriptionId],
+    );
+    return result.rows[0] ? orderRowToDto(result.rows[0]) : null;
   } catch (error) {
     throw wrapDatabaseError(error);
   }
