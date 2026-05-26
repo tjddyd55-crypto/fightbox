@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import type { ProgramPlayerState } from '../hooks/useProgramPlayerState';
 import { formatPlayerTime } from '../utils/programPlayerTimeUtils';
+import { formatActiveRepeatProgress } from '../utils/programPlayerPlaybackUtils';
 import { ProgramBlockTimeline } from './ProgramBlockTimeline';
 import { ProgramMultiScreenLauncher } from './ProgramMultiScreenLauncher';
 import { ProgramPlayerControls } from './ProgramPlayerControls';
@@ -19,6 +20,11 @@ export function ProgramCoachView({
 }: ProgramCoachViewProps) {
   const rootRef = useRef<HTMLElement>(null);
   useProgramPlayerKeyboard(player, rootRef);
+
+  const activeRepeatLabel = formatActiveRepeatProgress(
+    player.currentBlock,
+    player.currentRepeatIndex,
+  );
 
   return (
     <section ref={rootRef} className="pp-coach-view">
@@ -45,6 +51,7 @@ export function ProgramCoachView({
           <p>현재</p>
           <strong>{player.currentBlock.title}</strong>
           <span>{formatPlayerTime(player.remainingSec)}</span>
+          {activeRepeatLabel && <span className="pp-coach-repeat">{activeRepeatLabel}</span>}
         </div>
       )}
 

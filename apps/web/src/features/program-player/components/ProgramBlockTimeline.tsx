@@ -1,6 +1,9 @@
 import { formatPlayerTime } from '../utils/programPlayerTimeUtils';
 import type { ProgramPlayerState } from '../hooks/useProgramPlayerState';
-import { getPlayerBlockPlaybackHint } from '../utils/programPlayerPlaybackUtils';
+import {
+  formatActiveRepeatProgress,
+  getPlayerBlockPlaybackHint,
+} from '../utils/programPlayerPlaybackUtils';
 
 interface ProgramBlockTimelineProps {
   player: ProgramPlayerState;
@@ -27,6 +30,11 @@ export function ProgramBlockTimeline({
           index === player.currentIndex && player.mode !== 'start' && player.mode !== 'complete';
         const isDone = player.mode === 'complete' || index < player.currentIndex;
         const playbackHint = getPlayerBlockPlaybackHint(block);
+        const activeRepeatLabel =
+          isCurrent && block.type === 'video'
+            ? formatActiveRepeatProgress(block, player.currentRepeatIndex)
+            : null;
+        const playbackDetail = activeRepeatLabel ?? playbackHint;
         return (
           <button
             key={block.id}
@@ -40,7 +48,7 @@ export function ProgramBlockTimeline({
               <strong>{block.title}</strong>
               <span>
                 {blockTypeLabel(block.type)}
-                {playbackHint ? ` · ${playbackHint}` : ''} ·{' '}
+                {playbackDetail ? ` · ${playbackDetail}` : ''} ·{' '}
                 {formatPlayerTime(block.durationSec)}
               </span>
               {block.message && block.type !== 'video' && (

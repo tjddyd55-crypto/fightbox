@@ -1,4 +1,5 @@
 import { formatPlayerTime } from '../utils/programPlayerTimeUtils';
+import { formatActiveRepeatProgress } from '../utils/programPlayerPlaybackUtils';
 import type { ProgramPlayerState } from '../hooks/useProgramPlayerState';
 
 interface ProgramQueueViewProps {
@@ -8,6 +9,11 @@ interface ProgramQueueViewProps {
 export function ProgramQueueView({ player }: ProgramQueueViewProps) {
   const upcoming = player.blocks.slice(player.currentIndex + 1, player.currentIndex + 6);
   const isComplete = player.mode === 'complete';
+
+  const activeRepeatLabel = formatActiveRepeatProgress(
+    player.currentBlock,
+    player.currentRepeatIndex,
+  );
 
   return (
     <section className="pp-queue-view">
@@ -33,6 +39,7 @@ export function ProgramQueueView({ player }: ProgramQueueViewProps) {
           <p className="pp-queue-label">현재</p>
           <h2>{player.currentBlock.title}</h2>
           <p className="pp-queue-timer">{formatPlayerTime(player.remainingSec)}</p>
+          {activeRepeatLabel && <p className="pp-queue-repeat">{activeRepeatLabel}</p>}
         </div>
       )}
 
