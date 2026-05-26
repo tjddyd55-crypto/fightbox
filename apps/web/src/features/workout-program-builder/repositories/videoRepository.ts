@@ -29,6 +29,7 @@ import {
 } from '../storage/uploadedVideoStorage';
 import type {
   CreateWorkoutVideoInput,
+  CreateYouTubeWorkoutVideoInput,
   UpdateWorkoutVideoInput,
   WorkoutVideo,
   WorkoutVideoUploadMeta,
@@ -212,6 +213,32 @@ export function filterVideos(
   return filterWorkoutVideos(videos, filters);
 }
 
+
+export function createYouTubeVideo(input: CreateYouTubeWorkoutVideoInput): WorkoutVideo | null {
+  const video: WorkoutVideo = {
+    id: createVideoId(),
+    title: input.title,
+    description: input.description,
+    durationSec: input.durationSec,
+    thumbnailUrl: input.thumbnailUrl,
+    tags: input.tags,
+    difficulty: input.difficulty,
+    bodyParts: input.bodyParts,
+    isLoopable: input.isLoopable,
+    sourceType: mapVisibilityToSourceType(input.visibility),
+    contentSource: 'own',
+    isPremium: input.isPremium,
+    mediaSource: 'youtube',
+    youtubeMeta: {
+      videoId: input.youtubeVideoId,
+      externalUrl: input.externalUrl,
+      embedUrl: input.embedUrl,
+    },
+  };
+  if (!saveUploadedVideo(video)) return null;
+  return video;
+}
+
 export function createVideo(input: CreateWorkoutVideoInput): WorkoutVideo | null {
   const uploadResult = input.uploadResult;
   const thumbnailUrl =
@@ -238,6 +265,7 @@ export function createVideo(input: CreateWorkoutVideoInput): WorkoutVideo | null
     contentSource: 'own',
     isPremium: input.isPremium,
     uploadMeta: buildUploadMeta(input, uploadResult),
+    mediaSource: 'uploaded',
   };
 
   if (!saveUploadedVideo(video)) return null;
