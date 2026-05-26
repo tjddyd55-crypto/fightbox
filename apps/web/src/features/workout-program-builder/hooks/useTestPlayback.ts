@@ -55,6 +55,7 @@ export function useTestPlayback({
   const [videoRepeatIndex, setVideoRepeatIndex] = useState(1);
   const [isComplete, setIsComplete] = useState(false);
   const isAdvancingRef = useRef(false);
+  const videoLoopGuardRef = useRef<{ blockId: string; repeatIndex: number } | null>(null);
 
   const totalDuration = useMemo(
     () => getTimelineTotalDurationSeconds(blocks, videoMap),
@@ -129,13 +130,26 @@ export function useTestPlayback({
   const onVideoLoopComplete = useCallback(() => {
     if (!currentBlock || currentBlock.type !== 'video') return;
     if (currentBlock.playbackMode !== 'repeat_count') return;
+    const guard = { blockId: currentBlock.id, repeatIndex: videoRepeatIndex };
+    if (
+      videoLoopGuardRef.current?.blockId === guard.blockId &&
+      videoLoopGuardRef.current?.repeatIndex === guard.repeatIndex
+    ) {
+      return;
+    }
+    videoLoopGuardRef.current = guard;
+
     const target = Math.max(1, currentBlock.repeatCount ?? 1);
     if (videoRepeatIndex < target) {
       setVideoRepeatIndex((prev) => prev + 1);
       setElapsedInBlock(0);
       return;
     }
-    goNext();
+    if (!isAdvancingRef.current) {
+      isAdvancingRef.current = true;
+      goNext();
+      isAdvancingRef.current = false;
+    }
   }, [currentBlock, videoRepeatIndex, goNext]);
 
   useEffect(() => {
@@ -150,6 +164,7 @@ export function useTestPlayback({
     setElapsedInBlock(0);
     setVideoRepeatIndex(1);
     isAdvancingRef.current = false;
+    videoLoopGuardRef.current = null;
   }, [currentIndex]);
 
   useEffect(() => {
