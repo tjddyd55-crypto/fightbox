@@ -107,6 +107,8 @@ export interface VideoProgramBlock extends BaseProgramBlock {
   repeatCount?: number;
   targetDurationSec?: number;
   restAfterSec?: number;
+  playbackUrl?: string;
+  thumbnailUrl?: string;
   voiceCues: {
     ready: boolean;
     go: boolean;
@@ -123,12 +125,16 @@ export interface RestProgramBlock extends BaseProgramBlock {
 
 export interface CountdownProgramBlock extends BaseProgramBlock {
   type: 'countdown';
+  message?: string;
   countFromSec: number;
+  startNumber?: number;
 }
 
 export interface VoiceProgramBlock extends BaseProgramBlock {
   type: 'voice';
   cueText: string;
+  message?: string;
+  voiceCue?: string;
 }
 
 export type ProgramBlock =
