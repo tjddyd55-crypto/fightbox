@@ -2,8 +2,10 @@ import { useCallback, useEffect, useRef } from 'react';
 import { formatPlayerTime } from '../utils/programPlayerTimeUtils';
 import type { ProgramPlayerBlock } from '../types/programPlayer.types';
 import {
+  formatActiveRepeatProgress,
   getPlayerBlockPlaybackHint,
   shouldLoopVideo,
+  shouldReplayVideoAfterEnd,
   usesVideoEndedForAdvance,
 } from '../utils/programPlayerPlaybackUtils';
 import type { YouTubePlayerInstance } from '../utils/youtubeIframeApi';
@@ -18,6 +20,7 @@ interface ProgramVideoBlockScreenProps {
   currentRepeatIndex: number;
   currentRepeatCount: number;
   onVideoLoopComplete?: () => void;
+  onVideoOriginalEnded?: () => void;
   variant?: 'default' | 'display';
 }
 
@@ -38,6 +41,7 @@ export function ProgramVideoBlockScreen({
   currentRepeatIndex,
   currentRepeatCount,
   onVideoLoopComplete,
+  onVideoOriginalEnded,
   variant = 'default',
 }: ProgramVideoBlockScreenProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -52,19 +56,18 @@ export function ProgramVideoBlockScreen({
     : Boolean(block.playbackUrl);
   const showRepeatBadge =
     block.playbackMode === 'repeat_count' && currentRepeatCount > 1;
+  const activeRepeatLabel = formatActiveRepeatProgress(block, currentRepeatIndex);
 
   const handleYouTubeEnded = useCallback(() => {
     if (usesVideoEndedForAdvance(block)) {
       onVideoLoopComplete?.();
+    } else if (block.playbackMode === 'original_duration') {
+      onVideoOriginalEnded?.();
+      return;
     }
+
     const player = youtubePlayerRef.current;
-    if (
-      player &&
-      isPlaying &&
-      (block.playbackMode === 'loop_until_duration' ||
-        (block.playbackMode === 'repeat_count' &&
-          currentRepeatIndex < Math.max(1, block.repeatCount ?? 1)))
-    ) {
+    if (player && isPlaying && shouldReplayVideoAfterEnd(block, currentRepeatIndex)) {
       player.seekTo(0);
       player.playVideo();
     }
@@ -73,6 +76,40 @@ export function ProgramVideoBlockScreen({
     currentRepeatIndex,
     isPlaying,
     onVideoLoopComplete,
+    onVideoOriginalEnded,
+  ]);
+
+  const handleHtmlVideoEnded = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) {
+      return;
+    }
+
+    if (block.playbackMode === 'repeat_count' && usesVideoEndedForAdvance(block)) {
+      const shouldReplay = shouldReplayVideoAfterEnd(block, currentRepeatIndex);
+      onVideoLoopComplete?.();
+      if (isPlaying && shouldReplay) {
+        video.currentTime = 0;
+        void video.play().catch(() => undefined);
+      }
+      return;
+    }
+
+    if (block.playbackMode === 'original_duration') {
+      onVideoOriginalEnded?.();
+      return;
+    }
+
+    if (block.playbackMode === 'loop_until_duration' && isPlaying) {
+      video.currentTime = 0;
+      void video.play().catch(() => undefined);
+    }
+  }, [
+    block,
+    currentRepeatIndex,
+    isPlaying,
+    onVideoLoopComplete,
+    onVideoOriginalEnded,
   ]);
 
   useEffect(() => {
@@ -103,21 +140,13 @@ export function ProgramVideoBlockScreen({
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !hasPlayback || isYouTube || block.playbackMode !== 'repeat_count') {
+    if (!video || !hasPlayback || isYouTube) {
       return undefined;
     }
 
-    const handleEnded = () => {
-      onVideoLoopComplete?.();
-      if (isPlaying) {
-        video.currentTime = 0;
-        void video.play().catch(() => undefined);
-      }
-    };
-
-    video.addEventListener('ended', handleEnded);
-    return () => video.removeEventListener('ended', handleEnded);
-  }, [block.id, block.playbackMode, hasPlayback, isPlaying, isYouTube, onVideoLoopComplete]);
+    video.addEventListener('ended', handleHtmlVideoEnded);
+    return () => video.removeEventListener('ended', handleHtmlVideoEnded);
+  }, [block.id, hasPlayback, isYouTube, handleHtmlVideoEnded]);
 
   return (
     <section className={`pp-video-screen pp-video-screen--${variant}`}>
@@ -162,7 +191,7 @@ export function ProgramVideoBlockScreen({
         <p className="pp-video-timer">{formatPlayerTime(remainingSec)}</p>
         {showRepeatBadge && (
           <p className="pp-video-repeat-badge">
-            {currentRepeatIndex} / {currentRepeatCount} 반복
+            {activeRepeatLabel ?? `${currentRepeatIndex} / ${currentRepeatCount} 반복`}
           </p>
         )}
         {playbackHint && !showRepeatBadge && (

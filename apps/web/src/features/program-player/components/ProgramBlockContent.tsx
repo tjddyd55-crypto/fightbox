@@ -68,6 +68,7 @@ export function ProgramBlockContent({ player, variant = 'default' }: ProgramBloc
       currentRepeatIndex={player.currentRepeatIndex}
       currentRepeatCount={player.currentRepeatCount}
       onVideoLoopComplete={player.onVideoLoopComplete}
+      onVideoOriginalEnded={player.onVideoOriginalEnded}
       variant={variant}
     />
   );
