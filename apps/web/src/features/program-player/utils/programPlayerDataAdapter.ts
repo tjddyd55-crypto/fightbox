@@ -15,6 +15,7 @@ import {
   mapBuilderPlayModeToPlayer,
 } from './programPlayerPlaybackUtils';
 import { getProgramTotalDurationSec } from './programPlayerTimeUtils';
+import { isYouTubeWorkoutVideo, getWorkoutVideoEmbedUrl } from '../../workout-program-builder/utils/videoPlaybackUtils';
 import { MOCK_PROGRAM_BLOCKS } from '../data/mockProgramPlayerData';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -98,6 +99,7 @@ export function mapProgramBlockToPlayer(
   }
 
   const video = block.type === 'video' ? videoMap.get(block.videoId) : undefined;
+  const isYouTube = video != null && isYouTubeWorkoutVideo(video);
   const playbackMode =
     block.type === 'video' ? mapBuilderPlayModeToPlayer(block.playMode) : undefined;
 
@@ -133,11 +135,12 @@ export function mapProgramBlockToPlayer(
     durationSec = Math.max(1, block.durationSec || 3);
   }
 
-  const playbackUrl =
-    resolveHttpUrl(playbackItem?.playbackUrl) ??
-    resolveHttpUrl(block.type === 'video' ? block.playbackUrl : undefined) ??
-    resolveHttpUrl(video?.uploadMeta?.playbackUrl) ??
-    resolveHttpUrl(video?.previewUrl);
+  const playbackUrl = isYouTube
+    ? undefined
+    : resolveHttpUrl(playbackItem?.playbackUrl) ??
+      resolveHttpUrl(block.type === 'video' ? block.playbackUrl : undefined) ??
+      resolveHttpUrl(video?.uploadMeta?.playbackUrl) ??
+      resolveHttpUrl(video?.previewUrl);
 
   const thumbnailUrl =
     resolveHttpUrl(playbackItem?.thumbnailUrl) ??
@@ -188,6 +191,18 @@ export function mapProgramBlockToPlayer(
     repeatCount: block.type === 'video' ? block.repeatCount : undefined,
     targetDurationSec: block.type === 'video' ? block.targetDurationSec : undefined,
     restAfterSec: block.type === 'video' ? block.restAfterSec : undefined,
+    mediaSource:
+      block.type === 'video'
+        ? block.mediaSource ?? (isYouTube ? 'youtube' : 'uploaded')
+        : undefined,
+    externalVideoId:
+      block.type === 'video'
+        ? block.externalVideoId ?? video?.youtubeMeta?.videoId
+        : undefined,
+    embedUrl:
+      block.type === 'video'
+        ? block.embedUrl ?? (getWorkoutVideoEmbedUrl(video) || undefined)
+        : undefined,
   };
 }
 
