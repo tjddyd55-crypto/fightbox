@@ -1,5 +1,6 @@
 import {
   WORKOUT_BUILDER_API_PATHS,
+  normalizeWorkoutVideoSourceType,
   type CreateProgramTemplateRequest,
   type CreateUploadedVideoRequest,
   type DeleteUploadedVideoResponse,
@@ -27,9 +28,7 @@ import {
   normalizeTemplateStatus,
   normalizeTemplateVisibility,
 } from '../utils/templateVisibilityUtils';
-import { normalizeWorkoutProgramTemplate } from '../utils/blockTypeNormalization';
-import { buildWorkoutVideoMap } from '../utils/programTimelineUtils';
-import { getCatalogVideos } from '../utils/videoCatalogUtils';
+import { getYouTubeThumbnailUrl } from '../utils/youtubeVideoUtils';
 
 export class WorkoutBuilderApiError extends Error {
   readonly status: number;
@@ -121,8 +120,37 @@ function isTemplatePublicReviewStatus(value: string): value is TemplatePublicRev
 
 export function uploadedVideoDtoToWorkoutVideo(dto: UploadedVideoDto): WorkoutVideo {
   const difficulty = isWorkoutDifficulty(dto.difficulty) ? dto.difficulty : 'beginner';
-  const provider = (dto.provider || 'r2') as VideoStorageProvider;
+  const mediaSource = normalizeWorkoutVideoSourceType(dto.sourceType);
   const remoteThumbnail = resolveHttpThumbnailUrl(dto.thumbnailUrl);
+
+  if (mediaSource === 'youtube' && dto.externalVideoId) {
+    const videoId = dto.externalVideoId;
+    const thumbnail =
+      remoteThumbnail ?? getYouTubeThumbnailUrl(videoId) ?? UPLOADED_VIDEO_PLACEHOLDER_THUMBNAIL;
+
+    return {
+      id: dto.id,
+      title: dto.title,
+      description: dto.description || undefined,
+      durationSec: dto.durationSec,
+      thumbnailUrl: thumbnail,
+      tags: dto.tags ?? [],
+      difficulty,
+      bodyParts: dto.bodyParts ?? [],
+      isLoopable: dto.isLoopable,
+      sourceType: mapVisibilityToSourceType(dto.visibility),
+      contentSource: 'own',
+      isPremium: dto.isPremium,
+      mediaSource: 'youtube',
+      youtubeMeta: {
+        videoId,
+        externalUrl: dto.externalUrl ?? `https://www.youtube.com/watch?v=${videoId}`,
+        embedUrl: dto.embedUrl ?? '',
+      },
+    };
+  }
+
+  const provider = (dto.provider || 'r2') as VideoStorageProvider;
 
   return {
     id: dto.id,
@@ -138,6 +166,7 @@ export function uploadedVideoDtoToWorkoutVideo(dto: UploadedVideoDto): WorkoutVi
     sourceType: mapVisibilityToSourceType(dto.visibility),
     contentSource: 'own',
     isPremium: dto.isPremium,
+    mediaSource: 'uploaded',
     uploadMeta: {
       originalFileName: dto.fileName,
       fileSizeBytes: dto.fileSize,
@@ -222,15 +251,6 @@ export function programTemplateDtoToWorkoutProgramTemplate(
   }
 
   const template = dto.templateJson as WorkoutProgramTemplate;
-  const videoMap = buildWorkoutVideoMap(getCatalogVideos());
-  const normalized = normalizeWorkoutProgramTemplate(
-    {
-      ...template,
-      blocks: Array.isArray(template.blocks) ? template.blocks : [],
-      tags: Array.isArray(template.tags) ? template.tags : [],
-    },
-    videoMap,
-  );
   const visibility = normalizeTemplateVisibility(dto.visibility || template.visibility || 'private');
   const status = normalizeTemplateStatus(dto.status || template.status || 'draft');
   const publicReviewStatus =
@@ -239,7 +259,7 @@ export function programTemplateDtoToWorkoutProgramTemplate(
       : template.publicReviewStatus;
 
   return {
-    ...normalized,
+    ...template,
     id: dto.id,
     title: dto.title,
     description: dto.description || template.description,
@@ -253,9 +273,11 @@ export function programTemplateDtoToWorkoutProgramTemplate(
     shareEnabled: dto.shareEnabled ?? template.shareEnabled ?? false,
     publishedAt: dto.publishedAt ?? template.publishedAt ?? null,
     unpublishedAt: dto.unpublishedAt ?? template.unpublishedAt ?? null,
-    totalDurationSec: dto.totalDurationSec || normalized.totalDurationSec,
+    totalDurationSec: dto.totalDurationSec,
     createdAt: dto.createdAt,
     updatedAt: dto.updatedAt,
+    blocks: Array.isArray(template.blocks) ? template.blocks : [],
+    tags: Array.isArray(template.tags) ? template.tags : [],
   };
 }
 

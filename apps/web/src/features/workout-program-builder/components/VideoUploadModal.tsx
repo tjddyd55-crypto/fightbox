@@ -8,6 +8,7 @@ import {
 } from '../services/videoUploadService';
 import type {
   CreateWorkoutVideoInput,
+  CreateYouTubeWorkoutVideoInput,
   UploadedVideoVisibility,
   WorkoutDifficulty,
 } from '../types/workoutProgramBuilder.types';
@@ -23,11 +24,15 @@ import {
   generateVideoThumbnailFromFile,
   type GeneratedVideoThumbnail,
 } from '../utils/videoThumbnailUtils';
+import { VideoYouTubeRegistrationPanel } from './VideoYouTubeRegistrationPanel';
+
+type VideoRegistrationMode = 'upload' | 'youtube';
 
 interface VideoUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (input: CreateWorkoutVideoInput) => boolean;
+  onSubmitYouTube?: (input: CreateYouTubeWorkoutVideoInput) => boolean;
 }
 
 const DIFFICULTY_OPTIONS: { value: WorkoutDifficulty; label: string }[] = [
@@ -50,7 +55,8 @@ const INITIAL_FORM: Omit<VideoUploadFormValues, 'file'> = {
   durationSec: 0,
 };
 
-export function VideoUploadModal({ isOpen, onClose, onSubmit }: VideoUploadModalProps) {
+export function VideoUploadModal({ isOpen, onClose, onSubmit, onSubmitYouTube }: VideoUploadModalProps) {
+  const [registrationMode, setRegistrationMode] = useState<VideoRegistrationMode>('upload');
   const formId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewUrlRef = useRef<string | null>(null);
@@ -324,6 +330,28 @@ export function VideoUploadModal({ isOpen, onClose, onSubmit }: VideoUploadModal
       >
         <header className="wpb-template-library-header">
           <h2 id="wpb-video-upload-modal-title">영상 등록</h2>
+          <div className="wpb-video-registration-tabs" role="tablist" aria-label="등록 방식">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={registrationMode === 'upload'}
+              className={`wpb-video-registration-tab${registrationMode === 'upload' ? ' is-active' : ''}`}
+              onClick={() => setRegistrationMode('upload')}
+              disabled={isUploadBusy}
+            >
+              파일 업로드
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={registrationMode === 'youtube'}
+              className={`wpb-video-registration-tab${registrationMode === 'youtube' ? ' is-active' : ''}`}
+              onClick={() => setRegistrationMode('youtube')}
+              disabled={isUploadBusy}
+            >
+              유튜브 링크
+            </button>
+          </div>
           <button
             type="button"
             className="wpb-icon-btn"
@@ -335,6 +363,9 @@ export function VideoUploadModal({ isOpen, onClose, onSubmit }: VideoUploadModal
           </button>
         </header>
 
+        {registrationMode === 'youtube' && onSubmitYouTube ? (
+          <VideoYouTubeRegistrationPanel onSubmit={onSubmitYouTube} onCancel={handleClose} />
+        ) : (
         <form className="wpb-form wpb-video-upload-form" onSubmit={handleSubmit}>
           {fieldErrors.form && (
             <p className="wpb-form-error-banner" role="alert">
@@ -595,6 +626,7 @@ export function VideoUploadModal({ isOpen, onClose, onSubmit }: VideoUploadModal
             </button>
           </footer>
         </form>
+        )}
       </section>
     </div>
   );

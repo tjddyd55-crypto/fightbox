@@ -17,6 +17,17 @@ export type TemplateStatus = 'draft' | 'active' | 'archived';
 
 export type TemplatePublicReviewStatus = 'pending' | 'approved' | 'rejected';
 
+/** Media origin for library videos (not template visibility). */
+export type WorkoutVideoSourceType = 'uploaded' | 'youtube';
+
+export type WorkoutVideoExternalProvider = 'youtube';
+
+export function normalizeWorkoutVideoSourceType(
+  value?: string | null,
+): WorkoutVideoSourceType {
+  return value === 'youtube' ? 'youtube' : 'uploaded';
+}
+
 export interface ProgramTemplateDto {
   id: string;
   gymId: string;
@@ -59,6 +70,11 @@ export interface UploadedVideoDto {
   fileSize: number;
   contentType: string;
   provider: string;
+  sourceType?: WorkoutVideoSourceType;
+  externalProvider?: WorkoutVideoExternalProvider | null;
+  externalVideoId?: string | null;
+  externalUrl?: string | null;
+  embedUrl?: string | null;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -75,14 +91,19 @@ export interface CreateUploadedVideoRequest {
   isLoopable: boolean;
   visibility: string;
   isPremium?: boolean;
-  storageKey: string;
+  storageKey?: string;
   playbackUrl?: string;
   thumbnailUrl?: string | null;
   thumbnailStorageKey?: string | null;
-  fileName: string;
-  fileSize: number;
-  contentType: string;
+  fileName?: string;
+  fileSize?: number;
+  contentType?: string;
   provider?: string;
+  sourceType?: WorkoutVideoSourceType;
+  externalProvider?: WorkoutVideoExternalProvider;
+  externalVideoId?: string;
+  externalUrl?: string;
+  embedUrl?: string;
 }
 
 export interface UpdateUploadedVideoRequest {

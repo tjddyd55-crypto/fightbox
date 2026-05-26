@@ -5,6 +5,7 @@ import type {
   UpdateUploadedVideoRequest,
   UploadedVideoDto,
 } from '@fightbox/shared';
+import { normalizeWorkoutVideoSourceType } from '@fightbox/shared';
 import { getDatabasePool } from '../config/database.js';
 import { deleteR2ObjectsByKeys } from '../services/r2ObjectService.js';
 import { ApiError } from '../utils/apiError.js';
@@ -29,6 +30,11 @@ interface UploadedVideoRow {
   file_size: string;
   content_type: string;
   provider: string;
+  source_type: string;
+  external_provider: string | null;
+  external_video_id: string | null;
+  external_url: string | null;
+  embed_url: string | null;
   created_by: string;
   created_at: Date;
   updated_at: Date;
@@ -40,6 +46,7 @@ export interface CreateUploadedVideoRecord extends CreateUploadedVideoRequest {
 }
 
 function mapUploadedVideoRow(row: UploadedVideoRow): UploadedVideoDto {
+  const sourceType = normalizeWorkoutVideoSourceType(row.source_type);
   return {
     id: row.id,
     gymId: row.gym_id,
@@ -60,6 +67,12 @@ function mapUploadedVideoRow(row: UploadedVideoRow): UploadedVideoDto {
     fileSize: Number(row.file_size),
     contentType: row.content_type,
     provider: row.provider,
+    sourceType,
+    externalProvider:
+      row.external_provider === 'youtube' ? 'youtube' : null,
+    externalVideoId: row.external_video_id,
+    externalUrl: row.external_url,
+    embedUrl: row.embed_url,
     createdBy: row.created_by,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
@@ -125,6 +138,7 @@ export async function createUploadedVideo(
   input: CreateUploadedVideoRecord,
 ): Promise<UploadedVideoDto> {
   const id = input.id?.trim() || `upload_${randomUUID()}`;
+  const sourceType = normalizeWorkoutVideoSourceType(input.sourceType);
 
   try {
     const pool = getDatabasePool();
@@ -150,11 +164,17 @@ export async function createUploadedVideo(
           file_size,
           content_type,
           provider,
+          source_type,
+          external_provider,
+          external_video_id,
+          external_url,
+          embed_url,
           created_by
         )
         VALUES (
           $1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb,
-          $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20
+          $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
+          $21, $22, $23, $24, $25, $26
         )
         RETURNING *
       `,
@@ -170,14 +190,19 @@ export async function createUploadedVideo(
         input.isLoopable,
         input.visibility,
         input.isPremium ?? false,
-        input.storageKey,
+        input.storageKey ?? '',
         input.playbackUrl ?? '',
         input.thumbnailUrl ?? null,
         input.thumbnailStorageKey ?? null,
-        input.fileName,
-        input.fileSize,
-        input.contentType,
-        input.provider ?? 'r2',
+        input.fileName ?? '',
+        input.fileSize ?? 0,
+        input.contentType ?? '',
+        input.provider ?? (sourceType === 'youtube' ? 'youtube' : 'r2'),
+        sourceType,
+        input.externalProvider ?? null,
+        input.externalVideoId ?? null,
+        input.externalUrl ?? null,
+        input.embedUrl ?? null,
         input.createdBy,
       ],
     );
@@ -275,11 +300,15 @@ export async function deleteUploadedVideoWithMedia(
     return null;
   }
 
-  const keysToDelete = [row.storage_key, row.thumbnail_storage_key].filter(
-    (key): key is string => Boolean(key?.trim()),
-  );
-  // R2 delete is best-effort; DB soft delete proceeds even when object removal fails.
-  const r2 = await deleteR2ObjectsByKeys(keysToDelete);
+  const sourceType = normalizeWorkoutVideoSourceType(row.source_type);
+  let r2: DeleteUploadedVideoResponse['r2'] = { deleted: [], failed: [] };
+
+  if (sourceType === 'uploaded') {
+    const keysToDelete = [row.storage_key, row.thumbnail_storage_key].filter(
+      (key): key is string => Boolean(key?.trim()),
+    );
+    r2 = await deleteR2ObjectsByKeys(keysToDelete);
+  }
 
   const deleted = await softDeleteUploadedVideo(id, gymId);
   if (!deleted) {

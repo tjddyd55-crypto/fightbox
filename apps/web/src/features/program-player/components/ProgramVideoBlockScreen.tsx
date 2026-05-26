@@ -1,10 +1,13 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { formatPlayerTime } from '../utils/programPlayerTimeUtils';
 import type { ProgramPlayerBlock } from '../types/programPlayer.types';
 import {
   getPlayerBlockPlaybackHint,
   shouldLoopVideo,
+  usesVideoEndedForAdvance,
 } from '../utils/programPlayerPlaybackUtils';
+import type { YouTubePlayerInstance } from '../utils/youtubeIframeApi';
+import { YouTubePlayerFrame } from './YouTubePlayerFrame';
 
 interface ProgramVideoBlockScreenProps {
   block: ProgramPlayerBlock;
@@ -16,6 +19,14 @@ interface ProgramVideoBlockScreenProps {
   currentRepeatCount: number;
   onVideoLoopComplete?: () => void;
   variant?: 'default' | 'display';
+}
+
+function isYouTubePlayerBlock(block: ProgramPlayerBlock): boolean {
+  return (
+    block.mediaSource === 'youtube' ||
+    Boolean(block.externalVideoId?.trim()) ||
+    (Boolean(block.embedUrl?.trim()) && !block.playbackUrl?.trim())
+  );
 }
 
 export function ProgramVideoBlockScreen({
@@ -30,25 +41,51 @@ export function ProgramVideoBlockScreen({
   variant = 'default',
 }: ProgramVideoBlockScreenProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const youtubePlayerRef = useRef<YouTubePlayerInstance | null>(null);
   const loop = shouldLoopVideo(block);
   const playbackHint = getPlayerBlockPlaybackHint(block);
   const blockDuration = Math.max(1, block.durationSec);
   const progress = (elapsedSec / blockDuration) * 100;
-  const hasPlayback = Boolean(block.playbackUrl);
+  const isYouTube = isYouTubePlayerBlock(block);
+  const hasPlayback = isYouTube
+    ? Boolean(block.externalVideoId?.trim())
+    : Boolean(block.playbackUrl);
   const showRepeatBadge =
     block.playbackMode === 'repeat_count' && currentRepeatCount > 1;
 
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !hasPlayback) {
-      return;
+  const handleYouTubeEnded = useCallback(() => {
+    if (usesVideoEndedForAdvance(block)) {
+      onVideoLoopComplete?.();
     }
-    video.load();
-  }, [block.id, block.playbackUrl, hasPlayback]);
+    const player = youtubePlayerRef.current;
+    if (
+      player &&
+      isPlaying &&
+      (block.playbackMode === 'loop_until_duration' ||
+        (block.playbackMode === 'repeat_count' &&
+          currentRepeatIndex < Math.max(1, block.repeatCount ?? 1)))
+    ) {
+      player.seekTo(0);
+      player.playVideo();
+    }
+  }, [
+    block,
+    currentRepeatIndex,
+    isPlaying,
+    onVideoLoopComplete,
+  ]);
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !hasPlayback) {
+    if (!video || !hasPlayback || isYouTube) {
+      return;
+    }
+    video.load();
+  }, [block.id, block.playbackUrl, hasPlayback, isYouTube]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !hasPlayback || isYouTube) {
       return;
     }
 
@@ -62,11 +99,11 @@ export function ProgramVideoBlockScreen({
     }
 
     video.pause();
-  }, [isPlaying, block.id, hasPlayback, loop]);
+  }, [isPlaying, block.id, hasPlayback, loop, isYouTube]);
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !hasPlayback || block.playbackMode !== 'repeat_count') {
+    if (!video || !hasPlayback || isYouTube || block.playbackMode !== 'repeat_count') {
       return undefined;
     }
 
@@ -80,12 +117,24 @@ export function ProgramVideoBlockScreen({
 
     video.addEventListener('ended', handleEnded);
     return () => video.removeEventListener('ended', handleEnded);
-  }, [block.id, block.playbackMode, hasPlayback, isPlaying, onVideoLoopComplete]);
+  }, [block.id, block.playbackMode, hasPlayback, isPlaying, isYouTube, onVideoLoopComplete]);
 
   return (
     <section className={`pp-video-screen pp-video-screen--${variant}`}>
       <div className="pp-video-stage">
-        {hasPlayback ? (
+        {hasPlayback && isYouTube && block.externalVideoId ? (
+          <YouTubePlayerFrame
+            videoId={block.externalVideoId}
+            embedUrl={block.embedUrl}
+            isPlaying={isPlaying}
+            title={block.title}
+            className="pp-youtube-frame"
+            onEnded={handleYouTubeEnded}
+            onReady={(player) => {
+              youtubePlayerRef.current = player;
+            }}
+          />
+        ) : hasPlayback ? (
           <video
             ref={videoRef}
             className="pp-video-element"

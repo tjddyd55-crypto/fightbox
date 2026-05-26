@@ -15,6 +15,14 @@ export type TemplatePublicReviewStatus = 'pending' | 'approved' | 'rejected';
 
 export type ContentSourceKind = 'own' | 'shared' | 'public';
 
+export type WorkoutVideoMediaSource = 'uploaded' | 'youtube';
+
+export interface WorkoutVideoYouTubeMeta {
+  videoId: string;
+  externalUrl: string;
+  embedUrl: string;
+}
+
 /** Visibility when registering a video locally (public_pending excluded). */
 export type UploadedVideoVisibility = 'private' | 'gym_only';
 
@@ -51,6 +59,23 @@ export interface CreateWorkoutVideoInput {
   uploadResult?: VideoUploadResult;
 }
 
+export interface CreateYouTubeWorkoutVideoInput {
+  title: string;
+  description?: string;
+  durationSec: number;
+  tags: string[];
+  bodyParts: string[];
+  difficulty: WorkoutDifficulty;
+  isLoopable: boolean;
+  visibility: UploadedVideoVisibility;
+  isPremium?: boolean;
+  youtubeUrl: string;
+  youtubeVideoId: string;
+  embedUrl: string;
+  thumbnailUrl: string;
+  externalUrl: string;
+}
+
 export interface UpdateWorkoutVideoInput {
   title: string;
   description?: string;
@@ -83,6 +108,8 @@ export interface WorkoutVideo {
   isPremium?: boolean;
   /** Metadata for locally registered uploads (no file/blob stored). */
   uploadMeta?: WorkoutVideoUploadMeta;
+  mediaSource?: WorkoutVideoMediaSource;
+  youtubeMeta?: WorkoutVideoYouTubeMeta;
 }
 
 export type ProgramBlockType = 'video' | 'rest' | 'countdown' | 'voice';
@@ -109,6 +136,9 @@ export interface VideoProgramBlock extends BaseProgramBlock {
   restAfterSec?: number;
   playbackUrl?: string;
   thumbnailUrl?: string;
+  mediaSource?: WorkoutVideoMediaSource;
+  externalVideoId?: string;
+  embedUrl?: string;
   voiceCues: {
     ready: boolean;
     go: boolean;

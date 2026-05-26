@@ -38,6 +38,9 @@ export interface ProgramPlayerBlock {
   repeatCount?: number;
   targetDurationSec?: number;
   restAfterSec?: number;
+  mediaSource?: 'uploaded' | 'youtube';
+  externalVideoId?: string;
+  embedUrl?: string;
 }
 
 export interface ProgramPlayerProgram {

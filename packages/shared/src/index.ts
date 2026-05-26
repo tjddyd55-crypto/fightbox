@@ -151,6 +151,7 @@ export {
 
 export {
   WORKOUT_BUILDER_API_PATHS,
+  normalizeWorkoutVideoSourceType,
   type CreateProgramTemplateRequest,
   type CreateUploadedVideoRequest,
   type DeleteUploadedVideoResponse,
@@ -166,4 +167,15 @@ export {
   type UploadedVideoDto,
   type WorkoutBuilderApiItemResponse,
   type WorkoutBuilderApiListResponse,
+  type WorkoutVideoExternalProvider,
+  type WorkoutVideoSourceType,
 } from './workoutBuilderContracts.js';
+
+export {
+  getYouTubeEmbedUrl,
+  getYouTubePreviewEmbedUrl,
+  getYouTubeThumbnailUrl,
+  isValidYouTubeVideoId,
+  isValidYouTubeVideoUrl,
+  parseYouTubeVideoId,
+} from './youtubeVideoUtils.js';

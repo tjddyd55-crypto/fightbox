@@ -169,10 +169,10 @@ export function createRestBlock(order: number, durationSec = 30): RestProgramBlo
   return {
     id: nextBlockId('rest'),
     type: 'rest',
-    title: '휴식',
+    title: `휴식 ${durationSec}초`,
     order,
     durationSec,
-    message: '잠시 쉬세요',
+    message: '휴식 중입니다',
   };
 }
 
@@ -180,11 +180,10 @@ export function createCountdownBlock(order: number, durationSec = 10): Countdown
   return {
     id: nextBlockId('countdown'),
     type: 'countdown',
-    title: '카운트다운',
+    title: `카운트다운 ${durationSec}초`,
     order,
     durationSec,
     countFromSec: durationSec,
-    message: '준비하세요',
   };
 }
 
@@ -192,11 +191,10 @@ export function createVoiceBlock(order: number, message = '준비하세요'): Vo
   return {
     id: nextBlockId('voice'),
     type: 'voice',
-    title: '음성 안내',
+    title: message,
     order,
     durationSec: 3,
     cueText: message,
-    message,
   };
 }
 
@@ -204,7 +202,7 @@ export function createVideoBlockFromWorkout(
   video: WorkoutVideo,
   order: number,
 ): VideoProgramBlock {
-  return {
+  const block: VideoProgramBlock = {
     id: `block_${video.id}_${Date.now()}`,
     type: 'video',
     title: video.title,
@@ -212,11 +210,17 @@ export function createVideoBlockFromWorkout(
     durationSec: video.durationSec,
     videoId: video.id,
     playMode: 'original_duration',
-    repeatCount: 1,
-    targetDurationSec: video.durationSec,
     restAfterSec: 0,
     voiceCues: { ...DEFAULT_VIDEO_VOICE_CUES },
   };
+
+  if (video.mediaSource === 'youtube' && video.youtubeMeta) {
+    block.mediaSource = 'youtube';
+    block.externalVideoId = video.youtubeMeta.videoId;
+    block.embedUrl = video.youtubeMeta.embedUrl;
+  }
+
+  return block;
 }
 
 export function computeVideoBlockDuration(

@@ -91,7 +91,14 @@ function normalizeVideoBlock(
       ? computeVideoBlockDuration(video, playMode, repeatCount, targetDurationSec)
       : readNumber(raw.durationSec, 0);
 
-  return {
+  const mediaSource =
+    raw.mediaSource === 'youtube' || video?.mediaSource === 'youtube'
+      ? 'youtube'
+      : raw.mediaSource === 'uploaded'
+        ? 'uploaded'
+        : video?.mediaSource;
+
+  const block: VideoProgramBlock = {
     id: readString(raw.id, `block_video_${order}`),
     type: 'video',
     title: readString(raw.title, video?.title ?? '영상 블록'),
@@ -105,6 +112,15 @@ function normalizeVideoBlock(
     restAfterSec,
     voiceCues: normalizeVoiceCues(raw.voiceCues),
   };
+
+  if (mediaSource === 'youtube') {
+    block.mediaSource = 'youtube';
+    block.externalVideoId =
+      readString(raw.externalVideoId) || video?.youtubeMeta?.videoId || undefined;
+    block.embedUrl = readString(raw.embedUrl) || video?.youtubeMeta?.embedUrl || undefined;
+  }
+
+  return block;
 }
 
 function normalizeRestBlock(raw: Record<string, unknown>, order: number): RestProgramBlock {
