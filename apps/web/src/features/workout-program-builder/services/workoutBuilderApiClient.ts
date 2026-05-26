@@ -27,6 +27,9 @@ import {
   normalizeTemplateStatus,
   normalizeTemplateVisibility,
 } from '../utils/templateVisibilityUtils';
+import { normalizeWorkoutProgramTemplate } from '../utils/blockTypeNormalization';
+import { buildWorkoutVideoMap } from '../utils/programTimelineUtils';
+import { getCatalogVideos } from '../utils/videoCatalogUtils';
 
 export class WorkoutBuilderApiError extends Error {
   readonly status: number;
@@ -219,6 +222,15 @@ export function programTemplateDtoToWorkoutProgramTemplate(
   }
 
   const template = dto.templateJson as WorkoutProgramTemplate;
+  const videoMap = buildWorkoutVideoMap(getCatalogVideos());
+  const normalized = normalizeWorkoutProgramTemplate(
+    {
+      ...template,
+      blocks: Array.isArray(template.blocks) ? template.blocks : [],
+      tags: Array.isArray(template.tags) ? template.tags : [],
+    },
+    videoMap,
+  );
   const visibility = normalizeTemplateVisibility(dto.visibility || template.visibility || 'private');
   const status = normalizeTemplateStatus(dto.status || template.status || 'draft');
   const publicReviewStatus =
@@ -227,7 +239,7 @@ export function programTemplateDtoToWorkoutProgramTemplate(
       : template.publicReviewStatus;
 
   return {
-    ...template,
+    ...normalized,
     id: dto.id,
     title: dto.title,
     description: dto.description || template.description,
@@ -241,11 +253,9 @@ export function programTemplateDtoToWorkoutProgramTemplate(
     shareEnabled: dto.shareEnabled ?? template.shareEnabled ?? false,
     publishedAt: dto.publishedAt ?? template.publishedAt ?? null,
     unpublishedAt: dto.unpublishedAt ?? template.unpublishedAt ?? null,
-    totalDurationSec: dto.totalDurationSec,
+    totalDurationSec: dto.totalDurationSec || normalized.totalDurationSec,
     createdAt: dto.createdAt,
     updatedAt: dto.updatedAt,
-    blocks: Array.isArray(template.blocks) ? template.blocks : [],
-    tags: Array.isArray(template.tags) ? template.tags : [],
   };
 }
 
