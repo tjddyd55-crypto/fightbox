@@ -6,8 +6,9 @@ import { getVideoById } from '../utils/programTimelineUtils';
 import { BLOCK_TYPE_LABEL } from '../utils/blockDisplayUtils';
 import { getWorkoutVideoPlaybackUrl } from '../utils/videoPlaybackUtils';
 import { YouTubePlayerFrame } from '../../program-player/components/YouTubePlayerFrame';
-import { usesVideoEndedForAdvance } from '../../program-player/utils/programPlayerPlaybackUtils';
+import { usesVideoEndedForAdvance, shouldReplayVideoAfterEnd } from '../../program-player/utils/programPlayerPlaybackUtils';
 import { getPlayerBlockPlaybackHint } from '../../program-player/utils/programPlayerPlaybackUtils';
+import type { YouTubePlayerInstance } from '../../program-player/utils/youtubeIframeApi';
 import { useTestPlayback } from '../hooks/useTestPlayback';
 import { WorkoutVideoPlayer } from './WorkoutVideoPlayer';
 
@@ -46,6 +47,7 @@ function BlockStage({
   onVideoLoopComplete: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const youtubePlayerRef = useRef<YouTubePlayerInstance | null>(null);
   const playbackUrl = getWorkoutVideoPlaybackUrl(video) ?? block.playbackUrl;
 
   useEffect(() => {
@@ -77,19 +79,38 @@ function BlockStage({
 
   useEffect(() => {
     const element = videoRef.current;
-    if (!element || !playbackUrl || block.playbackMode !== 'repeat_count') {
+    if (!element || !playbackUrl) {
       return undefined;
     }
+
     const handleEnded = () => {
-      onVideoLoopComplete();
-      if (isPlaying) {
+      if (block.playbackMode === 'repeat_count') {
+        const shouldReplay = shouldReplayVideoAfterEnd(block, videoRepeatIndex);
+        onVideoLoopComplete();
+        if (isPlaying && shouldReplay) {
+          element.currentTime = 0;
+          void element.play().catch(() => undefined);
+        }
+        return;
+      }
+
+      if (block.playbackMode === 'loop_until_duration' && isPlaying) {
         element.currentTime = 0;
         void element.play().catch(() => undefined);
       }
     };
+
     element.addEventListener('ended', handleEnded);
     return () => element.removeEventListener('ended', handleEnded);
-  }, [block.id, block.playbackMode, playbackUrl, isPlaying, onVideoLoopComplete]);
+  }, [
+    block,
+    block.id,
+    block.playbackMode,
+    playbackUrl,
+    isPlaying,
+    onVideoLoopComplete,
+    videoRepeatIndex,
+  ]);
 
   const isYouTubeBlock =
     block.mediaSource === 'youtube' ||
@@ -110,9 +131,24 @@ function BlockStage({
               isPlaying={isPlaying}
               title={video?.title ?? block.title}
               className="wpb-youtube-frame"
+              onReady={(player) => {
+                youtubePlayerRef.current = player;
+              }}
               onEnded={() => {
                 if (usesVideoEndedForAdvance(block)) {
                   onVideoLoopComplete();
+                }
+                const player = youtubePlayerRef.current;
+                if (player && isPlaying && shouldReplayVideoAfterEnd(block, videoRepeatIndex)) {
+                  player.seekTo(0);
+                  player.playVideo();
+                } else if (
+                  block.playbackMode === 'loop_until_duration' &&
+                  player &&
+                  isPlaying
+                ) {
+                  player.seekTo(0);
+                  player.playVideo();
                 }
               }}
             />
