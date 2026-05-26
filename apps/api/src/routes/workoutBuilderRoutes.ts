@@ -1,4 +1,11 @@
 import { Router } from 'express';
+import {
+  getYouTubeEmbedUrl,
+  getYouTubeThumbnailUrl,
+  isValidYouTubeVideoId,
+  normalizeWorkoutVideoSourceType,
+  parseYouTubeVideoId,
+} from '@fightbox/shared';
 import type {
   CreateProgramTemplateRequest,
   CreateUploadedVideoRequest,
@@ -77,7 +84,11 @@ function assertBooleanField(body: Record<string, unknown>, key: string): boolean
 }
 
 function parseCreateUploadedVideoBody(body: Record<string, unknown>): CreateUploadedVideoRequest {
-  return {
+  const sourceType = normalizeWorkoutVideoSourceType(
+    typeof body.sourceType === 'string' ? body.sourceType : undefined,
+  );
+
+  const base = {
     ...(typeof body.id === 'string' ? { id: body.id } : {}),
     title: assertStringField(body, 'title'),
     ...(typeof body.description === 'string' ? { description: body.description } : {}),
@@ -88,6 +99,51 @@ function parseCreateUploadedVideoBody(body: Record<string, unknown>): CreateUplo
     isLoopable: assertBooleanField(body, 'isLoopable'),
     visibility: assertStringField(body, 'visibility'),
     ...(typeof body.isPremium === 'boolean' ? { isPremium: body.isPremium } : {}),
+    sourceType,
+  };
+
+  if (sourceType === 'youtube') {
+    const externalUrl =
+      typeof body.externalUrl === 'string' && body.externalUrl.trim()
+        ? body.externalUrl.trim()
+        : '';
+    const externalVideoId =
+      typeof body.externalVideoId === 'string' && body.externalVideoId.trim()
+        ? body.externalVideoId.trim()
+        : parseYouTubeVideoId(externalUrl) ?? '';
+
+    if (!isValidYouTubeVideoId(externalVideoId)) {
+      throw new ApiError(400, 'INVALID_BODY', 'Valid YouTube URL or video ID is required');
+    }
+
+    const embedUrl =
+      typeof body.embedUrl === 'string' && body.embedUrl.trim()
+        ? body.embedUrl.trim()
+        : getYouTubeEmbedUrl(externalVideoId);
+
+    const thumbnailUrl =
+      body.thumbnailUrl === null || typeof body.thumbnailUrl === 'string'
+        ? (body.thumbnailUrl as string | null) ?? getYouTubeThumbnailUrl(externalVideoId)
+        : getYouTubeThumbnailUrl(externalVideoId);
+
+    return {
+      ...base,
+      storageKey: '',
+      playbackUrl: '',
+      fileName: 'youtube',
+      fileSize: 0,
+      contentType: 'video/youtube',
+      provider: 'youtube',
+      externalProvider: 'youtube',
+      externalVideoId,
+      externalUrl: externalUrl || `https://www.youtube.com/watch?v=${externalVideoId}`,
+      embedUrl,
+      thumbnailUrl,
+    };
+  }
+
+  return {
+    ...base,
     storageKey: assertStringField(body, 'storageKey'),
     ...(typeof body.playbackUrl === 'string' ? { playbackUrl: body.playbackUrl } : {}),
     ...(body.thumbnailUrl === null || typeof body.thumbnailUrl === 'string'
