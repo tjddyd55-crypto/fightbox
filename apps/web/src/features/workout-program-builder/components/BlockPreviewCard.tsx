@@ -2,7 +2,11 @@ import type { ProgramBlock, WorkoutVideo } from '../types/workoutProgramBuilder.
 import { formatDuration } from '../utils/durationUtils';
 import { getVideoById } from '../utils/programTimelineUtils';
 import { isUploadedVideo } from '../utils/videoManageUtils';
-import { getWorkoutVideoPlaybackUrl, getWorkoutVideoPosterUrl } from '../utils/videoPlaybackUtils';
+import {
+  getWorkoutVideoPlaybackUrl,
+  getWorkoutVideoPosterUrl,
+  isYouTubeWorkoutVideo,
+} from '../utils/videoPlaybackUtils';
 import { WorkoutVideoPlayer } from './WorkoutVideoPlayer';
 
 const DIFFICULTY_LABEL: Record<WorkoutVideo['difficulty'], string> = {
@@ -30,8 +34,9 @@ function PreviewMedia({ block, videos }: { block: ProgramBlock; videos: WorkoutV
     const video = getVideoById(videos, block.videoId);
     const playbackUrl = getWorkoutVideoPlaybackUrl(video);
     const posterUrl = getWorkoutVideoPosterUrl(video);
+    const canPlay = Boolean(playbackUrl) || isYouTubeWorkoutVideo(video);
 
-    if (playbackUrl) {
+    if (canPlay) {
       return (
         <section
           className="wpb-preview-media wpb-preview-media--video wpb-preview-card--playable"
@@ -136,15 +141,13 @@ function PreviewMeta({ block, videos }: { block: ProgramBlock; videos: WorkoutVi
     return (
       <dl className="wpb-preview-meta">
         <PreviewMetaItem label="카운트" value={`${block.countFromSec}초`} />
-        {block.message && <PreviewMetaItem label="안내" value={block.message} />}
       </dl>
     );
   }
 
   return (
     <dl className="wpb-preview-meta">
-      <PreviewMetaItem label="문구" value={block.message ?? block.cueText} />
-      <PreviewMetaItem label="표시" value={`${block.durationSec}초`} />
+      <PreviewMetaItem label="문구" value={block.cueText} />
     </dl>
   );
 }
