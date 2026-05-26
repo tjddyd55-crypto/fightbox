@@ -1,6 +1,17 @@
-export type ProgramPlayerBlockType = 'video' | 'rest' | 'countdown';
+export type ProgramPlayerBlockType = 'video' | 'rest' | 'countdown' | 'voice';
 
-export type ProgramPlayerMode = 'start' | 'video' | 'rest' | 'countdown' | 'complete';
+export type ProgramPlayerVideoPlaybackMode =
+  | 'original_duration'
+  | 'repeat_count'
+  | 'loop_until_duration';
+
+export type ProgramPlayerMode =
+  | 'start'
+  | 'video'
+  | 'rest'
+  | 'countdown'
+  | 'voice'
+  | 'complete';
 
 export type ProgramPlayerViewMode = 'single' | 'display' | 'coach' | 'queue';
 
@@ -12,14 +23,18 @@ export interface ProgramPlayerBlock {
   order: number;
   title: string;
   description?: string;
+  /** Rest / countdown / voice guidance text */
+  message?: string;
   durationSec: number;
+  /** Single-loop video length (for repeat UI). */
+  singleLoopDurationSec?: number;
   subtitle?: string;
   videoId?: string;
   playbackUrl?: string;
   thumbnailUrl?: string | null;
   bodyParts?: string[];
   tags?: string[];
-  playbackMode?: string;
+  playbackMode?: ProgramPlayerVideoPlaybackMode;
   repeatCount?: number;
   targetDurationSec?: number;
   restAfterSec?: number;
@@ -43,6 +58,7 @@ export interface ProgramPlayerMeta {
     video: number;
     rest: number;
     countdown: number;
+    voice: number;
   };
   flowPreview: string;
 }
@@ -52,6 +68,7 @@ export interface ProgramPlayerSnapshot {
   currentIndex: number;
   isPlaying: boolean;
   elapsedSec: number;
+  currentRepeatIndex?: number;
   /** Broadcast drift correction — wall clock ms when snapshot was sent */
   timestamp?: number;
 }
