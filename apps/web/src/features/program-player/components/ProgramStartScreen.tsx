@@ -10,6 +10,7 @@ export function ProgramStartScreen({ player }: ProgramStartScreenProps) {
   const videoCount = player.blocks.filter((b) => b.type === 'video').length;
   const restCount = player.blocks.filter((b) => b.type === 'rest').length;
   const countdownCount = player.blocks.filter((b) => b.type === 'countdown').length;
+  const voiceCount = player.blocks.filter((b) => b.type === 'voice').length;
 
   return (
     <section className="pp-start-screen">
@@ -23,6 +24,7 @@ export function ProgramStartScreen({ player }: ProgramStartScreenProps) {
           <li>운동 {videoCount}개</li>
           <li>휴식 {restCount}개</li>
           <li>카운트다운 {countdownCount}개</li>
+          {voiceCount > 0 && <li>음성 안내 {voiceCount}개</li>}
         </ul>
         <p className="pp-start-flow">{player.meta.flowPreview}</p>
         <button type="button" className="pp-start-btn" onClick={player.start}>

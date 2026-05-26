@@ -16,6 +16,6 @@ export const MOCK_PROGRAM_META: ProgramPlayerMeta = {
   title: '전신 인터벌 프로그램',
   totalDurationSec: 1515,
   totalBlocks: 9,
-  summary: { video: 7, rest: 1, countdown: 1 },
+  summary: { video: 7, rest: 1, countdown: 1, voice: 0 },
   flowPreview: '웜업 → 스쿼트 → 휴식 → 버피 → 카운트다운 → 코어 → 스트레칭 → 휴식 → 정리',
 };

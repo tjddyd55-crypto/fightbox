@@ -1,5 +1,6 @@
 import { formatPlayerTime } from '../utils/programPlayerTimeUtils';
 import type { ProgramPlayerState } from '../hooks/useProgramPlayerState';
+import { getPlayerBlockPlaybackHint } from '../utils/programPlayerPlaybackUtils';
 
 interface ProgramBlockTimelineProps {
   player: ProgramPlayerState;
@@ -9,8 +10,9 @@ interface ProgramBlockTimelineProps {
 
 function blockTypeLabel(type: string): string {
   if (type === 'rest') return '휴식';
-  if (type === 'countdown') return '카운트';
-  return '운동';
+  if (type === 'countdown') return '카운트다운';
+  if (type === 'voice') return '음성 안내';
+  return '영상';
 }
 
 export function ProgramBlockTimeline({
@@ -21,8 +23,10 @@ export function ProgramBlockTimeline({
   return (
     <div className={`pp-block-timeline${compact ? ' pp-block-timeline--compact' : ''}`}>
       {player.blocks.map((block, index) => {
-        const isCurrent = index === player.currentIndex && player.mode !== 'start' && player.mode !== 'complete';
+        const isCurrent =
+          index === player.currentIndex && player.mode !== 'start' && player.mode !== 'complete';
         const isDone = player.mode === 'complete' || index < player.currentIndex;
+        const playbackHint = getPlayerBlockPlaybackHint(block);
         return (
           <button
             key={block.id}
@@ -35,10 +39,19 @@ export function ProgramBlockTimeline({
             <span className="pp-block-card-body">
               <strong>{block.title}</strong>
               <span>
-                {blockTypeLabel(block.type)} · {formatPlayerTime(block.durationSec)}
+                {blockTypeLabel(block.type)}
+                {playbackHint ? ` · ${playbackHint}` : ''} ·{' '}
+                {formatPlayerTime(block.durationSec)}
               </span>
+              {block.message && block.type !== 'video' && (
+                <span className="pp-block-card-message">{block.message}</span>
+              )}
             </span>
-            {isDone && <span className="pp-block-card-check" aria-hidden="true">✓</span>}
+            {isDone && (
+              <span className="pp-block-card-check" aria-hidden="true">
+                ✓
+              </span>
+            )}
           </button>
         );
       })}
