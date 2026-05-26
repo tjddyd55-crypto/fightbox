@@ -52,6 +52,9 @@ export function getPlayerBlockPlaybackHint(block: ProgramPlayerBlock): string | 
   if (block.playbackMode === 'loop_until_duration') {
     return `${block.targetDurationSec ?? block.durationSec}초 반복`;
   }
+  if (block.playbackMode === 'original_duration') {
+    return '원본 길이 재생';
+  }
   return null;
 }
 
@@ -61,4 +64,29 @@ export function shouldLoopVideo(block: ProgramPlayerBlock): boolean {
 
 export function usesVideoEndedForAdvance(block: ProgramPlayerBlock): boolean {
   return block.type === 'video' && block.playbackMode === 'repeat_count';
+}
+
+/** After a single playthrough ends, seek back to 0 and replay (before state catches up). */
+export function shouldReplayVideoAfterEnd(
+  block: ProgramPlayerBlock,
+  currentRepeatIndex: number,
+): boolean {
+  if (block.type !== 'video') return false;
+  if (block.playbackMode === 'loop_until_duration') return true;
+  if (block.playbackMode === 'repeat_count') {
+    return currentRepeatIndex < Math.max(1, block.repeatCount ?? 1);
+  }
+  return false;
+}
+
+export function formatActiveRepeatProgress(
+  block: ProgramPlayerBlock | null | undefined,
+  currentRepeatIndex: number,
+): string | null {
+  if (!block || block.type !== 'video' || block.playbackMode !== 'repeat_count') {
+    return null;
+  }
+  const total = Math.max(1, block.repeatCount ?? 1);
+  if (total <= 1) return null;
+  return `반복 ${currentRepeatIndex} / ${total}`;
 }
