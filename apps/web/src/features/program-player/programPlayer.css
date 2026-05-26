@@ -455,6 +455,62 @@
   font-size: 1.1rem;
 }
 
+/* ── Voice guide block ── */
+.pp-voice-screen {
+  min-height: 50vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pp-voice-card {
+  width: min(640px, 100%);
+  padding: 48px;
+  border-radius: 20px;
+  background: #15161a;
+  border: 1px solid #2c2d34;
+  text-align: center;
+}
+
+.pp-voice-icon {
+  font-size: 3rem;
+  display: block;
+  margin-bottom: 12px;
+}
+
+.pp-voice-label {
+  margin: 0 0 8px;
+  color: #a7aab3;
+  font-size: 1rem;
+}
+
+.pp-voice-message {
+  margin: 0 0 16px;
+  font-size: clamp(1.5rem, 4vw, 2.25rem);
+  font-weight: 700;
+}
+
+.pp-voice-timer {
+  margin: 0;
+  color: #ffd60a;
+  font-size: 1.25rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.pp-video-repeat-badge,
+.pp-video-playback-hint {
+  margin: 8px 0 0;
+  color: #ffd60a;
+  font-size: 0.95rem;
+}
+
+.pp-block-card-message {
+  display: block;
+  margin-top: 4px;
+  color: #6f737c;
+  font-size: 12px;
+}
+
 /* ── Complete screen ── */
 .pp-complete-screen {
   min-height: 62vh;

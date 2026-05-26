@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ProgramBlock, WorkoutVideo } from '../types/workoutProgramBuilder.types';
+import type { ProgramBlock, WorkoutProgramTemplate, WorkoutVideo } from '../types/workoutProgramBuilder.types';
+import { programFromWorkoutTemplate } from '../../program-player/utils/programPlayerDataAdapter';
+import { getProgramBlockDurationSec } from '../../program-player/utils/programPlayerTimeUtils';
+import type { ProgramPlayerBlock } from '../../program-player/types/programPlayer.types';
 import {
   buildWorkoutVideoMap,
-  getBlockDurationSeconds,
   getBlockTimelineContributionSeconds,
-  getElapsedTimelineSecondsBeforeIndex,
   getTimelineTotalDurationSeconds,
 } from '../utils/programTimelineUtils';
 
@@ -16,21 +17,42 @@ interface UseTestPlaybackOptions {
   blocks: ProgramBlock[];
   videos: WorkoutVideo[];
   initialBlockId: string | null;
+  templateTitle?: string;
 }
 
-export function useTestPlayback({ blocks, videos, initialBlockId }: UseTestPlaybackOptions) {
+export function useTestPlayback({
+  blocks,
+  videos,
+  initialBlockId,
+  templateTitle = '테스트 재생',
+}: UseTestPlaybackOptions) {
   const videoMap = useMemo(() => buildWorkoutVideoMap(videos), [videos]);
+
+  const playerBlocks = useMemo((): ProgramPlayerBlock[] => {
+    const template: WorkoutProgramTemplate = {
+      id: 'test_playback',
+      title: templateTitle,
+      tags: [],
+      totalDurationSec: 0,
+      blocks,
+      visibility: 'private',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    return programFromWorkoutTemplate(template, videos).blocks;
+  }, [blocks, videos, templateTitle]);
 
   const initialIndex = useMemo(() => {
     if (!initialBlockId) return 0;
-    const idx = blocks.findIndex((b) => b.id === initialBlockId);
+    const idx = playerBlocks.findIndex((b) => b.id === initialBlockId);
     return idx >= 0 ? idx : 0;
-  }, [blocks, initialBlockId]);
+  }, [playerBlocks, initialBlockId]);
 
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [isPlaying, setIsPlaying] = useState(true);
   const [fastMode, setFastMode] = useState(true);
   const [elapsedInBlock, setElapsedInBlock] = useState(0);
+  const [videoRepeatIndex, setVideoRepeatIndex] = useState(1);
   const [isComplete, setIsComplete] = useState(false);
   const isAdvancingRef = useRef(false);
 
@@ -39,71 +61,99 @@ export function useTestPlayback({ blocks, videos, initialBlockId }: UseTestPlayb
     [blocks, videoMap],
   );
 
-  const currentBlock = blocks[currentIndex] ?? null;
+  const currentBlock = playerBlocks[currentIndex] ?? null;
+  const sourceBlock = blocks.find((b) => b.id === currentBlock?.id) ?? null;
 
   const currentBlockDuration = currentBlock
-    ? getBlockTimelineContributionSeconds(currentBlock, videoMap)
+    ? getProgramBlockDurationSec(currentBlock)
     : 0;
 
-  const currentBlockPlayDuration = currentBlock
-    ? getBlockDurationSeconds(currentBlock, videoMap)
-    : 0;
+  const currentBlockPlayDuration = sourceBlock
+    ? getBlockTimelineContributionSeconds(sourceBlock, videoMap) -
+      (sourceBlock.type === 'video' ? Math.max(0, sourceBlock.restAfterSec ?? 0) : 0)
+    : currentBlockDuration;
 
   const totalElapsed = useMemo(() => {
-    const before = getElapsedTimelineSecondsBeforeIndex(blocks, videoMap, currentIndex);
+    const before = playerBlocks
+      .slice(0, currentIndex)
+      .reduce((sum, block) => sum + getProgramBlockDurationSec(block), 0);
     return before + Math.min(elapsedInBlock, currentBlockDuration);
-  }, [blocks, videoMap, currentIndex, elapsedInBlock, currentBlockDuration]);
+  }, [playerBlocks, currentIndex, elapsedInBlock, currentBlockDuration]);
 
   const remainingInBlock = Math.max(0, currentBlockDuration - elapsedInBlock);
-  const nextBlock = blocks[currentIndex + 1] ?? null;
+  const nextBlock = playerBlocks[currentIndex + 1] ?? null;
 
   const progressPercent =
     totalDuration > 0 ? Math.min(100, Math.round((totalElapsed / totalDuration) * 100)) : 0;
 
+  const countdownDisplay =
+    currentBlock?.type === 'countdown'
+      ? Math.max(1, Math.ceil(remainingInBlock))
+      : null;
+
+  const videoRepeatTarget =
+    currentBlock?.type === 'video' ? Math.max(1, currentBlock.repeatCount ?? 1) : 1;
+
   const resetToStart = useCallback(() => {
     setCurrentIndex(0);
     setElapsedInBlock(0);
+    setVideoRepeatIndex(1);
     setIsComplete(false);
     setIsPlaying(true);
   }, []);
 
   const goToIndex = useCallback(
     (index: number) => {
-      const clamped = Math.max(0, Math.min(index, blocks.length - 1));
+      const clamped = Math.max(0, Math.min(index, playerBlocks.length - 1));
       setCurrentIndex(clamped);
       setElapsedInBlock(0);
+      setVideoRepeatIndex(1);
       setIsComplete(false);
     },
-    [blocks.length],
+    [playerBlocks.length],
   );
 
   const goNext = useCallback(() => {
-    if (currentIndex < blocks.length - 1) {
+    if (currentIndex < playerBlocks.length - 1) {
       goToIndex(currentIndex + 1);
       return;
     }
     setIsPlaying(false);
     setIsComplete(true);
-  }, [blocks.length, currentIndex, goToIndex]);
+  }, [playerBlocks.length, currentIndex, goToIndex]);
 
   const goPrev = useCallback(() => {
     goToIndex(currentIndex - 1);
   }, [currentIndex, goToIndex]);
 
+  const onVideoLoopComplete = useCallback(() => {
+    if (!currentBlock || currentBlock.type !== 'video') return;
+    if (currentBlock.playbackMode !== 'repeat_count') return;
+    const target = Math.max(1, currentBlock.repeatCount ?? 1);
+    if (videoRepeatIndex < target) {
+      setVideoRepeatIndex((prev) => prev + 1);
+      setElapsedInBlock(0);
+      return;
+    }
+    goNext();
+  }, [currentBlock, videoRepeatIndex, goNext]);
+
   useEffect(() => {
     setCurrentIndex(initialIndex);
     setElapsedInBlock(0);
+    setVideoRepeatIndex(1);
     setIsComplete(false);
     setIsPlaying(true);
-  }, [initialIndex, blocks]);
+  }, [initialIndex, playerBlocks]);
 
   useEffect(() => {
     setElapsedInBlock(0);
+    setVideoRepeatIndex(1);
     isAdvancingRef.current = false;
   }, [currentIndex]);
 
   useEffect(() => {
-    if (!isPlaying || !currentBlock || blocks.length === 0 || isComplete) {
+    if (!isPlaying || !currentBlock || playerBlocks.length === 0 || isComplete) {
       return;
     }
 
@@ -114,25 +164,46 @@ export function useTestPlayback({ blocks, videos, initialBlockId }: UseTestPlayb
     }, PLAYBACK_TICK_MS);
 
     return () => window.clearInterval(timer);
-  }, [isPlaying, currentBlock, blocks.length, isComplete, fastMode]);
+  }, [isPlaying, currentBlock, playerBlocks.length, isComplete, fastMode]);
 
   useEffect(() => {
-    if (!isPlaying || isComplete || currentBlockDuration <= 0) {
+    if (!isPlaying || isComplete || currentBlockDuration <= 0 || !currentBlock) {
       return;
     }
+
+    const loopSec = currentBlock.singleLoopDurationSec ?? currentBlockDuration;
+
+    if (
+      currentBlock.type === 'video' &&
+      currentBlock.playbackMode === 'repeat_count' &&
+      elapsedInBlock >= loopSec
+    ) {
+      if (!isAdvancingRef.current) {
+        isAdvancingRef.current = true;
+        onVideoLoopComplete();
+        isAdvancingRef.current = false;
+      }
+      return;
+    }
+
     if (elapsedInBlock >= currentBlockDuration && !isAdvancingRef.current) {
       isAdvancingRef.current = true;
       goNext();
     }
-  }, [elapsedInBlock, currentBlockDuration, isPlaying, isComplete, goNext]);
-
-  const countdownDisplay =
-    currentBlock?.type === 'countdown'
-      ? Math.max(1, Math.ceil(currentBlock.countFromSec - elapsedInBlock))
-      : null;
+  }, [
+    elapsedInBlock,
+    currentBlockDuration,
+    currentBlock,
+    isPlaying,
+    isComplete,
+    goNext,
+    onVideoLoopComplete,
+  ]);
 
   return {
     videoMap,
+    playerBlocks,
+    sourceBlock,
     currentIndex,
     currentBlock,
     nextBlock,
@@ -147,11 +218,14 @@ export function useTestPlayback({ blocks, videos, initialBlockId }: UseTestPlayb
     totalDuration,
     progressPercent,
     countdownDisplay,
+    videoRepeatIndex,
+    videoRepeatTarget,
     setIsPlaying,
     setFastMode,
     goNext,
     goPrev,
     resetToStart,
     goToIndex,
+    onVideoLoopComplete,
   };
 }

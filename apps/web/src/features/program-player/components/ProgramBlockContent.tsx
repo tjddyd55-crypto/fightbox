@@ -4,6 +4,7 @@ import { ProgramCountdownBlockScreen } from './ProgramCountdownBlockScreen';
 import { ProgramRestBlockScreen } from './ProgramRestBlockScreen';
 import { ProgramStartScreen } from './ProgramStartScreen';
 import { ProgramVideoBlockScreen } from './ProgramVideoBlockScreen';
+import { ProgramVoiceGuideBlockScreen } from './ProgramVoiceGuideBlockScreen';
 
 interface ProgramBlockContentProps {
   player: ProgramPlayerState;
@@ -40,6 +41,18 @@ export function ProgramBlockContent({ player, variant = 'default' }: ProgramBloc
         block={player.currentBlock}
         remainingSec={player.remainingSec}
         nextBlock={player.nextBlock}
+        isPlaying={player.isPlaying}
+        variant={variant}
+      />
+    );
+  }
+
+  if (player.mode === 'voice') {
+    return (
+      <ProgramVoiceGuideBlockScreen
+        block={player.currentBlock}
+        remainingSec={player.remainingSec}
+        isPlaying={player.isPlaying}
         variant={variant}
       />
     );
@@ -52,6 +65,9 @@ export function ProgramBlockContent({ player, variant = 'default' }: ProgramBloc
       nextBlock={player.nextBlock}
       elapsedSec={player.elapsedSec}
       isPlaying={player.isPlaying}
+      currentRepeatIndex={player.currentRepeatIndex}
+      currentRepeatCount={player.currentRepeatCount}
+      onVideoLoopComplete={player.onVideoLoopComplete}
       variant={variant}
     />
   );

@@ -1,5 +1,6 @@
 import { PROGRAM_TEMPLATES_STORAGE_KEY } from '../constants/builderConstants';
 import type { WorkoutProgramTemplate } from '../types/workoutProgramBuilder.types';
+import { normalizeWorkoutProgramTemplate } from '../utils/blockTypeNormalization';
 import { getCatalogVideos } from '../utils/videoCatalogUtils';
 import {
   buildWorkoutVideoMap,
@@ -41,12 +42,22 @@ function isWorkoutProgramTemplate(value: unknown): value is WorkoutProgramTempla
   );
 }
 
+function hydrateTemplate(template: WorkoutProgramTemplate): WorkoutProgramTemplate {
+  const videoMap = buildWorkoutVideoMap(getCatalogVideos());
+  const normalized = normalizeWorkoutProgramTemplate(template, videoMap);
+  return {
+    ...normalized,
+    totalDurationSec: getTimelineTotalDurationSeconds(normalized.blocks, videoMap),
+  };
+}
+
 export function getSavedProgramTemplates(): WorkoutProgramTemplate[] {
-  return readRaw();
+  return readRaw().map(hydrateTemplate);
 }
 
 export function getProgramTemplateById(templateId: string): WorkoutProgramTemplate | undefined {
-  return readRaw().find((t) => t.id === templateId);
+  const found = readRaw().find((t) => t.id === templateId);
+  return found ? hydrateTemplate(found) : undefined;
 }
 
 export function saveProgramTemplate(template: WorkoutProgramTemplate): boolean {

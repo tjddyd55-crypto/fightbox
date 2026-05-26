@@ -4,6 +4,7 @@ export function buildProgramMeta(program: ProgramPlayerProgram): ProgramPlayerMe
   const video = program.blocks.filter((block) => block.type === 'video').length;
   const rest = program.blocks.filter((block) => block.type === 'rest').length;
   const countdown = program.blocks.filter((block) => block.type === 'countdown').length;
+  const voice = program.blocks.filter((block) => block.type === 'voice').length;
   const flowPreview =
     program.blocks.length > 0
       ? program.blocks
@@ -16,7 +17,7 @@ export function buildProgramMeta(program: ProgramPlayerProgram): ProgramPlayerMe
     title: program.title,
     totalDurationSec: program.totalDurationSec,
     totalBlocks: program.blocks.length,
-    summary: { video, rest, countdown },
+    summary: { video, rest, countdown, voice },
     flowPreview,
   };
 }

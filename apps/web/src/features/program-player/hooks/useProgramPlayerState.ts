@@ -8,6 +8,7 @@ import type {
   ProgramPlayerSnapshot,
 } from '../types/programPlayer.types';
 import { buildProgramMeta } from '../utils/programPlayerMeta';
+import { usesVideoEndedForAdvance } from '../utils/programPlayerPlaybackUtils';
 import {
   getProgramBlockDurationSec,
   getProgramTotalDurationSec,
@@ -23,6 +24,7 @@ interface PlayerState extends ProgramPlayerSnapshot {
   programId: string;
   totalDurationSec: number;
   lastTickAt: number | null;
+  currentRepeatIndex: number;
 }
 
 type PlayerAction =
@@ -36,6 +38,7 @@ type PlayerAction =
   | { type: 'RETURN_TO_START' }
   | { type: 'JUMP_TO_BLOCK'; index: number }
   | { type: 'TICK' }
+  | { type: 'VIDEO_LOOP_COMPLETE' }
   | { type: 'APPLY_SNAPSHOT'; snapshot: ProgramPlayerSnapshot }
   | { type: 'RESET'; program: ProgramPlayerProgram };
 
@@ -43,7 +46,12 @@ function blockTypeToMode(block: ProgramPlayerBlock | undefined): ProgramPlayerMo
   if (!block) return 'complete';
   if (block.type === 'rest') return 'rest';
   if (block.type === 'countdown') return 'countdown';
+  if (block.type === 'voice') return 'voice';
   return 'video';
+}
+
+function withRepeatReset(state: PlayerState, patch: Partial<PlayerState>): PlayerState {
+  return { ...state, ...patch, currentRepeatIndex: 1 };
 }
 
 function normalizeBlocks(blocks: ProgramPlayerBlock[]): ProgramPlayerBlock[] {
@@ -51,6 +59,14 @@ function normalizeBlocks(blocks: ProgramPlayerBlock[]): ProgramPlayerBlock[] {
     ...block,
     durationSec: getProgramBlockDurationSec(block),
   }));
+}
+
+function singleLoopDurationSec(block: ProgramPlayerBlock): number {
+  if (block.type !== 'video') return getProgramBlockDurationSec(block);
+  const loop = block.singleLoopDurationSec;
+  if (loop && loop > 0) return loop;
+  const repeats = Math.max(1, block.repeatCount ?? 1);
+  return Math.max(1, Math.floor(getProgramBlockDurationSec(block) / repeats));
 }
 
 function createInitialState(program: ProgramPlayerProgram): PlayerState {
@@ -65,6 +81,7 @@ function createInitialState(program: ProgramPlayerProgram): PlayerState {
     currentIndex: 0,
     isPlaying: false,
     elapsedSec: 0,
+    currentRepeatIndex: 1,
     blocks,
     programId: program.id,
     totalDurationSec,
@@ -86,6 +103,7 @@ function completeState(state: PlayerState): PlayerState {
     isPlaying: false,
     currentIndex: lastIndex,
     elapsedSec: duration,
+    currentRepeatIndex: 1,
     lastTickAt: null,
   };
 }
@@ -95,48 +113,63 @@ function reducer(state: PlayerState, action: PlayerAction): PlayerState {
     case 'RESET':
       return createInitialState(action.program);
     case 'START':
-      return {
-        ...state,
+      return withRepeatReset(state, {
         mode: blockTypeToMode(state.blocks[0]),
         currentIndex: 0,
         isPlaying: true,
         elapsedSec: 0,
         lastTickAt: Date.now(),
-      };
+      });
     case 'PLAY':
       return { ...state, isPlaying: true, lastTickAt: Date.now() };
     case 'PAUSE':
       return { ...state, isPlaying: false, lastTickAt: null };
     case 'RESTART':
-      return {
-        ...state,
+      return withRepeatReset(state, {
         mode: blockTypeToMode(state.blocks[0]),
         currentIndex: 0,
         isPlaying: true,
         elapsedSec: 0,
         lastTickAt: Date.now(),
-      };
+      });
     case 'RETURN_TO_START':
-      return {
-        ...state,
+      return withRepeatReset(state, {
         mode: 'start',
         currentIndex: 0,
         isPlaying: false,
         elapsedSec: 0,
         lastTickAt: null,
-      };
+      });
     case 'COMPLETE':
       return completeState(state);
     case 'JUMP_TO_BLOCK': {
       const index = Math.max(0, Math.min(action.index, state.blocks.length - 1));
-      return {
-        ...state,
+      return withRepeatReset(state, {
         mode: blockTypeToMode(state.blocks[index]),
         currentIndex: index,
         elapsedSec: 0,
         isPlaying: state.isPlaying,
         lastTickAt: state.isPlaying ? Date.now() : null,
-      };
+      });
+    }
+    case 'VIDEO_LOOP_COMPLETE': {
+      const block = state.blocks[state.currentIndex];
+      if (!block || block.type !== 'video' || !usesVideoEndedForAdvance(block)) {
+        return state;
+      }
+      const target = Math.max(1, block.repeatCount ?? 1);
+      if (state.currentRepeatIndex < target) {
+        return {
+          ...state,
+          currentRepeatIndex: state.currentRepeatIndex + 1,
+          elapsedSec: 0,
+          lastTickAt: state.isPlaying ? Date.now() : null,
+        };
+      }
+      return reducer(
+        { ...state, elapsedSec: getProgramBlockDurationSec(block), lastTickAt: Date.now() },
+        { type: 'NEXT' },
+      );
     }
     case 'NEXT': {
       if (state.mode === 'start') {
@@ -146,42 +179,38 @@ function reducer(state: PlayerState, action: PlayerAction): PlayerState {
       if (nextIndex >= state.blocks.length) {
         return completeState({ ...state, elapsedSec: blockDuration(state, state.currentIndex) });
       }
-      return {
-        ...state,
+      return withRepeatReset(state, {
         mode: blockTypeToMode(state.blocks[nextIndex]),
         currentIndex: nextIndex,
         elapsedSec: 0,
         lastTickAt: state.isPlaying ? Date.now() : state.lastTickAt,
-      };
+      });
     }
     case 'PREVIOUS': {
       if (state.mode === 'start' || state.mode === 'complete') {
         return state;
       }
       if (state.elapsedSec > 3) {
-        return {
-          ...state,
+        return withRepeatReset(state, {
           elapsedSec: 0,
           lastTickAt: state.isPlaying ? Date.now() : null,
-        };
+        });
       }
       if (state.currentIndex === 0) {
-        return {
-          ...state,
+        return withRepeatReset(state, {
           mode: 'start',
           isPlaying: false,
           elapsedSec: 0,
           lastTickAt: null,
-        };
+        });
       }
       const prevIndex = state.currentIndex - 1;
-      return {
-        ...state,
+      return withRepeatReset(state, {
         mode: blockTypeToMode(state.blocks[prevIndex]),
         currentIndex: prevIndex,
         elapsedSec: 0,
         lastTickAt: state.isPlaying ? Date.now() : null,
-      };
+      });
     }
     case 'TICK': {
       if (!state.isPlaying || state.mode === 'start' || state.mode === 'complete') {
@@ -192,6 +221,14 @@ function reducer(state: PlayerState, action: PlayerAction): PlayerState {
 
       const durationSec = getProgramBlockDurationSec(block);
       const nextElapsed = state.elapsedSec + 1;
+
+      if (
+        block.type === 'video' &&
+        usesVideoEndedForAdvance(block) &&
+        nextElapsed >= singleLoopDurationSec(block)
+      ) {
+        return reducer(state, { type: 'VIDEO_LOOP_COMPLETE' });
+      }
 
       if (nextElapsed >= durationSec) {
         return reducer(
@@ -213,6 +250,7 @@ function reducer(state: PlayerState, action: PlayerAction): PlayerState {
         currentIndex: action.snapshot.currentIndex,
         isPlaying: action.snapshot.isPlaying,
         elapsedSec: action.snapshot.elapsedSec,
+        currentRepeatIndex: action.snapshot.currentRepeatIndex ?? 1,
         lastTickAt: action.snapshot.isPlaying ? Date.now() : null,
       };
     default:
@@ -226,6 +264,7 @@ function toSnapshot(state: PlayerState): ProgramPlayerSnapshot {
     currentIndex: state.currentIndex,
     isPlaying: state.isPlaying,
     elapsedSec: state.elapsedSec,
+    currentRepeatIndex: state.currentRepeatIndex,
   };
 }
 
@@ -378,6 +417,11 @@ export function useProgramPlayerState(program: ProgramPlayerProgram) {
       ? Math.min(100, Math.round((state.elapsedSec / currentBlockDurationSec) * 100))
       : 0;
 
+  const currentRepeatCount =
+    currentBlock?.type === 'video' ? Math.max(1, currentBlock.repeatCount ?? 1) : 1;
+
+  const blockRemainingSec = remainingSec;
+
   const completedBlockCount =
     state.mode === 'complete' ? state.blocks.length : state.currentIndex;
 
@@ -397,6 +441,7 @@ export function useProgramPlayerState(program: ProgramPlayerProgram) {
       exitToStart: () => dispatchAndBroadcast({ type: 'RETURN_TO_START' }, 'RETURN_TO_START'),
       jumpToBlock: (index: number) =>
         dispatchAndBroadcast({ type: 'JUMP_TO_BLOCK', index }, 'JUMP_TO_BLOCK'),
+      onVideoLoopComplete: () => dispatch({ type: 'VIDEO_LOOP_COMPLETE' }),
     }),
     [dispatchAndBroadcast, state.isPlaying],
   );
@@ -415,10 +460,13 @@ export function useProgramPlayerState(program: ProgramPlayerProgram) {
     isPlaying: state.isPlaying,
     elapsedSec: state.elapsedSec,
     remainingSec,
+    blockRemainingSec,
     totalElapsedSec,
     totalRemainingSec,
     progressPercent,
     blockProgressPercent,
+    currentRepeatIndex: state.currentRepeatIndex,
+    currentRepeatCount,
     completedBlockCount,
     lastTickAt: state.lastTickAt,
     isBroadcastSupported: isSupported,

@@ -169,10 +169,10 @@ export function createRestBlock(order: number, durationSec = 30): RestProgramBlo
   return {
     id: nextBlockId('rest'),
     type: 'rest',
-    title: `휴식 ${durationSec}초`,
+    title: '휴식',
     order,
     durationSec,
-    message: '휴식 중입니다',
+    message: '잠시 쉬세요',
   };
 }
 
@@ -180,10 +180,11 @@ export function createCountdownBlock(order: number, durationSec = 10): Countdown
   return {
     id: nextBlockId('countdown'),
     type: 'countdown',
-    title: `카운트다운 ${durationSec}초`,
+    title: '카운트다운',
     order,
     durationSec,
     countFromSec: durationSec,
+    message: '준비하세요',
   };
 }
 
@@ -191,10 +192,11 @@ export function createVoiceBlock(order: number, message = '준비하세요'): Vo
   return {
     id: nextBlockId('voice'),
     type: 'voice',
-    title: message,
+    title: '음성 안내',
     order,
     durationSec: 3,
     cueText: message,
+    message,
   };
 }
 
@@ -210,6 +212,8 @@ export function createVideoBlockFromWorkout(
     durationSec: video.durationSec,
     videoId: video.id,
     playMode: 'original_duration',
+    repeatCount: 1,
+    targetDurationSec: video.durationSec,
     restAfterSec: 0,
     voiceCues: { ...DEFAULT_VIDEO_VOICE_CUES },
   };

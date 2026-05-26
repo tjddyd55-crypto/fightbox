@@ -136,13 +136,15 @@ function PreviewMeta({ block, videos }: { block: ProgramBlock; videos: WorkoutVi
     return (
       <dl className="wpb-preview-meta">
         <PreviewMetaItem label="카운트" value={`${block.countFromSec}초`} />
+        {block.message && <PreviewMetaItem label="안내" value={block.message} />}
       </dl>
     );
   }
 
   return (
     <dl className="wpb-preview-meta">
-      <PreviewMetaItem label="문구" value={block.cueText} />
+      <PreviewMetaItem label="문구" value={block.message ?? block.cueText} />
+      <PreviewMetaItem label="표시" value={`${block.durationSec}초`} />
     </dl>
   );
 }

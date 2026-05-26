@@ -1,15 +1,20 @@
 import type { PublishedProgramShareDto, PublishedProgramPlaybackItemDto } from '@fightbox/shared';
 import type { ProgramBlock, WorkoutProgramTemplate, WorkoutVideo } from '../../workout-program-builder/types/workoutProgramBuilder.types';
+import { normalizeProgramBlock as normalizeBuilderBlock } from '../../workout-program-builder/utils/blockTypeNormalization';
 import {
   buildWorkoutVideoMap,
-  getBlockDurationSeconds,
+  computeVideoBlockDuration,
 } from '../../workout-program-builder/utils/programTimelineUtils';
 import type {
   ProgramPlayerBlock,
   ProgramPlayerBlockType,
   ProgramPlayerProgram,
 } from '../types/programPlayer.types';
-import { getProgramBlockDurationSec, getProgramTotalDurationSec } from './programPlayerTimeUtils';
+import {
+  computePlayerVideoDurationSec,
+  mapBuilderPlayModeToPlayer,
+} from './programPlayerPlaybackUtils';
+import { getProgramTotalDurationSec } from './programPlayerTimeUtils';
 import { MOCK_PROGRAM_BLOCKS } from '../data/mockProgramPlayerData';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -34,8 +39,11 @@ function resolveHttpUrl(value: string | null | undefined): string | undefined {
 }
 
 function mapBuilderBlockType(type: string): ProgramPlayerBlockType | null {
-  if (type === 'video' || type === 'rest' || type === 'countdown') {
+  if (type === 'video' || type === 'rest' || type === 'countdown' || type === 'voice') {
     return type;
+  }
+  if (type === 'voiceGuide' || type === 'audioGuide' || type === 'audio') {
+    return 'voice';
   }
   return null;
 }
@@ -44,7 +52,14 @@ function extractTemplateBlocks(templateJson: unknown): ProgramBlock[] {
   if (!isRecord(templateJson)) return [];
   const blocks = templateJson.blocks;
   if (!Array.isArray(blocks)) return [];
-  return blocks.filter((block): block is ProgramBlock => isRecord(block) && typeof block.type === 'string');
+  return blocks
+    .map((raw, index) => {
+      if (isRecord(raw) && typeof raw.type === 'string') {
+        return normalizeBuilderBlock(raw, index + 1) ?? (raw as unknown as ProgramBlock);
+      }
+      return null;
+    })
+    .filter((block): block is ProgramBlock => block !== null);
 }
 
 function buildBlockTypeMap(templateJson: unknown): Map<string, ProgramPlayerBlockType> {
@@ -66,11 +81,12 @@ function inferBlockTypeFromPlayback(
   if (fromTemplate) return fromTemplate;
   if (item.videoId) return 'video';
   if (item.title.includes('휴식')) return 'rest';
-  if (item.title.includes('카운트')) return 'countdown';
+  if (item.title.includes('카운트') || item.title.includes('준비')) return 'countdown';
+  if (item.title.includes('음성')) return 'voice';
   return 'video';
 }
 
-export function normalizeProgramBlock(
+export function mapProgramBlockToPlayer(
   block: ProgramBlock,
   index: number,
   videoMap: ReadonlyMap<string, WorkoutVideo>,
@@ -82,30 +98,62 @@ export function normalizeProgramBlock(
   }
 
   const video = block.type === 'video' ? videoMap.get(block.videoId) : undefined;
-  const rawDuration =
-    playbackItem?.durationSec ??
-    getBlockDurationSeconds(block, videoMap) ??
-    video?.durationSec ??
-    block.durationSec ??
-    0;
+  const playbackMode =
+    block.type === 'video' ? mapBuilderPlayModeToPlayer(block.playMode) : undefined;
 
-  const targetDurationSec = block.type === 'video' ? block.targetDurationSec : undefined;
-  const durationSec = getProgramBlockDurationSec({
-    type: mappedType,
-    durationSec: rawDuration,
-    targetDurationSec,
-  });
+  let durationSec = 0;
+  let singleLoopDurationSec: number | undefined;
+
+  if (block.type === 'video') {
+    const videoDur = video?.durationSec ?? block.durationSec;
+    const computed = computePlayerVideoDurationSec({
+      playMode: playbackMode ?? 'original_duration',
+      videoDurationSec: videoDur,
+      blockDurationSec: block.durationSec,
+      repeatCount: block.repeatCount,
+      targetDurationSec: block.targetDurationSec,
+    });
+    durationSec = video
+      ? computeVideoBlockDuration(
+          video,
+          block.playMode,
+          block.repeatCount,
+          block.targetDurationSec,
+        )
+      : computed.durationSec;
+    if (playbackItem?.durationSec && playbackMode === 'original_duration') {
+      durationSec = readNumber(playbackItem.durationSec, durationSec);
+    }
+    singleLoopDurationSec = computed.singleLoopDurationSec;
+  } else if (block.type === 'rest') {
+    durationSec = Math.max(1, block.durationSec || 30);
+  } else if (block.type === 'countdown') {
+    durationSec = Math.max(1, block.durationSec || block.countFromSec || 10);
+  } else if (block.type === 'voice') {
+    durationSec = Math.max(1, block.durationSec || 3);
+  }
 
   const playbackUrl =
     resolveHttpUrl(playbackItem?.playbackUrl) ??
+    resolveHttpUrl(block.type === 'video' ? block.playbackUrl : undefined) ??
     resolveHttpUrl(video?.uploadMeta?.playbackUrl) ??
     resolveHttpUrl(video?.previewUrl);
 
   const thumbnailUrl =
     resolveHttpUrl(playbackItem?.thumbnailUrl) ??
+    resolveHttpUrl(block.type === 'video' ? block.thumbnailUrl : undefined) ??
     resolveHttpUrl(video?.uploadMeta?.remoteThumbnailUrl) ??
     resolveHttpUrl(video?.thumbnailUrl) ??
     null;
+
+  const message =
+    block.type === 'rest'
+      ? block.message
+      : block.type === 'countdown'
+        ? block.message
+        : block.type === 'voice'
+          ? block.message ?? block.cueText
+          : undefined;
 
   const nextTitle =
     block.type === 'rest'
@@ -116,35 +164,46 @@ export function normalizeProgramBlock(
     id: block.id,
     type: mappedType,
     order: block.order ?? index + 1,
-    title:
+    title: readString(
+      block.title,
       mappedType === 'rest'
-        ? readString(block.title, '휴식')
+        ? '휴식'
         : mappedType === 'countdown'
-          ? readString(block.title, '카운트다운')
-          : readString(block.title, video?.title ?? '운동 블록'),
-    description: block.type === 'rest' ? block.message : undefined,
+          ? '카운트다운'
+          : mappedType === 'voice'
+            ? '음성 안내'
+            : '운동 블록',
+    ),
+    message,
+    description: message,
     durationSec,
+    singleLoopDurationSec,
     subtitle: nextTitle ? `다음 · ${nextTitle}` : undefined,
     videoId: block.type === 'video' ? block.videoId : playbackItem?.videoId,
     playbackUrl,
     thumbnailUrl,
     bodyParts: playbackItem?.bodyParts ?? video?.bodyParts,
     tags: playbackItem?.tags ?? video?.tags,
-    playbackMode: block.type === 'video' ? block.playMode : undefined,
+    playbackMode,
     repeatCount: block.type === 'video' ? block.repeatCount : undefined,
     targetDurationSec: block.type === 'video' ? block.targetDurationSec : undefined,
     restAfterSec: block.type === 'video' ? block.restAfterSec : undefined,
   };
 }
 
+/** @deprecated Use mapProgramBlockToPlayer */
+export const normalizeProgramBlock = mapProgramBlockToPlayer;
+
 export function programFromWorkoutTemplate(
   template: WorkoutProgramTemplate,
   videos: WorkoutVideo[] = [],
 ): ProgramPlayerProgram {
   const videoMap = buildWorkoutVideoMap(videos);
-  const sortedBlocks = [...template.blocks].sort((a, b) => a.order - b.order);
+  const sortedBlocks = [...template.blocks]
+    .map((block, index) => normalizeBuilderBlock(block, index + 1, videoMap) ?? block)
+    .sort((a, b) => a.order - b.order);
   const blocks = sortedBlocks
-    .map((block, index) => normalizeProgramBlock(block, index, videoMap))
+    .map((block, index) => mapProgramBlockToPlayer(block, index, videoMap))
     .filter((block): block is ProgramPlayerBlock => block !== null);
 
   const totalDurationSec =
@@ -170,12 +229,12 @@ export function programFromPublishedShare(shared: PublishedProgramShareDto): Pro
   );
 
   if (templateBlocks.length > 0) {
+    const videoMap = buildWorkoutVideoMap([]);
     const blocks = [...templateBlocks]
       .sort((a, b) => a.order - b.order)
       .map((block, index) => {
         const playback = playbackByBlockId.get(block.id);
-        const videoMap = new Map<string, WorkoutVideo>();
-        return normalizeProgramBlock(block, index, videoMap, playback);
+        return mapProgramBlockToPlayer(block, index, videoMap, playback);
       })
       .filter((block): block is ProgramPlayerBlock => block !== null);
 
@@ -194,16 +253,22 @@ export function programFromPublishedShare(shared: PublishedProgramShareDto): Pro
     .sort((a, b) => a.order - b.order)
     .map((item, index) => {
       const type = inferBlockTypeFromPlayback(item, typeMap);
-      const durationSec = getProgramBlockDurationSec({
-        type,
-        durationSec: readNumber(item.durationSec, 0),
-      });
+      const durationSec = readNumber(item.durationSec, 0);
       return {
         id: item.blockId,
         type,
         order: item.order ?? index + 1,
         title: readString(item.title, '운동 블록'),
-        durationSec,
+        durationSec:
+          durationSec > 0
+            ? durationSec
+            : type === 'rest'
+              ? 30
+              : type === 'countdown'
+                ? 10
+                : type === 'voice'
+                  ? 3
+                  : 10,
         videoId: item.videoId,
         playbackUrl: resolveHttpUrl(item.playbackUrl),
         thumbnailUrl: resolveHttpUrl(item.thumbnailUrl) ?? null,

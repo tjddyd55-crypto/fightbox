@@ -40,8 +40,10 @@ export function getBlockSubtitle(block: ProgramBlock): string {
         ? `다음 · ${block.nextBlockTitle}`
         : block.message ?? '휴식';
     case 'countdown':
-      return `${block.countFromSec}초 카운트`;
+      return block.message
+        ? `${block.message} · ${block.countFromSec}초`
+        : `${block.countFromSec}초 카운트`;
     case 'voice':
-      return block.cueText;
+      return block.message ?? block.cueText;
   }
 }
