@@ -375,6 +375,16 @@ export function WorkoutProgramBuilderPage() {
           setIsVideoUploadOpen(false);
           return true;
         }}
+        onSubmitYouTube={(input) => {
+          const created = state.registerYouTubeVideo(input);
+          if (!created) return false;
+          videoFilterState.setSelectedVideoId(created.id);
+          if (isCompactLayout()) {
+            setMobileTab('videos');
+          }
+          setIsVideoUploadOpen(false);
+          return true;
+        }}
       />
       <VideoEditModal
         video={editingVideo}
