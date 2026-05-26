@@ -272,12 +272,17 @@ export function useProgramPlayerState(program: ProgramPlayerProgram) {
   const [state, dispatch] = useReducer(reducer, program, createInitialState);
   const suppressBroadcastRef = useRef(false);
   const skipSyncEffectRef = useRef(false);
+  const videoLoopGuardRef = useRef<{ blockId: string; repeatIndex: number } | null>(null);
   const stateRef = useRef(state);
   stateRef.current = state;
 
   useEffect(() => {
     dispatch({ type: 'RESET', program });
   }, [program]);
+
+  useEffect(() => {
+    videoLoopGuardRef.current = null;
+  }, [state.currentIndex, state.blocks[state.currentIndex]?.id]);
 
   const channelName = useMemo(
     () => buildProgramPlayerBroadcastChannel(program.id, program.source),
@@ -441,7 +446,34 @@ export function useProgramPlayerState(program: ProgramPlayerProgram) {
       exitToStart: () => dispatchAndBroadcast({ type: 'RETURN_TO_START' }, 'RETURN_TO_START'),
       jumpToBlock: (index: number) =>
         dispatchAndBroadcast({ type: 'JUMP_TO_BLOCK', index }, 'JUMP_TO_BLOCK'),
-      onVideoLoopComplete: () => dispatch({ type: 'VIDEO_LOOP_COMPLETE' }),
+      onVideoLoopComplete: () => {
+        const snapshot = stateRef.current;
+        const block = snapshot.blocks[snapshot.currentIndex];
+        if (!block || block.type !== 'video' || !usesVideoEndedForAdvance(block)) {
+          return;
+        }
+        const guard = { blockId: block.id, repeatIndex: snapshot.currentRepeatIndex };
+        if (
+          videoLoopGuardRef.current?.blockId === guard.blockId &&
+          videoLoopGuardRef.current?.repeatIndex === guard.repeatIndex
+        ) {
+          return;
+        }
+        videoLoopGuardRef.current = guard;
+        dispatch({ type: 'VIDEO_LOOP_COMPLETE' });
+      },
+      onVideoOriginalEnded: () => {
+        const snapshot = stateRef.current;
+        const block = snapshot.blocks[snapshot.currentIndex];
+        if (!block || block.type !== 'video' || block.playbackMode !== 'original_duration') {
+          return;
+        }
+        const durationSec = getProgramBlockDurationSec(block);
+        if (snapshot.elapsedSec >= durationSec) {
+          return;
+        }
+        dispatch({ type: 'NEXT' });
+      },
     }),
     [dispatchAndBroadcast, state.isPlaying],
   );
