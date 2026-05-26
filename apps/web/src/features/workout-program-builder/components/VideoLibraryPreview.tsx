@@ -1,8 +1,13 @@
 import type { WorkoutVideo } from '../types/workoutProgramBuilder.types';
 import { formatDuration } from '../utils/durationUtils';
-import { isUploadedVideo } from '../utils/videoManageUtils';
-import { getWorkoutVideoPlaybackUrl, getWorkoutVideoPosterUrl } from '../utils/videoPlaybackUtils';
+import { isR2UploadedVideo } from '../utils/videoManageUtils';
+import {
+  getWorkoutVideoPlaybackUrl,
+  getWorkoutVideoPosterUrl,
+  isYouTubeWorkoutVideo,
+} from '../utils/videoPlaybackUtils';
 import { WorkoutVideoPlayer } from './WorkoutVideoPlayer';
+import { WorkoutYouTubeEmbed } from './WorkoutYouTubeEmbed';
 
 const DIFFICULTY_LABEL: Record<WorkoutVideo['difficulty'], string> = {
   beginner: '초급',
@@ -16,6 +21,7 @@ interface VideoLibraryPreviewProps {
 }
 
 export function VideoLibraryPreview({ video, onAdd }: VideoLibraryPreviewProps) {
+  const isYoutube = isYouTubeWorkoutVideo(video);
   const playbackUrl = getWorkoutVideoPlaybackUrl(video);
   const posterUrl = getWorkoutVideoPosterUrl(video);
 
@@ -27,10 +33,16 @@ export function VideoLibraryPreview({ video, onAdd }: VideoLibraryPreviewProps) 
       </header>
       <div className="wpb-library-preview-body">
         <div
-          className={`wpb-library-preview-thumb${playbackUrl ? ' wpb-preview-card--playable' : ''}`}
-          aria-hidden={!playbackUrl}
+          className={`wpb-library-preview-thumb${playbackUrl || isYoutube ? ' wpb-preview-card--playable' : ''}`}
+          aria-hidden={!playbackUrl && !isYoutube}
         >
-          {playbackUrl ? (
+          {isYoutube && video.youtubeMeta ? (
+            <WorkoutYouTubeEmbed
+              videoId={video.youtubeMeta.videoId}
+              embedUrl={video.youtubeMeta.embedUrl}
+              title={video.title}
+            />
+          ) : playbackUrl ? (
             <WorkoutVideoPlayer video={video} className="wpb-preview-video" />
           ) : posterUrl ? (
             <img src={posterUrl} alt="" className="wpb-thumb-image wpb-library-preview-poster" />
@@ -60,7 +72,7 @@ export function VideoLibraryPreview({ video, onAdd }: VideoLibraryPreviewProps) 
               <dd>{video.description}</dd>
             </div>
           )}
-          {!playbackUrl && isUploadedVideo(video) && (
+          {!playbackUrl && !isYoutube && isR2UploadedVideo(video) && (
             <div className="wpb-library-preview-desc">
               <dt>재생</dt>
               <dd>재생 URL이 없습니다. Public URL 설정 후 새로 업로드해 주세요.</dd>

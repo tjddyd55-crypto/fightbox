@@ -2,7 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import type { WorkoutVideo } from '../types/workoutProgramBuilder.types';
 import { formatDuration } from '../utils/durationUtils';
 import { isUploadedVideo } from '../utils/videoManageUtils';
-import { getWorkoutVideoPlaybackUrl, getWorkoutVideoPosterUrl } from '../utils/videoPlaybackUtils';
+import {
+  getWorkoutVideoPlaybackUrl,
+  getWorkoutVideoPosterUrl,
+  isYouTubeWorkoutVideo,
+} from '../utils/videoPlaybackUtils';
 
 const DIFFICULTY_LABEL: Record<WorkoutVideo['difficulty'], string> = {
   beginner: '초급',
@@ -36,6 +40,7 @@ export function VideoCard({
   const [menuOpen, setMenuOpen] = useState(false);
   const menuWrapRef = useRef<HTMLDivElement>(null);
   const canManage = isUploadedVideo(video);
+  const isYoutube = isYouTubeWorkoutVideo(video);
   const playbackUrl = getWorkoutVideoPlaybackUrl(video);
   const posterUrl = getWorkoutVideoPosterUrl(video);
 
@@ -83,6 +88,7 @@ export function VideoCard({
         <span className="wpb-thumb-icon" aria-hidden>
           ▶
         </span>
+        {isYoutube && <span className="wpb-youtube-badge">YouTube</span>}
         {video.isLoopable && <span className="wpb-loop-badge">Loop</span>}
         <span className="wpb-thumb-badge">{formatDuration(video.durationSec)}</span>
       </div>

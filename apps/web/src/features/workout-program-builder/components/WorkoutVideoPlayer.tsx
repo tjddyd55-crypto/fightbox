@@ -3,7 +3,9 @@ import type { WorkoutVideo } from '../types/workoutProgramBuilder.types';
 import {
   getWorkoutVideoPlaybackUrl,
   getWorkoutVideoPosterUrl,
+  isYouTubeWorkoutVideo,
 } from '../utils/videoPlaybackUtils';
+import { WorkoutYouTubeEmbed } from './WorkoutYouTubeEmbed';
 
 interface WorkoutVideoPlayerProps {
   video?: WorkoutVideo | null;
@@ -26,6 +28,21 @@ export function WorkoutVideoPlayer({
   preload = 'metadata',
   videoRef,
 }: WorkoutVideoPlayerProps) {
+  if (!video) {
+    return null;
+  }
+
+  if (isYouTubeWorkoutVideo(video) && video.youtubeMeta?.videoId) {
+    return (
+      <WorkoutYouTubeEmbed
+        videoId={video.youtubeMeta.videoId}
+        embedUrl={video.youtubeMeta.embedUrl}
+        title={video.title}
+        className={className}
+      />
+    );
+  }
+
   const playbackUrl = getWorkoutVideoPlaybackUrl(video);
   if (!playbackUrl) {
     return null;
