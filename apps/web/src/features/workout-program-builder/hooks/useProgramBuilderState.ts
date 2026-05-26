@@ -12,6 +12,7 @@ import {
 } from '../utils/editorTemplateUtils';
 import type {
   CreateWorkoutVideoInput,
+  CreateYouTubeWorkoutVideoInput,
   ProgramBlock,
   PublicShareSubmissionPayload,
   UpdateWorkoutVideoInput,
@@ -28,6 +29,7 @@ import {
 } from '../repositories/programTemplateRepository';
 import {
   createVideo,
+  createYouTubeVideo,
   deleteVideo,
   listVideos,
   persistCreatedVideoToApi,
@@ -316,6 +318,23 @@ export function useProgramBuilderState() {
     [showMessage],
   );
 
+  const registerYouTubeVideo = useCallback(
+    (input: CreateYouTubeWorkoutVideoInput): WorkoutVideo | null => {
+      const created = createYouTubeVideo(input);
+      if (!created) {
+        showMessage('유튜브 영상 등록에 실패했습니다. 브라우저 저장 공간을 확인해 주세요.');
+        return null;
+      }
+      setVideos(listVideos());
+      void persistCreatedVideoToApi(created).then(() => {
+        setVideos(listVideos());
+      });
+      showMessage(`「${created.title}」 유튜브 영상이 등록되었습니다.`);
+      return created;
+    },
+    [showMessage],
+  );
+
   const isVideoUsedInTimeline = useCallback(
     (videoId: string) =>
       blocks.some((block) => block.type === 'video' && block.videoId === videoId),
@@ -531,6 +550,7 @@ export function useProgramBuilderState() {
     addVideoToTimeline,
     addVideoBlock,
     registerVideo,
+    registerYouTubeVideo,
     updateRegisteredVideo,
     deleteRegisteredVideo,
     isVideoUsedInTimeline,

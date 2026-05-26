@@ -128,7 +128,11 @@ export function WorkoutProgramBuilderPage() {
         showMessage(PERMISSION_DENIED_MESSAGE);
         return;
       }
-      const confirmed = window.confirm(`「${video.title}」 영상을 삭제할까요?`);
+      const deleteHint =
+        video.mediaSource === 'youtube' || video.youtubeMeta
+          ? '\n\nYouTube 원본 영상은 삭제되지 않으며, 라이브러리에서만 제거됩니다.'
+          : '';
+      const confirmed = window.confirm(`「${video.title}」 영상을 삭제할까요?${deleteHint}`);
       if (!confirmed) return;
       if (!state.deleteRegisteredVideo(video.id)) return;
       if (videoFilterState.selectedVideoId === video.id) {
