@@ -1,9 +1,11 @@
 import { useEffect, useRef } from 'react';
 import type { ProgramBlock, WorkoutVideo } from '../types/workoutProgramBuilder.types';
+import type { ProgramPlayerBlock } from '../../program-player/types/programPlayer.types';
 import { formatDuration } from '../utils/durationUtils';
 import { getVideoById } from '../utils/programTimelineUtils';
-import { BLOCK_TYPE_LABEL, getBlockTypeIcon } from '../utils/blockDisplayUtils';
+import { BLOCK_TYPE_LABEL } from '../utils/blockDisplayUtils';
 import { getWorkoutVideoPlaybackUrl } from '../utils/videoPlaybackUtils';
+import { getPlayerBlockPlaybackHint } from '../../program-player/utils/programPlayerPlaybackUtils';
 import { useTestPlayback } from '../hooks/useTestPlayback';
 import { WorkoutVideoPlayer } from './WorkoutVideoPlayer';
 
@@ -15,19 +17,34 @@ interface TestPlaybackModalProps {
   onClose: () => void;
 }
 
+const PLAYER_BLOCK_LABEL: Record<ProgramPlayerBlock['type'], string> = {
+  video: '영상',
+  rest: '휴식',
+  countdown: '카운트다운',
+  voice: '음성',
+};
+
 function BlockStage({
   block,
+  sourceBlock,
   video,
   countdownDisplay,
   isPlaying,
+  videoRepeatIndex,
+  videoRepeatTarget,
+  onVideoLoopComplete,
 }: {
-  block: ProgramBlock;
+  block: ProgramPlayerBlock;
+  sourceBlock: ProgramBlock | null;
   video?: WorkoutVideo;
   countdownDisplay: number | null;
   isPlaying: boolean;
+  videoRepeatIndex: number;
+  videoRepeatTarget: number;
+  onVideoLoopComplete: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const playbackUrl = getWorkoutVideoPlaybackUrl(video);
+  const playbackUrl = getWorkoutVideoPlaybackUrl(video) ?? block.playbackUrl;
 
   useEffect(() => {
     const element = videoRef.current;
@@ -49,11 +66,28 @@ function BlockStage({
       return;
     }
 
+    element.loop = block.playbackMode === 'loop_until_duration';
     element.load();
     if (isPlaying) {
       void element.play().catch(() => undefined);
     }
-  }, [block.id, playbackUrl, isPlaying]);
+  }, [block.id, playbackUrl, isPlaying, block.playbackMode]);
+
+  useEffect(() => {
+    const element = videoRef.current;
+    if (!element || !playbackUrl || block.playbackMode !== 'repeat_count') {
+      return undefined;
+    }
+    const handleEnded = () => {
+      onVideoLoopComplete();
+      if (isPlaying) {
+        element.currentTime = 0;
+        void element.play().catch(() => undefined);
+      }
+    };
+    element.addEventListener('ended', handleEnded);
+    return () => element.removeEventListener('ended', handleEnded);
+  }, [block.id, block.playbackMode, playbackUrl, isPlaying, onVideoLoopComplete]);
 
   if (block.type === 'video') {
     if (playbackUrl) {
@@ -72,6 +106,14 @@ function BlockStage({
             />
           </div>
           <p>{video?.title ?? block.title}</p>
+          {block.playbackMode === 'repeat_count' && videoRepeatTarget > 1 && (
+            <p className="wpb-test-repeat-badge">
+              {videoRepeatIndex} / {videoRepeatTarget} 반복
+            </p>
+          )}
+          {getPlayerBlockPlaybackHint(block) && (
+            <p className="wpb-test-playback-hint">{getPlayerBlockPlaybackHint(block)}</p>
+          )}
         </div>
       );
     }
@@ -83,6 +125,9 @@ function BlockStage({
           <span className="wpb-thumb-icon">▶</span>
         </div>
         <p>{video?.title ?? block.title}</p>
+        {getPlayerBlockPlaybackHint(block) && (
+          <p className="wpb-test-playback-hint">{getPlayerBlockPlaybackHint(block)}</p>
+        )}
       </div>
     );
   }
@@ -91,7 +136,7 @@ function BlockStage({
     return (
       <div className="wpb-test-stage wpb-test-stage--rest" aria-label="휴식 블록">
         <span className="wpb-test-stage-icon">◌</span>
-        <p>{block.message ?? '휴식 중'}</p>
+        <p>{block.message ?? block.description ?? '휴식 중'}</p>
       </div>
     );
   }
@@ -99,17 +144,26 @@ function BlockStage({
   if (block.type === 'countdown') {
     return (
       <div className="wpb-test-stage wpb-test-stage--countdown" aria-label="카운트다운 블록">
-        <span className="wpb-test-countdown">{countdownDisplay ?? block.countFromSec}</span>
+        <p className="wpb-test-countdown-message">{block.message ?? '준비하세요'}</p>
+        <span className="wpb-test-countdown">{countdownDisplay ?? block.durationSec}</span>
       </div>
     );
   }
 
-  return (
-    <div className="wpb-test-stage wpb-test-stage--voice" aria-label="음성 안내 블록">
-      <span className="wpb-test-stage-icon">♪</span>
-      <p>{block.cueText}</p>
-    </div>
-  );
+  if (block.type === 'voice') {
+    const voiceText =
+      block.message ??
+      block.description ??
+      (sourceBlock?.type === 'voice' ? sourceBlock.cueText : '');
+    return (
+      <div className="wpb-test-stage wpb-test-stage--voice" aria-label="음성 안내 블록">
+        <span className="wpb-test-stage-icon">🎤</span>
+        <p>{voiceText}</p>
+      </div>
+    );
+  }
+
+  return null;
 }
 
 export function TestPlaybackModal({
@@ -132,6 +186,11 @@ export function TestPlaybackModal({
     totalElapsed,
     progressPercent,
     countdownDisplay,
+    sourceBlock,
+    playerBlocks,
+    videoRepeatIndex,
+    videoRepeatTarget,
+    onVideoLoopComplete,
     setIsPlaying,
     setFastMode,
     goNext,
@@ -175,7 +234,14 @@ export function TestPlaybackModal({
   }
 
   const currentVideo =
-    currentBlock?.type === 'video' ? getVideoById(videos, currentBlock.videoId) : undefined;
+    currentBlock?.type === 'video' && currentBlock.videoId
+      ? getVideoById(videos, currentBlock.videoId)
+      : undefined;
+
+  const nextLabel =
+    nextBlock?.type && nextBlock.type in PLAYER_BLOCK_LABEL
+      ? PLAYER_BLOCK_LABEL[nextBlock.type]
+      : BLOCK_TYPE_LABEL.video;
 
   return (
     <div className="wpb-test-modal-backdrop" role="presentation" onClick={onClose}>
@@ -222,21 +288,24 @@ export function TestPlaybackModal({
 
         <section className="wpb-test-current" aria-live="polite">
           <span className={`wpb-test-type wpb-test-type--${currentBlock?.type ?? 'video'}`}>
-            {currentBlock && getBlockTypeIcon(currentBlock)}{' '}
-            {currentBlock && BLOCK_TYPE_LABEL[currentBlock.type]}
+            {currentBlock ? PLAYER_BLOCK_LABEL[currentBlock.type] : '—'}
           </span>
           <h3>{currentBlock?.title ?? '—'}</h3>
           <p className="wpb-test-current-meta">
-            블록 {currentIndex + 1} / {blocks.length} · 남은{' '}
+            블록 {currentIndex + 1} / {playerBlocks.length} · 남은{' '}
             {formatDuration(remainingInBlock)}
             {currentVideo && ` · ${currentVideo.difficulty}`}
           </p>
           {currentBlock && (
             <BlockStage
               block={currentBlock}
+              sourceBlock={sourceBlock}
               video={currentVideo}
               countdownDisplay={countdownDisplay}
               isPlaying={isPlaying}
+              videoRepeatIndex={videoRepeatIndex}
+              videoRepeatTarget={videoRepeatTarget}
+              onVideoLoopComplete={onVideoLoopComplete}
             />
           )}
           {isComplete && <p className="wpb-test-hint">프로그램 재생이 완료되었습니다.</p>}
@@ -246,10 +315,11 @@ export function TestPlaybackModal({
           <section className="wpb-test-next">
             <span className="wpb-test-next-label">다음 블록</span>
             <p>
-              <span className={`wpb-type-pill ${nextBlock.type}`}>
-                {BLOCK_TYPE_LABEL[nextBlock.type]}
-              </span>{' '}
+              <span className={`wpb-type-pill ${nextBlock.type}`}>{nextLabel}</span>{' '}
               {nextBlock.title}
+              {getPlayerBlockPlaybackHint(nextBlock)
+                ? ` · ${getPlayerBlockPlaybackHint(nextBlock)}`
+                : ''}
             </p>
           </section>
         )}
@@ -276,7 +346,7 @@ export function TestPlaybackModal({
             type="button"
             className="wpb-btn wpb-btn-ghost"
             onClick={goNext}
-            disabled={currentIndex >= blocks.length - 1 && !isComplete}
+            disabled={currentIndex >= playerBlocks.length - 1 && !isComplete}
             aria-label="다음 블록"
           >
             다음
