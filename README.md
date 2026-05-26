@@ -342,6 +342,29 @@ Migration: `011_billing_credits.sql`, `013_billing_subscriptions.sql` — `npm r
 
 `.env.example`을 참고해 Railway app/api 서비스 또는 로컬 `.env.local`에 설정하세요.
 
+### 영상 등록 방식 (R2 업로드 · YouTube 링크)
+
+빌더 **영상 등록** 모달에서 두 가지 방식을 선택할 수 있습니다.
+
+| 방식 | `sourceType` | 설명 |
+|------|--------------|------|
+| **파일 업로드** | `uploaded` | 기존과 동일 — R2 presign → PUT → `playbackUrl` / `storageKey` |
+| **유튜브 링크** | `youtube` | YouTube URL만 저장 · **다운로드/저장 없음** · embed 재생 |
+
+YouTube 등록 시:
+
+- 지원 URL: `watch?v=`, `youtu.be/`, `/embed/`, `/shorts/`
+- `externalVideoId`, `embedUrl`, YouTube 썸네일 URL을 DB에 저장
+- embed는 `youtube-nocookie.com` + IFrame API (`enablejsapi=1`, `playsinline=1`, `rel=0`, `iv_load_policy=3`, `controls=0`, `disablekb=1`)
+- **YouTube 로고·브랜딩을 CSS로 완전히 제거하는 것은 불가**합니다. 앱 타이머·컨트롤 중심으로 최대한 영상에 집중합니다.
+- `modestbranding`은 deprecated 정책이라 사용하지 않습니다.
+- autoplay·음성·브랜딩 표시는 브라우저·YouTube 정책 영향을 받을 수 있습니다.
+
+삭제 정책:
+
+- `uploaded`: R2 원본·썸네일 객체 삭제 시도 후 DB soft delete
+- `youtube`: R2 삭제 없음 · DB soft delete만 (YouTube 원본은 그대로)
+
 #### Workout builder storage API
 
 공통 타입: `packages/shared/src/workoutBuilderContracts.ts`
