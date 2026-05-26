@@ -5,6 +5,8 @@ import { formatDuration } from '../utils/durationUtils';
 import { getVideoById } from '../utils/programTimelineUtils';
 import { BLOCK_TYPE_LABEL } from '../utils/blockDisplayUtils';
 import { getWorkoutVideoPlaybackUrl } from '../utils/videoPlaybackUtils';
+import { YouTubePlayerFrame } from '../../program-player/components/YouTubePlayerFrame';
+import { usesVideoEndedForAdvance } from '../../program-player/utils/programPlayerPlaybackUtils';
 import { getPlayerBlockPlaybackHint } from '../../program-player/utils/programPlayerPlaybackUtils';
 import { useTestPlayback } from '../hooks/useTestPlayback';
 import { WorkoutVideoPlayer } from './WorkoutVideoPlayer';
@@ -89,7 +91,45 @@ function BlockStage({
     return () => element.removeEventListener('ended', handleEnded);
   }, [block.id, block.playbackMode, playbackUrl, isPlaying, onVideoLoopComplete]);
 
+  const isYouTubeBlock =
+    block.mediaSource === 'youtube' ||
+    Boolean(block.externalVideoId?.trim()) ||
+    (Boolean(block.embedUrl?.trim()) && !playbackUrl);
+
   if (block.type === 'video') {
+    if (isYouTubeBlock && block.externalVideoId) {
+      return (
+        <div
+          className="wpb-test-stage wpb-test-stage--video wpb-preview-card--playable"
+          aria-label="영상 블록"
+        >
+          <div className="wpb-test-stage-video-wrap wpb-test-stage-video-wrap--youtube">
+            <YouTubePlayerFrame
+              videoId={block.externalVideoId}
+              embedUrl={block.embedUrl}
+              isPlaying={isPlaying}
+              title={video?.title ?? block.title}
+              className="wpb-youtube-frame"
+              onEnded={() => {
+                if (usesVideoEndedForAdvance(block)) {
+                  onVideoLoopComplete();
+                }
+              }}
+            />
+          </div>
+          <p>{video?.title ?? block.title}</p>
+          {block.playbackMode === 'repeat_count' && videoRepeatTarget > 1 && (
+            <p className="wpb-test-repeat-badge">
+              {videoRepeatIndex} / {videoRepeatTarget} 반복
+            </p>
+          )}
+          {getPlayerBlockPlaybackHint(block) && (
+            <p className="wpb-test-playback-hint">{getPlayerBlockPlaybackHint(block)}</p>
+          )}
+        </div>
+      );
+    }
+
     if (playbackUrl) {
       return (
         <div
